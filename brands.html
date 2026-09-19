@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brands — WellmadeWellness</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pine: #1E3327;
+    --pine-deep: #16261D;
+    --ivory: #EEF0E5;
+    --ivory-warm: #F5F6EF;
+    --ink: #23241F;
+    --ink-soft: #55574C;
+    --ochre: #C08A2E;
+    --rule: #D5D8C9;
+    --green: #3E7A4C;
+    --green-soft: #E6EFE4;
+    --red: #B0453A;
+    --red-soft: #F6E7E4;
+    --blue: #3E6A8A;
+    --blue-soft: #E6EDF2;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    background: var(--ivory-warm);
+    line-height: 1.6;
+  }
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--ivory-warm);
+    border-bottom: 1px solid var(--rule);
+  }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
+  .wordmark { font-family: 'Fraunces', serif; font-size: 1.25rem; font-weight: 600; }
+  .wordmark span { color: var(--ochre); }
+  .nav-links { display: flex; gap: 36px; font-size: 0.95rem; }
+  .nav-links a { color: var(--ink-soft); transition: color 0.2s ease; }
+  .nav-links a:hover, .nav-links a.active { color: var(--pine); }
+
+  header.page-head {
+    background: var(--pine);
+    color: var(--ivory);
+    padding: 64px 0 46px;
+  }
+  header.page-head h1 { font-size: clamp(2rem, 4vw, 2.8rem); }
+  header.page-head p { color: #C9D2C4; margin-top: 10px; max-width: 48ch; }
+
+  main { padding: 56px 0 100px; }
+
+  .section-title { font-size: 1.3rem; margin-bottom: 20px; }
+  .status { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 28px; }
+
+  /* brand sections */
+  .brand-card {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--ivory);
+    padding: 26px 28px;
+    margin-bottom: 24px;
+  }
+  .brand-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-bottom: 18px; flex-wrap: wrap;
+  }
+  .brand-name { font-family: 'Fraunces', serif; font-size: 1.35rem; }
+  .brand-actions { display: flex; gap: 8px; align-items: center; }
+
+  .add-label-row { display: flex; gap: 8px; margin-bottom: 16px; max-width: 420px; }
+  .add-label-row input { flex: 1; }
+
+  .label-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .label-card {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 16px 18px;
+    background: var(--ivory-warm);
+  }
+  .label-card .lname {
+    font-weight: 600; font-size: 1rem; margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  .stat-line { display: flex; justify-content: space-between; font-size: 0.86rem; padding: 2px 0; color: var(--ink-soft); }
+  .stat-line b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .stat-remaining {
+    margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--rule);
+    font-weight: 600; display: flex; justify-content: space-between; font-size: 0.95rem;
+    color: var(--pine);
+  }
+  .stat-remaining span.neg { color: var(--red); }
+
+  .add-brand { display: flex; gap: 10px; margin-bottom: 40px; max-width: 480px; }
+  .add-brand input { flex: 1; }
+
+  .card {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 30px 32px;
+    margin-bottom: 60px;
+    background: var(--ivory);
+  }
+  form.inline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+    gap: 18px;
+    align-items: end;
+  }
+  label { display: block; font-size: 0.8rem; color: var(--ink-soft); margin-bottom: 6px; }
+  input, select {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    background: transparent;
+    padding: 9px 2px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: var(--ink);
+  }
+  input:focus, select:focus { outline: none; border-bottom: 2px solid var(--ochre); }
+
+  button {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 600;
+    background: var(--ochre); color: var(--pine-deep);
+    padding: 12px 24px; border-radius: 100px; font-size: 0.9rem;
+  }
+  button:hover { filter: brightness(1.05); }
+  button.secondary {
+    background: transparent; color: var(--ink-soft);
+    border: 1px solid var(--rule); padding: 6px 14px; border-radius: 100px; font-size: 0.78rem;
+  }
+  button.small { padding: 4px 12px; font-size: 0.72rem; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .tbl-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th { color: var(--ink-soft); font-weight: 600; font-size: 0.78rem; }
+  tbody tr:hover { background: var(--ivory); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--ink-soft); font-size: 0.9rem; padding: 16px 0; }
+
+  .pill { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
+  .pill.buy { background: var(--blue-soft); color: var(--blue); }
+  .pill.use { background: #F3E9D8; color: var(--ochre); }
+  .pill.sell { background: var(--green-soft); color: var(--green); }
+  .brand-tag {
+    display: inline-block; font-size: 0.72rem; font-weight: 600; color: var(--ink-soft);
+    border: 1px solid var(--rule); border-radius: 999px; padding: 2px 9px; margin-right: 6px;
+  }
+
+  footer {
+    background: var(--pine);
+    color: #9FB09A;
+    padding: 34px 0;
+    font-size: 0.85rem;
+  }
+  footer .wrap { display: flex; justify-content: space-between; }
+
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+    .card, .brand-card { padding: 22px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a href="index.html" class="wordmark">Wellmade<span>Wellness</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="index.html#services">Services</a>
+      <a href="inventory.html">Container(용기)</a>
+      <a href="brands.html" class="active">labelling(라벨)</a>
+      <a href="index.html#contact">Contact</a>
+    </div>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="wrap">
+    <h1> Label Management System <br>"라벨 관리 시스템"</h1>
+    <p>Track every brand and its labels — how much of each is bought from suppliers, used internally, and sold — with remaining stock calculated automatically.</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="status" id="status">Connecting to shared storage…</div>
+
+    <h2 class="section-title">Add a brand</h2>
+    <div class="add-brand">
+      <input id="newBrandName" placeholder="Add a brand (e.g. Brand E)" maxlength="60">
+      <button id="addBrandBtn">Add brand</button>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+      <h2 class="section-title" style="margin-bottom:0;">Brands &amp; labels</h2>
+      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+    </div>
+    <div id="brandsArea"></div>
+
+    <h2 class="section-title">Log a transaction</h2>
+    <div class="card">
+      <form class="inline" id="txForm">
+        <div>
+          <label for="txBrand">Brand</label>
+          <select id="txBrand" required></select>
+        </div>
+        <div>
+          <label for="txLabel">Label</label>
+          <select id="txLabel" required></select>
+        </div>
+        <div>
+          <label for="txType">Type</label>
+          <select id="txType" required>
+            <option value="buy">Bought (from supplier)</option>
+            <option value="use">Used (internal)</option>
+            <option value="sell">Sold (to customer)</option>
+          </select>
+        </div>
+        <div>
+          <label for="txQty">Quantity</label>
+          <input id="txQty" type="number" min="1" step="1" required>
+        </div>
+        <div>
+          <label for="txDate">Date</label>
+          <input id="txDate" type="date" required>
+        </div>
+        <div>
+          <label for="txNote">Note (optional)</label>
+          <input id="txNote" type="text" maxlength="120" placeholder="Supplier, customer, reason…">
+        </div>
+        <div>
+          <button type="submit" id="txSubmitBtn">Add entry</button>
+        </div>
+      </form>
+    </div>
+
+    <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <span>Transaction history</span>
+      <button id="deleteAllBtn" class="secondary" type="button">Delete all history</button>
+    </h2>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Brand</th><th>Label</th><th>Type</th><th class="num">Qty</th><th>Note</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="txBody">
+          <tr><td colspan="7" class="empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 WellmadeWellness</span>
+    <span>Sokcho, South Korea</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const statusEl = document.getElementById('status');
+  const brandsArea = document.getElementById('brandsArea');
+  const txBody = document.getElementById('txBody');
+  const txForm = document.getElementById('txForm');
+  const txBrandSel = document.getElementById('txBrand');
+  const txLabelSel = document.getElementById('txLabel');
+  const txTypeSel = document.getElementById('txType');
+  const txQtyInput = document.getElementById('txQty');
+  const txDateInput = document.getElementById('txDate');
+  const txNoteInput = document.getElementById('txNote');
+  const newBrandInput = document.getElementById('newBrandName');
+  const addBrandBtn = document.getElementById('addBrandBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const deleteAllBtn = document.getElementById('deleteAllBtn');
+
+  txDateInput.value = new Date().toISOString().slice(0, 10);
+
+  const DEFAULT_BRANDS = ['Brand 1', 'Brand 2', 'Brand 3'];
+
+  // ===== FIREBASE CONFIG — paste your own project's values here =====
+  // Get these from: Firebase Console → Project settings → Your apps → Web app → SDK setup and configuration
+  // Use the SAME project/config as inventory.html so both pages share one Firebase project.
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdT2jqlbWGutlCDX8n2XVHKxLQnYiim-8",
+    authDomain: "wellmadewellness-589e8.firebaseapp.com",
+    projectId: "wellmadewellness-589e8",
+    storageBucket: "wellmadewellness-589e8.firebasestorage.app",
+    messagingSenderId: "571195991033",
+    appId: "1:571195991033:web:8427c140a9f6997b4f9328"
+  };
+  // ====================================================================
+
+  firebase.initializeApp(firebaseConfig);
+  const firestoreDb = firebase.firestore();
+  const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('brands');
+
+  let state = { brands: [], labels: [], transactions: [] };
+  let editingId = null; // transaction id currently being edited
+
+  function saveState() {
+    STATE_DOC.set(state)
+      .then(() => { statusEl.textContent = 'Saved — synced live for everyone viewing this page.'; })
+      .catch((e) => { statusEl.textContent = 'Could not save: ' + (e && e.message ? e.message : 'error'); });
+  }
+
+  STATE_DOC.onSnapshot((doc) => {
+    if (doc.exists) {
+      state = doc.data();
+    } else {
+      state = { brands: DEFAULT_BRANDS.map((name, i) => ({ id: 'b' + i, name })), labels: [], transactions: [] };
+      STATE_DOC.set(state);
+    }
+    renderAll();
+  }, (e) => {
+    statusEl.textContent = 'Could not connect to shared storage: ' + (e && e.message ? e.message : 'error');
+  });
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+  }
+
+  function brandName(id) {
+    const b = state.brands.find(b => b.id === id);
+    return b ? b.name : '(deleted brand)';
+  }
+  function labelName(id) {
+    const l = state.labels.find(l => l.id === id);
+    return l ? l.name : '(deleted label)';
+  }
+  function labelBrandId(id) {
+    const l = state.labels.find(l => l.id === id);
+    return l ? l.brandId : null;
+  }
+
+  function labelTotals(labelId) {
+    let bought = 0, used = 0, sold = 0;
+    state.transactions.forEach(t => {
+      if (t.labelId !== labelId) return;
+      const q = Number(t.quantity) || 0;
+      if (t.type === 'buy') bought += q;
+      else if (t.type === 'use') used += q;
+      else if (t.type === 'sell') sold += q;
+    });
+    return { bought, used, sold, remaining: bought - used - sold };
+  }
+
+  // ---------- Brand/label transaction form selects ----------
+  function renderTxBrandSelect() {
+    const prev = txBrandSel.value;
+    txBrandSel.innerHTML = state.brands
+      .slice().sort((a, b) => a.name.localeCompare(b.name))
+      .map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.name)}</option>`)
+      .join('');
+    if (prev && state.brands.some(b => b.id === prev)) txBrandSel.value = prev;
+    renderTxLabelSelect();
+  }
+
+  function renderTxLabelSelect() {
+    const brandId = txBrandSel.value;
+    const prev = txLabelSel.value;
+    const labelsForBrand = state.labels
+      .filter(l => l.brandId === brandId)
+      .slice().sort((a, b) => a.name.localeCompare(b.name));
+    if (labelsForBrand.length === 0) {
+      txLabelSel.innerHTML = '<option value="">No labels yet</option>';
+      return;
+    }
+    txLabelSel.innerHTML = labelsForBrand
+      .map(l => `<option value="${escapeHtml(l.id)}">${escapeHtml(l.name)}</option>`)
+      .join('');
+    if (prev && labelsForBrand.some(l => l.id === prev)) txLabelSel.value = prev;
+  }
+
+  txBrandSel.addEventListener('change', renderTxLabelSelect);
+
+  // ---------- Brands & labels display ----------
+  function renderBrands() {
+    if (state.brands.length === 0) {
+      brandsArea.innerHTML = '<div class="empty">No brands yet — add one above.</div>';
+      return;
+    }
+    const sortedBrands = state.brands.slice().sort((a, b) => a.name.localeCompare(b.name));
+    brandsArea.innerHTML = sortedBrands.map(b => {
+      const labelsForBrand = state.labels
+        .filter(l => l.brandId === b.id)
+        .slice().sort((a, b2) => a.name.localeCompare(b2.name));
+
+      const labelCards = labelsForBrand.length === 0
+        ? '<div class="empty">No labels yet for this brand.</div>'
+        : `<div class="label-grid">${labelsForBrand.map(l => {
+            const t = labelTotals(l.id);
+            return `
+              <div class="label-card">
+                <div class="lname">
+                  <span>${escapeHtml(l.name)}</span>
+                  <span style="display:flex;gap:6px;">
+                    <button class="secondary small" data-edit-label="${escapeHtml(l.id)}" title="Rename this label">Edit</button>
+                    <button class="secondary small" data-del-label="${escapeHtml(l.id)}" title="Delete this label">Delete</button>
+                  </span>
+                </div>
+                <div class="stat-line"><span>Bought</span><b>${t.bought}</b></div>
+                <div class="stat-line"><span>Used</span><b>${t.used}</b></div>
+                <div class="stat-line"><span>Sold</span><b>${t.sold}</b></div>
+                <div class="stat-remaining"><span>Remaining</span><span class="${t.remaining < 0 ? 'neg' : ''}">${t.remaining}</span></div>
+              </div>
+            `;
+          }).join('')}</div>`;
+
+      return `
+        <div class="brand-card">
+          <div class="brand-head">
+            <div class="brand-name">${escapeHtml(b.name)}</div>
+            <div class="brand-actions">
+              <button class="secondary small" data-edit-brand="${escapeHtml(b.id)}" title="Rename this brand">Edit</button>
+              <button class="secondary small" data-del-brand="${escapeHtml(b.id)}">Delete brand</button>
+            </div>
+          </div>
+          <div class="add-label-row">
+            <input type="text" placeholder="Add a label for ${escapeHtml(b.name)}" maxlength="60" data-add-label-input="${escapeHtml(b.id)}">
+            <button class="secondary small" data-add-label-btn="${escapeHtml(b.id)}">Add label</button>
+          </div>
+          ${labelCards}
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ---------- Transaction history ----------
+  function renderTransactions() {
+    if (state.transactions.length === 0) {
+      txBody.innerHTML = '<tr><td colspan="7" class="empty">No transactions logged yet.</td></tr>';
+      return;
+    }
+    const sorted = state.transactions.slice().sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+    txBody.innerHTML = sorted.map(t => {
+      if (t.id === editingId) {
+        const currentBrandId = labelBrandId(t.labelId) || (state.brands[0] && state.brands[0].id) || '';
+        const brandOptions = state.brands
+          .slice().sort((a, b) => a.name.localeCompare(b.name))
+          .map(b => `<option value="${escapeHtml(b.id)}" ${b.id === currentBrandId ? 'selected' : ''}>${escapeHtml(b.name)}</option>`)
+          .join('');
+        const labelsForBrand = state.labels
+          .filter(l => l.brandId === currentBrandId)
+          .slice().sort((a, b) => a.name.localeCompare(b.name));
+        const labelOptions = labelsForBrand
+          .map(l => `<option value="${escapeHtml(l.id)}" ${l.id === t.labelId ? 'selected' : ''}>${escapeHtml(l.name)}</option>`)
+          .join('') || '<option value="">No labels</option>';
+
+        return `
+          <tr data-edit-row="${escapeHtml(t.id)}">
+            <td><input type="date" data-edit-field="date" value="${escapeHtml(t.date || '')}" style="width:130px;"></td>
+            <td>
+              <select data-edit-field="brandId" style="width:120px;">${brandOptions}</select>
+            </td>
+            <td>
+              <select data-edit-field="labelId" style="width:120px;">${labelOptions}</select>
+            </td>
+            <td>
+              <select data-edit-field="type" style="width:100px;">
+                <option value="buy" ${t.type === 'buy' ? 'selected' : ''}>Bought</option>
+                <option value="use" ${t.type === 'use' ? 'selected' : ''}>Used</option>
+                <option value="sell" ${t.type === 'sell' ? 'selected' : ''}>Sold</option>
+              </select>
+            </td>
+            <td><input type="number" min="1" step="1" data-edit-field="quantity" value="${Number(t.quantity) || 0}" style="width:70px;"></td>
+            <td><input type="text" data-edit-field="note" value="${escapeHtml(t.note || '')}" style="width:150px;"></td>
+            <td style="white-space:nowrap;">
+              <button data-save-tx="${escapeHtml(t.id)}" style="padding:6px 12px;font-size:0.8rem;">Save</button>
+              <button class="secondary" data-cancel-edit style="padding:5px 10px;font-size:0.75rem;">Cancel</button>
+            </td>
+          </tr>
+        `;
+      }
+      return `
+      <tr>
+        <td>${escapeHtml(t.date || '')}</td>
+        <td>${escapeHtml(brandName(labelBrandId(t.labelId)))}</td>
+        <td>${escapeHtml(labelName(t.labelId))}</td>
+        <td><span class="pill ${t.type}">${t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold'}</span></td>
+        <td class="num">${Number(t.quantity) || 0}</td>
+        <td>${escapeHtml(t.note || '')}</td>
+        <td style="white-space:nowrap;">
+          <button class="secondary" data-edit-tx="${escapeHtml(t.id)}">Edit</button>
+          <button class="secondary" data-del-tx="${escapeHtml(t.id)}">Delete</button>
+        </td>
+      </tr>
+    `;
+    }).join('');
+  }
+
+  function renderAll() {
+    renderTxBrandSelect();
+    renderBrands();
+    renderTransactions();
+  }
+
+  // ---------- Add brand ----------
+  addBrandBtn.addEventListener('click', () => {
+    const name = newBrandInput.value.trim();
+    if (!name) return;
+    state.brands.push({ id: 'b' + Date.now(), name });
+    newBrandInput.value = '';
+    saveState();
+    renderAll();
+  });
+  newBrandInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addBrandBtn.click(); }
+  });
+
+  // ---------- Add label / delete label / delete brand (event delegation) ----------
+  brandsArea.addEventListener('click', (e) => {
+    const addLabelBtn = e.target.closest('[data-add-label-btn]');
+    if (addLabelBtn) {
+      const brandId = addLabelBtn.getAttribute('data-add-label-btn');
+      const input = brandsArea.querySelector(`[data-add-label-input="${brandId}"]`);
+      const name = input ? input.value.trim() : '';
+      if (!name) return;
+      state.labels.push({ id: 'l' + Date.now() + Math.floor(Math.random() * 1000), brandId, name });
+      saveState();
+      renderAll();
+      return;
+    }
+    const editLabelBtn = e.target.closest('[data-edit-label]');
+    if (editLabelBtn) {
+      const id = editLabelBtn.getAttribute('data-edit-label');
+      const l = state.labels.find(l => l.id === id);
+      if (!l) return;
+      const newName = window.prompt('Rename label:', l.name);
+      if (newName === null) return;
+      const trimmed = newName.trim();
+      if (!trimmed) { statusEl.textContent = 'Label name cannot be empty.'; return; }
+      l.name = trimmed;
+      saveState();
+      renderAll();
+      return;
+    }
+    const delLabelBtn = e.target.closest('[data-del-label]');
+    if (delLabelBtn) {
+      const id = delLabelBtn.getAttribute('data-del-label');
+      const l = state.labels.find(l => l.id === id);
+      const relatedCount = state.transactions.filter(t => t.labelId === id).length;
+      const msg = relatedCount > 0
+        ? `Delete "${l ? l.name : 'this label'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? This cannot be undone.`
+        : `Delete "${l ? l.name : 'this label'}"? This cannot be undone.`;
+      if (!window.confirm(msg)) return;
+      state.transactions = state.transactions.filter(t => t.labelId !== id);
+      state.labels = state.labels.filter(l => l.id !== id);
+      saveState();
+      renderAll();
+      return;
+    }
+    const editBrandBtn = e.target.closest('[data-edit-brand]');
+    if (editBrandBtn) {
+      const id = editBrandBtn.getAttribute('data-edit-brand');
+      const b = state.brands.find(b => b.id === id);
+      if (!b) return;
+      const newName = window.prompt('Rename brand:', b.name);
+      if (newName === null) return;
+      const trimmed = newName.trim();
+      if (!trimmed) { statusEl.textContent = 'Brand name cannot be empty.'; return; }
+      b.name = trimmed;
+      saveState();
+      renderAll();
+      return;
+    }
+    const delBrandBtn = e.target.closest('[data-del-brand]');
+    if (delBrandBtn) {
+      const id = delBrandBtn.getAttribute('data-del-brand');
+      const b = state.brands.find(b => b.id === id);
+      const labelIds = state.labels.filter(l => l.brandId === id).map(l => l.id);
+      const relatedTxCount = state.transactions.filter(t => labelIds.includes(t.labelId)).length;
+      const msg = `Delete "${b ? b.name : 'this brand'}", its ${labelIds.length} label${labelIds.length === 1 ? '' : 's'}, and ${relatedTxCount} transaction${relatedTxCount === 1 ? '' : 's'}? This cannot be undone.`;
+      if (!window.confirm(msg)) return;
+      state.transactions = state.transactions.filter(t => !labelIds.includes(t.labelId));
+      state.labels = state.labels.filter(l => l.brandId !== id);
+      state.brands = state.brands.filter(b => b.id !== id);
+      saveState();
+      renderAll();
+      return;
+    }
+  });
+
+  brandsArea.addEventListener('keydown', (e) => {
+    const input = e.target.closest('[data-add-label-input]');
+    if (input && e.key === 'Enter') {
+      e.preventDefault();
+      const brandId = input.getAttribute('data-add-label-input');
+      const btn = brandsArea.querySelector(`[data-add-label-btn="${brandId}"]`);
+      if (btn) btn.click();
+    }
+  });
+
+  // ---------- Log transaction ----------
+  txForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const labelId = txLabelSel.value;
+    const type = txTypeSel.value;
+    const quantity = parseInt(txQtyInput.value, 10);
+    const date = txDateInput.value;
+    const note = txNoteInput.value.trim();
+    if (!labelId) { statusEl.textContent = 'Add a label for this brand first.'; return; }
+    if (!quantity || quantity <= 0) { statusEl.textContent = 'Enter a valid quantity.'; return; }
+
+    state.transactions.push({
+      id: 't' + Date.now(), labelId, type, quantity, date, note, createdAt: Date.now()
+    });
+    txQtyInput.value = '';
+    txNoteInput.value = '';
+    saveState();
+    renderAll();
+  });
+
+  // ---------- Transaction history: edit / save / cancel / delete ----------
+  txBody.addEventListener('click', (e) => {
+    const delBtn = e.target.closest('[data-del-tx]');
+    if (delBtn) {
+      const id = delBtn.getAttribute('data-del-tx');
+      state.transactions = state.transactions.filter(t => t.id !== id);
+      saveState();
+      renderAll();
+      return;
+    }
+    const editBtn = e.target.closest('[data-edit-tx]');
+    if (editBtn) {
+      editingId = editBtn.getAttribute('data-edit-tx');
+      renderTransactions();
+      return;
+    }
+    const cancelBtn = e.target.closest('[data-cancel-edit]');
+    if (cancelBtn) {
+      editingId = null;
+      renderTransactions();
+      return;
+    }
+    const saveBtn = e.target.closest('[data-save-tx]');
+    if (saveBtn) {
+      const id = saveBtn.getAttribute('data-save-tx');
+      const row = saveBtn.closest('tr');
+      const t = state.transactions.find(t => t.id === id);
+      if (!t) return;
+      const newQty = parseInt(row.querySelector('[data-edit-field="quantity"]').value, 10);
+      if (!newQty || newQty <= 0) {
+        statusEl.textContent = 'Enter a valid quantity before saving.';
+        return;
+      }
+      t.date = row.querySelector('[data-edit-field="date"]').value || t.date;
+      t.labelId = row.querySelector('[data-edit-field="labelId"]').value;
+      t.type = row.querySelector('[data-edit-field="type"]').value;
+      t.quantity = newQty;
+      t.note = row.querySelector('[data-edit-field="note"]').value.trim();
+      editingId = null;
+      saveState();
+      renderAll();
+      return;
+    }
+  });
+
+  // When the brand select inside an edit row changes, refresh its label options
+  txBody.addEventListener('change', (e) => {
+    const brandSel = e.target.closest('[data-edit-field="brandId"]');
+    if (!brandSel) return;
+    const row = brandSel.closest('tr');
+    const labelSel = row.querySelector('[data-edit-field="labelId"]');
+    const brandId = brandSel.value;
+    const labelsForBrand = state.labels
+      .filter(l => l.brandId === brandId)
+      .slice().sort((a, b) => a.name.localeCompare(b.name));
+    labelSel.innerHTML = labelsForBrand.length
+      ? labelsForBrand.map(l => `<option value="${escapeHtml(l.id)}">${escapeHtml(l.name)}</option>`).join('')
+      : '<option value="">No labels</option>';
+  });
+
+  // ---------- Delete all history ----------
+  deleteAllBtn.addEventListener('click', () => {
+    if (state.transactions.length === 0) return;
+    const msg = `Delete all ${state.transactions.length} transaction${state.transactions.length === 1 ? '' : 's'}? Brands and labels will stay. This cannot be undone.`;
+    if (!window.confirm(msg)) return;
+    state.transactions = [];
+    saveState();
+    renderAll();
+  });
+
+  // ---------- Export to Excel ----------
+  function sheetNameFor(name, used) {
+    let base = String(name || 'Sheet').replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 28) || 'Sheet';
+    let candidate = base;
+    let n = 2;
+    while (used.has(candidate.toLowerCase())) {
+      candidate = (base + ' ' + n).slice(0, 31);
+      n++;
+    }
+    used.add(candidate.toLowerCase());
+    return candidate;
+  }
+
+  const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3327' } };
+  const HEADER_FONT = { color: { argb: 'FFFFFFFF' }, bold: true };
+  const BUY_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6EDF2' } };
+  const BUY_FONT = { color: { argb: 'FF3E6A8A' }, bold: true };
+  const THIN_BORDER = { style: 'thin', color: { argb: 'FFD5D8C9' } };
+
+  function styleHeaderRow(row) {
+    row.eachCell(cell => {
+      cell.fill = HEADER_FILL;
+      cell.font = HEADER_FONT;
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+    });
+  }
+
+  exportBtn.addEventListener('click', async () => {
+    if (typeof ExcelJS === 'undefined') {
+      statusEl.textContent = 'Excel library failed to load — check your connection and try again.';
+      return;
+    }
+    exportBtn.disabled = true;
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'WellmadeWellness Brands';
+      wb.created = new Date();
+      const usedNames = new Set();
+
+      const sortedBrands = state.brands.slice().sort((a, b) => a.name.localeCompare(b.name));
+
+      // ---- Summary sheet: every label across every brand ----
+      const summarySheet = wb.addWorksheet(sheetNameFor('Summary', usedNames));
+      summarySheet.columns = [
+        { header: 'Brand', key: 'brand', width: 20 },
+        { header: 'Label', key: 'label', width: 22 },
+        { header: 'Bought', key: 'bought', width: 12 },
+        { header: 'Used', key: 'used', width: 12 },
+        { header: 'Sold', key: 'sold', width: 12 },
+        { header: 'Remaining', key: 'remaining', width: 14 }
+      ];
+      styleHeaderRow(summarySheet.getRow(1));
+      sortedBrands.forEach(b => {
+        const labelsForBrand = state.labels
+          .filter(l => l.brandId === b.id)
+          .slice().sort((a, b2) => a.name.localeCompare(b2.name));
+        labelsForBrand.forEach(l => {
+          const t = labelTotals(l.id);
+          summarySheet.addRow({ brand: b.name, label: l.name, bought: t.bought, used: t.used, sold: t.sold, remaining: t.remaining });
+        });
+      });
+
+      // ---- One sheet per label, grouped brand-by-brand, dates included, Bought rows highlighted ----
+      sortedBrands.forEach(b => {
+        const labelsForBrand = state.labels
+          .filter(l => l.brandId === b.id)
+          .slice().sort((a, b2) => a.name.localeCompare(b2.name));
+
+        labelsForBrand.forEach(l => {
+          const sheet = wb.addWorksheet(sheetNameFor(`${b.name} - ${l.name}`, usedNames));
+          sheet.columns = [
+            { header: 'Date', key: 'date', width: 14 },
+            { header: 'Type', key: 'type', width: 12 },
+            { header: 'Quantity', key: 'qty', width: 12 },
+            { header: 'Note', key: 'note', width: 32 }
+          ];
+          styleHeaderRow(sheet.getRow(1));
+
+          const labelTx = state.transactions
+            .filter(t => t.labelId === l.id)
+            .slice()
+            .sort((a, b3) => (a.date || '').localeCompare(b3.date || ''));
+
+          let bought = 0, used = 0, sold = 0;
+          labelTx.forEach(t => {
+            const q = Number(t.quantity) || 0;
+            const typeLabel = t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold';
+            const row = sheet.addRow({ date: t.date || '', type: typeLabel, qty: q, note: t.note || '' });
+            row.eachCell(cell => {
+              cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+            });
+            if (t.type === 'buy') {
+              bought += q;
+              row.eachCell(cell => { cell.fill = BUY_FILL; cell.font = BUY_FONT; });
+            } else if (t.type === 'use') {
+              used += q;
+            } else if (t.type === 'sell') {
+              sold += q;
+            }
+          });
+
+          sheet.addRow([]);
+          sheet.addRow(['', 'Total bought', bought, '']).font = { bold: true };
+          sheet.addRow(['', 'Total used', used, '']).font = { bold: true };
+          sheet.addRow(['', 'Total sold', sold, '']).font = { bold: true };
+          sheet.addRow(['', 'Remaining', bought - used - sold, '']).font = { bold: true };
+        });
+      });
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `brands-${dateStr}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      statusEl.textContent = 'Could not export: ' + (err && err.message ? err.message : 'error');
+    } finally {
+      exportBtn.disabled = false;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

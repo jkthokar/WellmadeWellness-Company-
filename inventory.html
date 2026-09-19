@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory — WellmadeWellness</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pine: #1E3327;
+    --pine-deep: #16261D;
+    --ivory: #EEF0E5;
+    --ivory-warm: #F5F6EF;
+    --ink: #23241F;
+    --ink-soft: #55574C;
+    --ochre: #C08A2E;
+    --rule: #D5D8C9;
+    --green: #3E7A4C;
+    --green-soft: #E6EFE4;
+    --red: #B0453A;
+    --red-soft: #F6E7E4;
+    --blue: #3E6A8A;
+    --blue-soft: #E6EDF2;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    background: var(--ivory-warm);
+    line-height: 1.6;
+  }
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--ivory-warm);
+    border-bottom: 1px solid var(--rule);
+  }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
+  .wordmark { font-family: 'Fraunces', serif; font-size: 1.25rem; font-weight: 600; }
+  .wordmark span { color: var(--ochre); }
+  .nav-links { display: flex; gap: 36px; font-size: 0.95rem; }
+  .nav-links a { color: var(--ink-soft); transition: color 0.2s ease; }
+  .nav-links a:hover, .nav-links a.active { color: var(--pine); }
+
+  header.page-head {
+    background: var(--pine);
+    color: var(--ivory);
+    padding: 64px 0 46px;
+  }
+  header.page-head h1 { font-size: clamp(2rem, 4vw, 2.8rem); }
+  header.page-head p { color: #C9D2C4; margin-top: 10px; max-width: 48ch; }
+
+  main { padding: 56px 0 100px; }
+
+  .section-title {
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+  }
+
+  .status {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin-bottom: 28px;
+  }
+
+  /* summary cards */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 60px;
+  }
+  .stat-card {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 20px 22px;
+    background: var(--ivory);
+  }
+  .stat-card .pname { font-family: 'Fraunces', serif; font-size: 1.2rem; margin-bottom: 14px; }
+  .stat-line { display: flex; justify-content: space-between; font-size: 0.9rem; padding: 3px 0; color: var(--ink-soft); }
+  .stat-line b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .stat-remaining {
+    margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--rule);
+    font-weight: 600; display: flex; justify-content: space-between; font-family: 'Fraunces', serif; font-size: 1.05rem;
+    color: var(--pine);
+  }
+  .stat-remaining span.neg { color: var(--red); }
+
+  /* add product */
+  .add-product { display: flex; gap: 10px; margin-bottom: 40px; max-width: 480px; }
+  .add-product input { flex: 1; }
+
+  /* form */
+  .card {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 30px 32px;
+    margin-bottom: 60px;
+    background: var(--ivory);
+  }
+  form.inline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+    gap: 18px;
+    align-items: end;
+  }
+  label { display: block; font-size: 0.8rem; color: var(--ink-soft); margin-bottom: 6px; }
+  input, select {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    background: transparent;
+    padding: 9px 2px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: var(--ink);
+  }
+  input:focus, select:focus { outline: none; border-bottom: 2px solid var(--ochre); }
+
+  button {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 600;
+    background: var(--ochre); color: var(--pine-deep);
+    padding: 12px 24px; border-radius: 100px; font-size: 0.9rem;
+  }
+  button:hover { filter: brightness(1.05); }
+  button.secondary {
+    background: transparent; color: var(--ink-soft);
+    border: 1px solid var(--rule); padding: 6px 14px; border-radius: 100px; font-size: 0.78rem;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* table */
+  .tbl-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th { color: var(--ink-soft); font-weight: 600; font-size: 0.78rem; }
+  tbody tr:hover { background: var(--ivory); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--ink-soft); font-size: 0.9rem; padding: 16px 0; }
+
+  .pill { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
+  .pill.buy { background: var(--blue-soft); color: var(--blue); }
+  .pill.use { background: #F3E9D8; color: var(--ochre); }
+  .pill.sell { background: var(--green-soft); color: var(--green); }
+
+  footer {
+    background: var(--pine);
+    color: #9FB09A;
+    padding: 34px 0;
+    font-size: 0.85rem;
+  }
+  footer .wrap { display: flex; justify-content: space-between; }
+
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+    .card { padding: 24px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a href="index.html" class="wordmark">Wellmade<span>Wellness</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="index.html#services">Services</a>
+      <a href="inventory.html" class="active">Container(용기)</a>
+      <a href="brands.html">labelling(라벨)</a>
+      <a href="index.html#contact">Contact</a>
+    </div>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="wrap">
+    <h1>Container Management System <br>"용기 관리 시스템"</h1>
+    <p>Track how much of each container is bought from suppliers, used internally, and sold — with remaining stock calculated automatically.</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="status" id="status">Connecting to shared storage…</div>
+
+    <h2 class="section-title">Products</h2>
+    <div class="add-product">
+      <input id="newProductName" placeholder="Add a product (e.g. Product E)" maxlength="60">
+      <button id="addProductBtn">Add</button>
+      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+    </div>
+    <div id="summaryArea" class="summary-grid"></div>
+
+    <h2 class="section-title">Log a transaction</h2>
+    <div class="card">
+      <form class="inline" id="txForm">
+        <div>
+          <label for="txProduct">Product</label>
+          <select id="txProduct" required></select>
+        </div>
+        <div>
+          <label for="txType">Type</label>
+          <select id="txType" required>
+            <option value="buy">Bought (from supplier)</option>
+            <option value="use">Used (internal)</option>
+            <option value="sell">Sold (to customer)</option>
+          </select>
+        </div>
+        <div>
+          <label for="txQty">Quantity</label>
+          <input id="txQty" type="number" min="1" step="1" required>
+        </div>
+        <div>
+          <label for="txDate">Date</label>
+          <input id="txDate" type="date" required>
+        </div>
+        <div>
+          <label for="txNote">Note (optional)</label>
+          <input id="txNote" type="text" maxlength="120" placeholder="Supplier, customer, reason…">
+        </div>
+        <div>
+          <button type="submit" id="txSubmitBtn">Add entry</button>
+        </div>
+      </form>
+    </div>
+
+    <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <span>Transaction history</span>
+      <button id="deleteAllBtn" class="secondary" type="button">Delete all history</button>
+    </h2>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Product</th><th>Type</th><th class="num">Qty</th><th>Note</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="txBody">
+          <tr><td colspan="6" class="empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 WellmadeWellness</span>
+    <span>Sokcho, South Korea</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const statusEl = document.getElementById('status');
+  const summaryArea = document.getElementById('summaryArea');
+  const txBody = document.getElementById('txBody');
+  const txForm = document.getElementById('txForm');
+  const txProductSel = document.getElementById('txProduct');
+  const txTypeSel = document.getElementById('txType');
+  const txQtyInput = document.getElementById('txQty');
+  const txDateInput = document.getElementById('txDate');
+  const txNoteInput = document.getElementById('txNote');
+  const newProductInput = document.getElementById('newProductName');
+  const addProductBtn = document.getElementById('addProductBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const deleteAllBtn = document.getElementById('deleteAllBtn');
+
+  txDateInput.value = new Date().toISOString().slice(0, 10);
+
+  const DEFAULT_PRODUCTS = ['Product A', 'Product B', 'Product C', 'Product D'];
+
+  // ===== FIREBASE CONFIG — paste your own project's values here =====
+  // Get these from: Firebase Console → Project settings → Your apps → Web app → SDK setup and configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdT2jqlbWGutlCDX8n2XVHKxLQnYiim-8",
+    authDomain: "wellmadewellness-589e8.firebaseapp.com",
+    projectId: "wellmadewellness-589e8",
+    storageBucket: "wellmadewellness-589e8.firebasestorage.app",
+    messagingSenderId: "571195991033",
+    appId: "1:571195991033:web:8427c140a9f6997b4f9328"
+  };
+  // ====================================================================
+
+  firebase.initializeApp(firebaseConfig);
+  const firestoreDb = firebase.firestore();
+  const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('inventory');
+
+  let state = { products: [], transactions: [] };
+
+  function saveState() {
+    STATE_DOC.set(state)
+      .then(() => { statusEl.textContent = 'Saved — synced live for everyone viewing this page.'; })
+      .catch((e) => { statusEl.textContent = 'Could not save: ' + (e && e.message ? e.message : 'error'); });
+  }
+
+  STATE_DOC.onSnapshot((doc) => {
+    if (doc.exists) {
+      state = doc.data();
+    } else {
+      state = { products: DEFAULT_PRODUCTS.map((name, i) => ({ id: 'p' + i, name })), transactions: [] };
+      STATE_DOC.set(state);
+    }
+    renderAll();
+  }, (e) => {
+    statusEl.textContent = 'Could not connect to shared storage: ' + (e && e.message ? e.message : 'error');
+  });
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+  }
+
+  function productName(id) {
+    const p = state.products.find(p => p.id === id);
+    return p ? p.name : '(deleted product)';
+  }
+
+  function renderProductSelect() {
+    const prev = txProductSel.value;
+    txProductSel.innerHTML = state.products
+      .slice().sort((a, b) => a.name.localeCompare(b.name))
+      .map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`)
+      .join('');
+    if (prev && state.products.some(p => p.id === prev)) txProductSel.value = prev;
+  }
+
+  function renderSummary() {
+    if (state.products.length === 0) {
+      summaryArea.innerHTML = '<div class="empty">No products yet — add one above.</div>';
+      return;
+    }
+    const sorted = state.products.slice().sort((a, b) => a.name.localeCompare(b.name));
+    summaryArea.innerHTML = sorted.map(p => {
+      let bought = 0, used = 0, sold = 0;
+      state.transactions.forEach(t => {
+        if (t.productId !== p.id) return;
+        const q = Number(t.quantity) || 0;
+        if (t.type === 'buy') bought += q;
+        else if (t.type === 'use') used += q;
+        else if (t.type === 'sell') sold += q;
+      });
+      const remaining = bought - used - sold;
+      return `
+        <div class="stat-card">
+          <div class="pname" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <span>${escapeHtml(p.name)}</span>
+            <button class="secondary" data-del-product="${escapeHtml(p.id)}" title="Delete this product" style="padding:3px 10px;font-size:0.72rem;">Delete</button>
+          </div>
+          <div class="stat-line"><span>Bought</span><b>${bought}</b></div>
+          <div class="stat-line"><span>Used</span><b>${used}</b></div>
+          <div class="stat-line"><span>Sold</span><b>${sold}</b></div>
+          <div class="stat-remaining"><span>Remaining stock</span><span class="${remaining < 0 ? 'neg' : ''}">${remaining}</span></div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  let editingId = null;
+
+  function renderTransactions() {
+    if (state.transactions.length === 0) {
+      txBody.innerHTML = '<tr><td colspan="6" class="empty">No transactions logged yet.</td></tr>';
+      return;
+    }
+    const sorted = state.transactions.slice().sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+    txBody.innerHTML = sorted.map(t => {
+      if (t.id === editingId) {
+        const productOptions = state.products
+          .slice().sort((a, b) => a.name.localeCompare(b.name))
+          .map(p => `<option value="${escapeHtml(p.id)}" ${p.id === t.productId ? 'selected' : ''}>${escapeHtml(p.name)}</option>`)
+          .join('');
+        return `
+          <tr data-edit-row="${escapeHtml(t.id)}">
+            <td><input type="date" data-edit-field="date" value="${escapeHtml(t.date || '')}" style="width:130px;"></td>
+            <td><select data-edit-field="productId" style="width:130px;">${productOptions}</select></td>
+            <td>
+              <select data-edit-field="type" style="width:100px;">
+                <option value="buy" ${t.type === 'buy' ? 'selected' : ''}>Bought</option>
+                <option value="use" ${t.type === 'use' ? 'selected' : ''}>Used</option>
+                <option value="sell" ${t.type === 'sell' ? 'selected' : ''}>Sold</option>
+              </select>
+            </td>
+            <td><input type="number" min="1" step="1" data-edit-field="quantity" value="${Number(t.quantity) || 0}" style="width:70px;"></td>
+            <td><input type="text" data-edit-field="note" value="${escapeHtml(t.note || '')}" style="width:150px;"></td>
+            <td style="white-space:nowrap;">
+              <button data-save-tx="${escapeHtml(t.id)}" style="padding:6px 12px;font-size:0.8rem;">Save</button>
+              <button class="secondary" data-cancel-edit style="padding:5px 10px;font-size:0.75rem;">Cancel</button>
+            </td>
+          </tr>
+        `;
+      }
+      return `
+      <tr>
+        <td>${escapeHtml(t.date || '')}</td>
+        <td>${escapeHtml(productName(t.productId))}</td>
+        <td><span class="pill ${t.type}">${t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold'}</span></td>
+        <td class="num">${Number(t.quantity) || 0}</td>
+        <td>${escapeHtml(t.note || '')}</td>
+        <td style="white-space:nowrap;">
+          <button class="secondary" data-edit-tx="${escapeHtml(t.id)}">Edit</button>
+          <button class="secondary" data-del-tx="${escapeHtml(t.id)}">Delete</button>
+        </td>
+      </tr>
+    `;
+    }).join('');
+  }
+
+  function renderAll() {
+    renderProductSelect();
+    renderSummary();
+    renderTransactions();
+  }
+
+  addProductBtn.addEventListener('click', () => {
+    const name = newProductInput.value.trim();
+    if (!name) return;
+    state.products.push({ id: 'p' + Date.now(), name });
+    newProductInput.value = '';
+    saveState();
+    renderAll();
+  });
+
+  newProductInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addProductBtn.click(); }
+  });
+
+  txForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const productId = txProductSel.value;
+    const type = txTypeSel.value;
+    const quantity = parseInt(txQtyInput.value, 10);
+    const date = txDateInput.value;
+    const note = txNoteInput.value.trim();
+    if (!productId) { statusEl.textContent = 'Add a product first.'; return; }
+    if (!quantity || quantity <= 0) { statusEl.textContent = 'Enter a valid quantity.'; return; }
+
+    state.transactions.push({
+      id: 't' + Date.now(), productId, type, quantity, date, note, createdAt: Date.now()
+    });
+    txQtyInput.value = '';
+    txNoteInput.value = '';
+    saveState();
+    renderAll();
+  });
+
+  txBody.addEventListener('click', (e) => {
+    const delBtn = e.target.closest('[data-del-tx]');
+    if (delBtn) {
+      const id = delBtn.getAttribute('data-del-tx');
+      state.transactions = state.transactions.filter(t => t.id !== id);
+      saveState();
+      renderAll();
+      return;
+    }
+    const editBtn = e.target.closest('[data-edit-tx]');
+    if (editBtn) {
+      editingId = editBtn.getAttribute('data-edit-tx');
+      renderTransactions();
+      return;
+    }
+    const cancelBtn = e.target.closest('[data-cancel-edit]');
+    if (cancelBtn) {
+      editingId = null;
+      renderTransactions();
+      return;
+    }
+    const saveBtn = e.target.closest('[data-save-tx]');
+    if (saveBtn) {
+      const id = saveBtn.getAttribute('data-save-tx');
+      const row = saveBtn.closest('tr');
+      const t = state.transactions.find(t => t.id === id);
+      if (!t) return;
+      const newQty = parseInt(row.querySelector('[data-edit-field="quantity"]').value, 10);
+      if (!newQty || newQty <= 0) {
+        statusEl.textContent = 'Enter a valid quantity before saving.';
+        return;
+      }
+      t.date = row.querySelector('[data-edit-field="date"]').value || t.date;
+      t.productId = row.querySelector('[data-edit-field="productId"]').value;
+      t.type = row.querySelector('[data-edit-field="type"]').value;
+      t.quantity = newQty;
+      t.note = row.querySelector('[data-edit-field="note"]').value.trim();
+      editingId = null;
+      saveState();
+      renderAll();
+      return;
+    }
+  });
+
+  summaryArea.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-del-product]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-del-product');
+    const p = state.products.find(p => p.id === id);
+    const relatedCount = state.transactions.filter(t => t.productId === id).length;
+    const msg = relatedCount > 0
+      ? `Delete "${p ? p.name : 'this product'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? This cannot be undone.`
+      : `Delete "${p ? p.name : 'this product'}"? This cannot be undone.`;
+    if (!window.confirm(msg)) return;
+
+    state.transactions = state.transactions.filter(t => t.productId !== id);
+    state.products = state.products.filter(p => p.id !== id);
+    saveState();
+    renderAll();
+  });
+
+  deleteAllBtn.addEventListener('click', () => {
+    if (state.transactions.length === 0) return;
+    const msg = `Delete all ${state.transactions.length} transaction${state.transactions.length === 1 ? '' : 's'}? Products themselves will stay. This cannot be undone.`;
+    if (!window.confirm(msg)) return;
+    state.transactions = [];
+    saveState();
+    renderAll();
+  });
+
+  function sheetNameFor(name, used) {
+    let base = String(name || 'Product').replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 28) || 'Product';
+    let candidate = base;
+    let n = 2;
+    while (used.has(candidate.toLowerCase())) {
+      candidate = (base + ' ' + n).slice(0, 31);
+      n++;
+    }
+    used.add(candidate.toLowerCase());
+    return candidate;
+  }
+
+  const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3327' } };
+  const HEADER_FONT = { color: { argb: 'FFFFFFFF' }, bold: true };
+  const BUY_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6EDF2' } }; // light blue, matches "Bought" pill
+  const BUY_FONT = { color: { argb: 'FF3E6A8A' }, bold: true };
+  const THIN_BORDER = { style: 'thin', color: { argb: 'FFD5D8C9' } };
+
+  function styleHeaderRow(row) {
+    row.eachCell(cell => {
+      cell.fill = HEADER_FILL;
+      cell.font = HEADER_FONT;
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+    });
+  }
+
+  exportBtn.addEventListener('click', async () => {
+    if (typeof ExcelJS === 'undefined') {
+      statusEl.textContent = 'Excel library failed to load — check your connection and try again.';
+      return;
+    }
+    exportBtn.disabled = true;
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'WellmadeWellness Inventory';
+      wb.created = new Date();
+      const usedNames = new Set();
+
+      const sortedProducts = state.products.slice().sort((a, b) => a.name.localeCompare(b.name));
+
+      // ---- Summary sheet ----
+      const summarySheet = wb.addWorksheet(sheetNameFor('Summary', usedNames));
+      summarySheet.columns = [
+        { header: 'Product', key: 'product', width: 24 },
+        { header: 'Bought', key: 'bought', width: 12 },
+        { header: 'Used', key: 'used', width: 12 },
+        { header: 'Sold', key: 'sold', width: 12 },
+        { header: 'Remaining', key: 'remaining', width: 14 }
+      ];
+      styleHeaderRow(summarySheet.getRow(1));
+      sortedProducts.forEach(p => {
+        let bought = 0, used = 0, sold = 0;
+        state.transactions.forEach(t => {
+          if (t.productId !== p.id) return;
+          const q = Number(t.quantity) || 0;
+          if (t.type === 'buy') bought += q;
+          else if (t.type === 'use') used += q;
+          else if (t.type === 'sell') sold += q;
+        });
+        summarySheet.addRow({ product: p.name, bought, used, sold, remaining: bought - used - sold });
+      });
+
+      // ---- One sheet per product, date included, Bought rows highlighted ----
+      sortedProducts.forEach(p => {
+        const sheet = wb.addWorksheet(sheetNameFor(p.name, usedNames));
+        sheet.columns = [
+          { header: 'Date', key: 'date', width: 14 },
+          { header: 'Type', key: 'type', width: 12 },
+          { header: 'Quantity', key: 'qty', width: 12 },
+          { header: 'Note', key: 'note', width: 32 }
+        ];
+        styleHeaderRow(sheet.getRow(1));
+
+        const productTx = state.transactions
+          .filter(t => t.productId === p.id)
+          .slice()
+          .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+        let bought = 0, used = 0, sold = 0;
+        productTx.forEach(t => {
+          const q = Number(t.quantity) || 0;
+          const typeLabel = t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold';
+          const row = sheet.addRow({ date: t.date || '', type: typeLabel, qty: q, note: t.note || '' });
+          row.eachCell(cell => {
+            cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+          });
+          if (t.type === 'buy') {
+            bought += q;
+            row.eachCell(cell => { cell.fill = BUY_FILL; cell.font = BUY_FONT; });
+          } else if (t.type === 'use') {
+            used += q;
+          } else if (t.type === 'sell') {
+            sold += q;
+          }
+        });
+
+        sheet.addRow([]);
+        const totalsStartRow = sheet.rowCount + 1;
+        sheet.addRow(['', 'Total bought', bought, '']).font = { bold: true };
+        sheet.addRow(['', 'Total used', used, '']).font = { bold: true };
+        sheet.addRow(['', 'Total sold', sold, '']).font = { bold: true };
+        const remainingRow = sheet.addRow(['', 'Remaining', bought - used - sold, '']);
+        remainingRow.font = { bold: true };
+      });
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `inventory-${dateStr}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      statusEl.textContent = 'Could not export: ' + (err && err.message ? err.message : 'error');
+    } finally {
+      exportBtn.disabled = false;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

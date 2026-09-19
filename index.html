@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WellmadeWellness — Mind-body care, made well</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pine: #1E3327;
+    --pine-deep: #16261D;
+    --ivory: #EEF0E5;
+    --ivory-warm: #F5F6EF;
+    --ink: #23241F;
+    --ink-soft: #55574C;
+    --ochre: #C08A2E;
+    --rule: #D5D8C9;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    background: var(--ivory-warm);
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, .serif {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  /* ---------- Nav ---------- */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--ivory-warm);
+    border-bottom: 1px solid var(--rule);
+  }
+  nav .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 76px;
+  }
+  .wordmark {
+    font-family: 'Fraunces', serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+  .wordmark span { color: var(--ochre); }
+  .nav-links {
+    display: flex;
+    gap: 36px;
+    font-size: 0.95rem;
+  }
+  .nav-links a {
+    color: var(--ink-soft);
+    transition: color 0.2s ease;
+  }
+  .nav-links a:hover { color: var(--pine); }
+  .nav-cta {
+    border: 1px solid var(--ink);
+    padding: 9px 20px;
+    border-radius: 100px;
+    font-size: 0.9rem;
+  }
+  .nav-toggle { display: none; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background: var(--pine);
+    color: var(--ivory);
+    padding: 120px 0 100px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero .wrap {
+    display: grid;
+    grid-template-columns: 1.1fr 0.7fr;
+    gap: 60px;
+    align-items: end;
+    position: relative;
+    z-index: 2;
+  }
+  .hero h1 {
+    font-size: clamp(2.6rem, 5vw, 4.2rem);
+    line-height: 1.05;
+    max-width: 12ch;
+  }
+  .hero .lede {
+    font-size: 1.1rem;
+    color: #C9D2C4;
+    max-width: 40ch;
+    margin-top: 26px;
+  }
+  .hero-side {
+    border-left: 1px solid rgba(238,240,229,0.25);
+    padding-left: 32px;
+  }
+  .hero-side p {
+    color: #C9D2C4;
+    font-size: 0.95rem;
+    margin-bottom: 28px;
+  }
+  .btn {
+    display: inline-block;
+    background: var(--ochre);
+    color: var(--pine-deep);
+    padding: 14px 28px;
+    border-radius: 100px;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .hero-mark {
+    position: absolute;
+    right: -80px;
+    top: -60px;
+    width: 420px;
+    height: 420px;
+    border: 1px solid rgba(238,240,229,0.12);
+    border-radius: 50%;
+    z-index: 1;
+  }
+  .hero-mark::before {
+    content: "";
+    position: absolute;
+    inset: 50px;
+    border: 1px solid rgba(238,240,229,0.12);
+    border-radius: 50%;
+  }
+
+  /* ---------- Philosophy ---------- */
+  .philosophy {
+    padding: 110px 0;
+  }
+  .philosophy .wrap {
+    display: grid;
+    grid-template-columns: 0.8fr 1fr;
+    gap: 70px;
+  }
+  .philosophy blockquote {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 1.6rem;
+    color: var(--pine);
+    line-height: 1.4;
+  }
+  .philosophy .body p {
+    color: var(--ink-soft);
+    max-width: 52ch;
+    margin-bottom: 20px;
+  }
+  .philosophy .body p:last-child { margin-bottom: 0; }
+
+ 
+  /* ---------- Band ---------- */
+  .band {
+    background: var(--pine-deep);
+    color: var(--ivory);
+    padding: 90px 0;
+  }
+  .band .wrap { text-align: center; }
+  .band blockquote {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    max-width: 24ch;
+    margin: 0 auto 22px;
+    line-height: 1.4;
+  }
+  .band cite {
+    font-style: normal;
+    color: #9FB09A;
+    font-size: 0.9rem;
+  }
+
+  /* ---------- Contact ---------- */
+  .contact {
+    padding: 110px 0;
+  }
+  .contact .wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+  }
+  .contact h2 {
+    font-size: 2.2rem;
+    margin-bottom: 20px;
+    max-width: 10ch;
+  }
+  .contact-form label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+  .field { margin-bottom: 20px; }
+  .contact-form input,
+  .contact-form textarea {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    background: transparent;
+    padding: 10px 2px;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--ink);
+  }
+  .contact-form input:focus,
+  .contact-form textarea:focus {
+    outline: none;
+    border-bottom: 2px solid var(--ochre);
+  }
+  .contact-form textarea { resize: vertical; min-height: 90px; }
+  .contact-form button {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .contact-info p {
+    color: var(--ink-soft);
+    margin-bottom: 24px;
+  }
+  .contact-info .label {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .contact-info .value {
+    font-family: 'Fraunces', serif;
+    font-size: 1.15rem;
+    color: var(--pine);
+  }
+  .info-block { margin-bottom: 28px; }
+  .form-note {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin-top: 14px;
+    display: none;
+  }
+  .form-note.show { display: block; }
+
+  footer {
+    background: var(--pine);
+    color: #9FB09A;
+    padding: 34px 0;
+    font-size: 0.85rem;
+  }
+  footer .wrap {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+    .hero .wrap,
+    .philosophy .wrap,
+    .contact .wrap {
+      grid-template-columns: 1fr;
+    }
+    .hero-side {
+      border-left: none;
+      border-top: 1px solid rgba(238,240,229,0.25);
+      padding-left: 0;
+      padding-top: 24px;
+    }
+    .services-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .services-head p { text-align: left; }
+    .service-row {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .service-price { justify-self: start; }
+    .hero-mark { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a href="#top" class="wordmark">Wellmade<span>Wellness</span></a>
+    <div class="nav-links">
+      <a href="inventory.html">Conatainer(용기)</a>
+  <a href="brands.html">Labelling(라벨)</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <a href="#contact" class="nav-cta">Book a session</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="hero-mark" aria-hidden="true"></div>
+  <div class="wrap">
+    <div>
+      <h1>WellmadeWellness.<br>"웰메이드 웰니스"</h1>
+    </div>
+    <div class="hero-side">
+      <p>Naturally Good, Made with Care.<br>"자연 그대로, 정성을 담아 만들었습니다".</p>
+    
+    </div>
+  </div>
+</header>
+
+<section class="philosophy" id="philosophy">
+  <div class="wrap">
+    <blockquote>"From nature, made well".<br>" 자연 그대로의 가치, 정성을 담은 품질."</blockquote>
+    <div class="body">
+      <p>Wellmade Wellness brings together quality, expertise, and careful sourcing to deliver seafood and food products for today’s discerning customers. Our approach is built on respect for the ingredients we work with and a commitment to maintaining their quality from source to final product.</p>
+      <p>We believe lasting quality comes from doing every step well. Through responsible sourcing, careful handling, and consistent standards, we strive to create products that our customers can trust—naturally good and thoughtfully made.</p>
+    </div>
+  </div>
+</section>
+
+<!--<section class="services" id="services">
+  <div class="wrap">
+    <div class="services-head">
+      <h2>Services</h2>
+      <p>Every session opens with ten minutes of conversation before any hands-on work begins.</p>
+    </div>
+
+    <div class="service-row">
+      <h3>Deep Tissue Massage</h3>
+      <p>Slow, targeted work for chronic tension and recovery from training — 60 or 90 minute sessions.</p>
+      <div class="service-price">from $95</div>
+    </div>
+    <div class="service-row">
+      <h3>Guided Breathwork</h3>
+      <p>One-on-one sessions focused on nervous system regulation, sleep, and stress response.</p>
+      <div class="service-price">from $70</div>
+    </div>
+    <div class="service-row">
+      <h3>Movement Recovery</h3>
+      <p>Assisted stretching and mobility work for athletes and anyone sitting most of the day.</p>
+      <div class="service-price">from $80</div>
+    </div>
+    <div class="service-row">
+      <h3>Full Reset (90 min)</h3>
+      <p>Our longest session — massage, breath, and mobility combined into one appointment.</p>
+      <div class="service-price">$160</div>
+    </div>
+  </div>
+</section>-->
+
+<!--<section class="band">
+  <div class="wrap">
+    <blockquote>"The first place that's ever asked what I needed before deciding what I'd get."</blockquote>
+    <cite>— A regular, two years in</cite>
+  </div>
+</section>-->
+
+<section class="contact" id="contact">
+  <div class="wrap">
+    <div>
+      <h2>Let's find you a time.</h2>
+      <form class="contact-form" id="bookingForm">
+        <div class="field">
+          <label for="name">Name</label>
+          <input type="text" id="name" required>
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" required>
+        </div>
+        <div class="field">
+          <label for="message">What are you looking for?</label>
+          <textarea id="message" required></textarea>
+        </div>
+        <button type="submit" class="btn">Send request</button>
+        <p class="form-note" id="formNote">Thanks — we'll reply within a day with times that work.</p>
+      </form>
+    </div>
+    <div class="contact-info">
+      <div class="info-block">
+        <p class="label">Branch</p>
+        <p class="value">Sokcho Depo</p>
+      </div>
+      <div class="info-block">
+        <p class="label">Hours</p>
+        <p class="value">Fri–Sun, 9am–6pm</p>
+      </div>
+      <div class="info-block">
+        <p class="label">Email</p>
+        <p class="value">factory@wellwell.co.kr</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 WellmadeWellness</span>
+    <span>Sokcho, South Korea</span>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('bookingForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    document.getElementById('formNote').classList.add('show');
+    this.reset();
+  });
+</script>
+
+</body>
+</html>

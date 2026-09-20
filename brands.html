@@ -6,6 +6,7 @@
 <title>Brands — WellmadeWellness</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -176,9 +177,24 @@
     .nav-links { display: none; }
     .card, .brand-card { padding: 22px 18px; }
   }
+
+  #authGate {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--pine); color: var(--ivory);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Inter', sans-serif; font-size: 0.95rem;
+  }
+  #authGate.hidden { display: none; }
+  .logout-btn {
+    background: transparent; border: 1px solid var(--rule); color: var(--ink-soft);
+    padding: 6px 16px; border-radius: 100px; font-size: 0.82rem; cursor: pointer; font-family: inherit; font-weight: 600;
+  }
+  .logout-btn:hover { color: var(--pine); }
 </style>
 </head>
 <body>
+
+<div id="authGate">Checking access…</div>
 
 <nav>
   <div class="wrap">
@@ -189,6 +205,7 @@
       <a href="inventory.html">Container(용기)</a>
       <a href="brands.html" class="active">labelling(라벨)</a>
       <a href="index.html#contact">Contact</a>
+      <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
     </div>
   </div>
 </nav>
@@ -315,7 +332,23 @@
 
   firebase.initializeApp(firebaseConfig);
   const firestoreDb = firebase.firestore();
+  const auth = firebase.auth();
   const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('brands');
+
+  const authGate = document.getElementById('authGate');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  auth.onAuthStateChanged((user) => {
+    if (!user) {
+      window.location.href = 'login.html?next=brands.html';
+    } else {
+      authGate.classList.add('hidden');
+    }
+  });
+
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut().then(() => { window.location.href = 'login.html'; });
+  });
 
   let state = { brands: [], labels: [], transactions: [] };
   let editingId = null; // transaction id currently being edited

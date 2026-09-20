@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in — WellmadeWellness</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pine: #1E3327;
+    --pine-deep: #16261D;
+    --ivory: #EEF0E5;
+    --ivory-warm: #F5F6EF;
+    --ink: #23241F;
+    --ink-soft: #55574C;
+    --ochre: #C08A2E;
+    --rule: #D5D8C9;
+    --red: #B0453A;
+    --red-soft: #F6E7E4;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    background: var(--pine);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  h1, .serif { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; }
+  .card {
+    background: var(--ivory-warm);
+    border-radius: 6px;
+    padding: 44px 40px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .wordmark { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; margin-bottom: 6px; }
+  .wordmark span { color: var(--ochre); }
+  h1 { font-size: 1.5rem; margin-bottom: 6px; }
+  .sub { color: var(--ink-soft); font-size: 0.9rem; margin-bottom: 30px; }
+  .field { margin-bottom: 20px; }
+  label { display: block; font-size: 0.8rem; color: var(--ink-soft); margin-bottom: 6px; }
+  input {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    background: transparent;
+    padding: 10px 2px;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--ink);
+  }
+  input:focus { outline: none; border-bottom: 2px solid var(--ochre); }
+  button {
+    width: 100%;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    background: var(--ochre);
+    color: var(--pine-deep);
+    padding: 13px 24px;
+    border-radius: 100px;
+    font-size: 0.95rem;
+    margin-top: 8px;
+  }
+  button:hover { filter: brightness(1.05); }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  .error {
+    background: var(--red-soft);
+    color: var(--red);
+    font-size: 0.85rem;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    display: none;
+  }
+  .error.show { display: block; }
+  .back {
+    display: block;
+    text-align: center;
+    margin-top: 24px;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    text-decoration: none;
+  }
+  .back:hover { color: var(--pine); }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="wordmark">Wellmade<span>Wellness</span></div>
+  <h1>Sign in</h1>
+  <p class="sub">Staff access to Inventory and Brands.</p>
+
+  <div class="error" id="errorBox"></div>
+
+  <form id="loginForm">
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" required autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" required autocomplete="current-password">
+    </div>
+    <button type="submit" id="loginBtn">Sign in</button>
+  </form>
+
+  <a href="index.html" class="back">← Back to site</a>
+</div>
+
+<script>
+(function () {
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdT2jqlbWGutlCDX8n2XVHKxLQnYiim-8",
+    authDomain: "wellmadewellness-589e8.firebaseapp.com",
+    projectId: "wellmadewellness-589e8",
+    storageBucket: "wellmadewellness-589e8.firebasestorage.app",
+    messagingSenderId: "571195991033",
+    appId: "1:571195991033:web:8427c140a9f6997b4f9328"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
+  const form = document.getElementById('loginForm');
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const loginBtn = document.getElementById('loginBtn');
+  const errorBox = document.getElementById('errorBox');
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.classList.add('show');
+  }
+  function hideError() {
+    errorBox.classList.remove('show');
+  }
+
+  // Where to send the user after login: ?next=inventory.html, default to inventory.html
+  const params = new URLSearchParams(window.location.search);
+  const next = params.get('next') || 'inventory.html';
+
+  // If already signed in, skip straight to the destination
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      window.location.href = next;
+    }
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    hideError();
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Signing in…';
+
+    auth.signInWithEmailAndPassword(emailInput.value.trim(), passwordInput.value)
+      .then(() => {
+        window.location.href = next;
+      })
+      .catch((err) => {
+        let msg = 'Could not sign in. Please try again.';
+        if (err.code === 'auth/invalid-email') msg = 'That email address looks invalid.';
+        else if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') msg = 'Incorrect email or password.';
+        else if (err.code === 'auth/wrong-password') msg = 'Incorrect email or password.';
+        else if (err.code === 'auth/too-many-requests') msg = 'Too many attempts. Please wait a moment and try again.';
+        showError(msg);
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Sign in';
+      });
+  });
+})();
+</script>
+
+</body>
+</html>

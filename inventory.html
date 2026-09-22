@@ -77,7 +77,6 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 20px;
-    margin-bottom: 60px;
   }
   .stat-card {
     border: 1px solid var(--rule);
@@ -96,8 +95,21 @@
   .stat-remaining span.neg { color: var(--red); }
 
   /* add product */
-  .add-product { display: flex; gap: 10px; margin-bottom: 40px; max-width: 480px; }
-  .add-product input { flex: 1; }
+  .add-product { display: flex; gap: 10px; margin-bottom: 16px; max-width: 720px; flex-wrap: wrap; }
+  .add-product input { flex: 1 1 180px; min-width: 140px; }
+
+  .product-group-card {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--ivory);
+    padding: 22px 24px;
+    margin-bottom: 28px;
+  }
+  .product-group-card h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.15rem;
+    margin-bottom: 14px;
+  }
 
   /* form */
   .card {
@@ -228,9 +240,21 @@
             <option value="sell">Sold (to customer)</option>
           </select>
         </div>
-        <div>
+        <div id="qtyWrap">
           <label for="txQty">Quantity</label>
           <input id="txQty" type="number" min="1" step="1" required>
+        </div>
+        <div id="boxWrap" style="display:none;">
+          <label for="txBoxes">Number of boxes</label>
+          <input id="txBoxes" type="number" min="1" step="1">
+        </div>
+        <div id="perBoxWrap" style="display:none;">
+          <label for="txQtyPerBox">Qty per box</label>
+          <input id="txQtyPerBox" type="number" min="1" step="1">
+        </div>
+        <div id="boxTotalWrap" style="display:none;">
+          <label>Total quantity</label>
+          <div id="boxTotalDisplay" style="padding:9px 2px;color:var(--ink-soft);border-bottom:1px solid var(--rule);">—</div>
         </div>
         <div>
           <label for="txDate">Date</label>
@@ -250,13 +274,11 @@
       </form>
     </div>
 
-    <h2 class="section-title">Products</h2>
-    <div class="add-product">
-      <input id="newProductName" placeholder="Add a product (e.g. Product E)" maxlength="60">
-      <button id="addProductBtn">Add</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
+      <h2 class="section-title" style="margin-bottom:0;">Products</h2>
       <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
     </div>
-    <div id="summaryArea" class="summary-grid"></div>
+    <div id="productGroupsArea"></div>
 
     <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
       <span>Transaction history</span>
@@ -290,17 +312,22 @@
 <script>
 (function () {
   const statusEl = document.getElementById('status');
-  const summaryArea = document.getElementById('summaryArea');
   const txBody = document.getElementById('txBody');
   const txForm = document.getElementById('txForm');
   const txProductSel = document.getElementById('txProduct');
   const txTypeSel = document.getElementById('txType');
   const txQtyInput = document.getElementById('txQty');
+  const qtyWrap = document.getElementById('qtyWrap');
+  const boxWrap = document.getElementById('boxWrap');
+  const perBoxWrap = document.getElementById('perBoxWrap');
+  const boxTotalWrap = document.getElementById('boxTotalWrap');
+  const boxTotalDisplay = document.getElementById('boxTotalDisplay');
+  const txBoxesInput = document.getElementById('txBoxes');
+  const txQtyPerBoxInput = document.getElementById('txQtyPerBox');
   const txDateInput = document.getElementById('txDate');
   const txHandledByInput = document.getElementById('txHandledBy');
   const txCheckedByInput = document.getElementById('txCheckedBy');
-  const newProductInput = document.getElementById('newProductName');
-  const addProductBtn = document.getElementById('addProductBtn');
+  const productGroupsArea = document.getElementById('productGroupsArea');
   const exportBtn = document.getElementById('exportBtn');
   const deleteAllBtn = document.getElementById('deleteAllBtn');
   const historySearch = document.getElementById('historySearch');
@@ -341,7 +368,13 @@
     auth.signOut().then(() => { window.location.href = 'login.html'; });
   });
 
-  let state = { products: [], transactions: [] };
+  let state = { products: [], products2: [], products3: [], transactions: [] };
+  const GROUPS = [
+    { key: 'products', label: 'Products' },
+    { key: 'products2', label: 'Products 2' },
+    { key: 'products3', label: 'Products 3' }
+  ];
+  let productSearchQuery = {}; // group key -> current search text
 
   function saveState() {
     STATE_DOC.set(state)
@@ -352,8 +385,12 @@
   STATE_DOC.onSnapshot((doc) => {
     if (doc.exists) {
       state = doc.data();
+      if (!Array.isArray(state.products)) state.products = [];
+      if (!Array.isArray(state.products2)) state.products2 = [];
+      if (!Array.isArray(state.products3)) state.products3 = [];
+      if (!Array.isArray(state.transactions)) state.transactions = [];
     } else {
-      state = { products: DEFAULT_PRODUCTS.map((name, i) => ({ id: 'p' + i, name })), transactions: [] };
+      state = { products: DEFAULT_PRODUCTS.map((name, i) => ({ id: 'p' + i, name })), products2: [], products3: [], transactions: [] };
       STATE_DOC.set(state);
     }
     renderAll();
@@ -368,45 +405,76 @@
   }
 
   function productName(id) {
-    const p = state.products.find(p => p.id === id);
-    return p ? p.name : '(deleted product)';
+    for (const g of GROUPS) {
+      const p = state[g.key].find(p => p.id === id);
+      if (p) return p.name;
+    }
+    return '(deleted product)';
+  }
+
+  function findProductGroupKey(id) {
+    for (const g of GROUPS) {
+      if (state[g.key].some(p => p.id === id)) return g.key;
+    }
+    return null;
   }
 
   function renderProductSelect() {
     const prev = txProductSel.value;
-    txProductSel.innerHTML = state.products
-      .slice().sort((a, b) => a.name.localeCompare(b.name))
-      .map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`)
-      .join('');
-    if (prev && state.products.some(p => p.id === prev)) txProductSel.value = prev;
+    txProductSel.innerHTML = GROUPS.map(g => {
+      const items = state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name));
+      if (items.length === 0) return '';
+      const options = items.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
+      return `<optgroup label="${escapeHtml(g.label)}">${options}</optgroup>`;
+    }).join('');
+    if (prev && findProductGroupKey(prev)) txProductSel.value = prev;
   }
 
-  function renderSummary() {
-    if (state.products.length === 0) {
-      summaryArea.innerHTML = '<div class="empty">No products yet — add one above.</div>';
-      return;
-    }
-    const sorted = state.products.slice().sort((a, b) => a.name.localeCompare(b.name));
-    summaryArea.innerHTML = sorted.map(p => {
-      let bought = 0, used = 0, sold = 0;
-      state.transactions.forEach(t => {
-        if (t.productId !== p.id) return;
-        const q = Number(t.quantity) || 0;
-        if (t.type === 'buy') bought += q;
-        else if (t.type === 'use') used += q;
-        else if (t.type === 'sell') sold += q;
-      });
-      const remaining = bought - used - sold;
+  function renderProductGroups() {
+    productGroupsArea.innerHTML = GROUPS.map(g => {
+      const products = state[g.key] || [];
+      const query = (productSearchQuery[g.key] || '').trim().toLowerCase();
+      const filtered = products
+        .filter(p => !query || p.name.toLowerCase().includes(query))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      const grid = products.length === 0
+        ? '<div class="empty">No products yet — add one above.</div>'
+        : filtered.length === 0
+        ? `<div class="empty">No products match "${escapeHtml(productSearchQuery[g.key] || '')}".</div>`
+        : `<div class="summary-grid">${filtered.map(p => {
+            let bought = 0, used = 0, sold = 0;
+            state.transactions.forEach(t => {
+              if (t.productId !== p.id) return;
+              const q = Number(t.quantity) || 0;
+              if (t.type === 'buy') bought += q;
+              else if (t.type === 'use') used += q;
+              else if (t.type === 'sell') sold += q;
+            });
+            const remaining = bought - used - sold;
+            return `
+              <div class="stat-card">
+                <div class="pname" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                  <span>${escapeHtml(p.name)}</span>
+                  <button class="secondary" data-del-product="${escapeHtml(p.id)}" title="Delete this product" style="padding:3px 10px;font-size:0.72rem;">Delete</button>
+                </div>
+                <div class="stat-line"><span>Bought</span><b>${bought}</b></div>
+                <div class="stat-line"><span>Used</span><b>${used}</b></div>
+                <div class="stat-line"><span>Sold</span><b>${sold}</b></div>
+                <div class="stat-remaining"><span>Remaining stock</span><span class="${remaining < 0 ? 'neg' : ''}">${remaining}</span></div>
+              </div>
+            `;
+          }).join('')}</div>`;
+
       return `
-        <div class="stat-card">
-          <div class="pname" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-            <span>${escapeHtml(p.name)}</span>
-            <button class="secondary" data-del-product="${escapeHtml(p.id)}" title="Delete this product" style="padding:3px 10px;font-size:0.72rem;">Delete</button>
+        <div class="product-group-card">
+          <h3>${escapeHtml(g.label)}</h3>
+          <div class="add-product">
+            <input type="text" placeholder="Add a product (e.g. Product E)" maxlength="60" data-add-product-input="${g.key}">
+            <button data-add-product-btn="${g.key}">Add</button>
+            <input type="text" placeholder="🔍 Search ${escapeHtml(g.label.toLowerCase())}…" maxlength="60" style="border-color:var(--ochre);" data-product-search="${g.key}" value="${escapeHtml(productSearchQuery[g.key] || '')}">
           </div>
-          <div class="stat-line"><span>Bought</span><b>${bought}</b></div>
-          <div class="stat-line"><span>Used</span><b>${used}</b></div>
-          <div class="stat-line"><span>Sold</span><b>${sold}</b></div>
-          <div class="stat-remaining"><span>Remaining stock</span><span class="${remaining < 0 ? 'neg' : ''}">${remaining}</span></div>
+          ${grid}
         </div>
       `;
     }).join('');
@@ -433,10 +501,12 @@
     });
     txBody.innerHTML = sorted.map(t => {
       if (t.id === editingId) {
-        const productOptions = state.products
-          .slice().sort((a, b) => a.name.localeCompare(b.name))
-          .map(p => `<option value="${escapeHtml(p.id)}" ${p.id === t.productId ? 'selected' : ''}>${escapeHtml(p.name)}</option>`)
-          .join('');
+        const productOptions = GROUPS.map(g => {
+          const items = state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name));
+          if (items.length === 0) return '';
+          const opts = items.map(p => `<option value="${escapeHtml(p.id)}" ${p.id === t.productId ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('');
+          return `<optgroup label="${escapeHtml(g.label)}">${opts}</optgroup>`;
+        }).join('');
         return `
           <tr data-edit-row="${escapeHtml(t.id)}">
             <td><input type="date" data-edit-field="date" value="${escapeHtml(t.date || '')}" style="width:130px;"></td>
@@ -477,43 +547,119 @@
 
   function renderAll() {
     renderProductSelect();
-    renderSummary();
+    renderProductGroups();
     renderTransactions();
   }
 
-  addProductBtn.addEventListener('click', () => {
-    const name = newProductInput.value.trim();
-    if (!name) return;
-    state.products.push({ id: 'p' + Date.now(), name });
-    newProductInput.value = '';
-    saveState();
-    renderAll();
+  productGroupsArea.addEventListener('click', (e) => {
+    const addBtn = e.target.closest('[data-add-product-btn]');
+    if (addBtn) {
+      const key = addBtn.getAttribute('data-add-product-btn');
+      const input = productGroupsArea.querySelector(`[data-add-product-input="${key}"]`);
+      const name = input ? input.value.trim() : '';
+      if (!name) return;
+      state[key].push({ id: 'p' + Date.now() + Math.floor(Math.random() * 1000), name });
+      saveState();
+      renderAll();
+      return;
+    }
+    const delBtn = e.target.closest('[data-del-product]');
+    if (delBtn) {
+      const id = delBtn.getAttribute('data-del-product');
+      const key = findProductGroupKey(id);
+      if (!key) return;
+      const p = state[key].find(p => p.id === id);
+      const relatedCount = state.transactions.filter(t => t.productId === id).length;
+      const msg = relatedCount > 0
+        ? `Delete "${p ? p.name : 'this product'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? This cannot be undone.`
+        : `Delete "${p ? p.name : 'this product'}"? This cannot be undone.`;
+      if (!window.confirm(msg)) return;
+      state.transactions = state.transactions.filter(t => t.productId !== id);
+      state[key] = state[key].filter(p => p.id !== id);
+      saveState();
+      renderAll();
+      return;
+    }
   });
 
-  newProductInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); addProductBtn.click(); }
+  productGroupsArea.addEventListener('keydown', (e) => {
+    const input = e.target.closest('[data-add-product-input]');
+    if (input && e.key === 'Enter') {
+      e.preventDefault();
+      const key = input.getAttribute('data-add-product-input');
+      const btn = productGroupsArea.querySelector(`[data-add-product-btn="${key}"]`);
+      if (btn) btn.click();
+    }
+  });
+
+  productGroupsArea.addEventListener('input', (e) => {
+    const searchInput = e.target.closest('[data-product-search]');
+    if (!searchInput) return;
+    const key = searchInput.getAttribute('data-product-search');
+    const cursorPos = searchInput.selectionStart;
+    if (searchInput.value) productSearchQuery[key] = searchInput.value;
+    else delete productSearchQuery[key];
+    renderProductGroups();
+    const restored = productGroupsArea.querySelector(`[data-product-search="${key}"]`);
+    if (restored) {
+      restored.focus();
+      restored.setSelectionRange(cursorPos, cursorPos);
+    }
   });
 
   txForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const productId = txProductSel.value;
     const type = txTypeSel.value;
-    const quantity = parseInt(txQtyInput.value, 10);
+    let quantity;
+    if (type === 'buy') {
+      const boxes = parseInt(txBoxesInput.value, 10);
+      const perBox = parseInt(txQtyPerBoxInput.value, 10);
+      if (!boxes || boxes <= 0 || !perBox || perBox <= 0) {
+        statusEl.textContent = 'Enter a valid number of boxes and quantity per box.';
+        return;
+      }
+      quantity = boxes * perBox;
+    } else {
+      quantity = parseInt(txQtyInput.value, 10);
+      if (!quantity || quantity <= 0) { statusEl.textContent = 'Enter a valid quantity.'; return; }
+    }
     const date = txDateInput.value;
     const handledBy = txHandledByInput.value.trim();
     const checkedBy = txCheckedByInput.value.trim();
     if (!productId) { statusEl.textContent = 'Add a product first.'; return; }
-    if (!quantity || quantity <= 0) { statusEl.textContent = 'Enter a valid quantity.'; return; }
 
     state.transactions.push({
       id: 't' + Date.now(), productId, type, quantity, date, handledBy, checkedBy, createdAt: Date.now()
     });
     txQtyInput.value = '';
+    txBoxesInput.value = '';
+    txQtyPerBoxInput.value = '';
+    boxTotalDisplay.textContent = '—';
     txHandledByInput.value = '';
     txCheckedByInput.value = '';
     saveState();
     renderAll();
   });
+
+  function updateTxTypeFields() {
+    const isBuy = txTypeSel.value === 'buy';
+    qtyWrap.style.display = isBuy ? 'none' : '';
+    boxWrap.style.display = isBuy ? '' : 'none';
+    perBoxWrap.style.display = isBuy ? '' : 'none';
+    boxTotalWrap.style.display = isBuy ? '' : 'none';
+    txQtyInput.required = !isBuy;
+  }
+  txTypeSel.addEventListener('change', updateTxTypeFields);
+  updateTxTypeFields();
+
+  function updateBoxTotal() {
+    const boxes = parseInt(txBoxesInput.value, 10);
+    const perBox = parseInt(txQtyPerBoxInput.value, 10);
+    boxTotalDisplay.textContent = (boxes > 0 && perBox > 0) ? (boxes * perBox) : '—';
+  }
+  txBoxesInput.addEventListener('input', updateBoxTotal);
+  txQtyPerBoxInput.addEventListener('input', updateBoxTotal);
 
   txBody.addEventListener('click', (e) => {
     const delBtn = e.target.closest('[data-del-tx]');
@@ -558,23 +704,6 @@
       renderAll();
       return;
     }
-  });
-
-  summaryArea.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-del-product]');
-    if (!btn) return;
-    const id = btn.getAttribute('data-del-product');
-    const p = state.products.find(p => p.id === id);
-    const relatedCount = state.transactions.filter(t => t.productId === id).length;
-    const msg = relatedCount > 0
-      ? `Delete "${p ? p.name : 'this product'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? This cannot be undone.`
-      : `Delete "${p ? p.name : 'this product'}"? This cannot be undone.`;
-    if (!window.confirm(msg)) return;
-
-    state.transactions = state.transactions.filter(t => t.productId !== id);
-    state.products = state.products.filter(p => p.id !== id);
-    saveState();
-    renderAll();
   });
 
   deleteAllBtn.addEventListener('click', () => {
@@ -629,11 +758,10 @@
       wb.created = new Date();
       const usedNames = new Set();
 
-      const sortedProducts = state.products.slice().sort((a, b) => a.name.localeCompare(b.name));
-
-      // ---- Summary sheet ----
+      // ---- Summary sheet, with a Group column since there are multiple groups ----
       const summarySheet = wb.addWorksheet(sheetNameFor('Summary', usedNames));
       summarySheet.columns = [
+        { header: 'Group', key: 'group', width: 16 },
         { header: 'Product', key: 'product', width: 24 },
         { header: 'Bought', key: 'bought', width: 12 },
         { header: 'Used', key: 'used', width: 12 },
@@ -641,20 +769,25 @@
         { header: 'Remaining', key: 'remaining', width: 14 }
       ];
       styleHeaderRow(summarySheet.getRow(1));
-      sortedProducts.forEach(p => {
-        let bought = 0, used = 0, sold = 0;
-        state.transactions.forEach(t => {
-          if (t.productId !== p.id) return;
-          const q = Number(t.quantity) || 0;
-          if (t.type === 'buy') bought += q;
-          else if (t.type === 'use') used += q;
-          else if (t.type === 'sell') sold += q;
+      GROUPS.forEach(g => {
+        const sortedProducts = state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name));
+        sortedProducts.forEach(p => {
+          let bought = 0, used = 0, sold = 0;
+          state.transactions.forEach(t => {
+            if (t.productId !== p.id) return;
+            const q = Number(t.quantity) || 0;
+            if (t.type === 'buy') bought += q;
+            else if (t.type === 'use') used += q;
+            else if (t.type === 'sell') sold += q;
+          });
+          summarySheet.addRow({ group: g.label, product: p.name, bought, used, sold, remaining: bought - used - sold });
         });
-        summarySheet.addRow({ product: p.name, bought, used, sold, remaining: bought - used - sold });
       });
 
-      // ---- One sheet per product, date included, Bought rows highlighted ----
-      sortedProducts.forEach(p => {
+      // ---- One sheet per product across all groups, date included, Bought rows highlighted ----
+      GROUPS.forEach(g => {
+        const sortedProducts = state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name));
+        sortedProducts.forEach(p => {
         const sheet = wb.addWorksheet(sheetNameFor(p.name, usedNames));
         sheet.columns = [
           { header: 'Date', key: 'date', width: 14 },
@@ -689,12 +822,11 @@
         });
 
         sheet.addRow([]);
-        const totalsStartRow = sheet.rowCount + 1;
         sheet.addRow(['', 'Total bought', bought, '']).font = { bold: true };
         sheet.addRow(['', 'Total used', used, '']).font = { bold: true };
         sheet.addRow(['', 'Total sold', sold, '']).font = { bold: true };
-        const remainingRow = sheet.addRow(['', 'Remaining', bought - used - sold, '']);
-        remainingRow.font = { bold: true };
+        sheet.addRow(['', 'Remaining', bought - used - sold, '']).font = { bold: true };
+        });
       });
 
       const buffer = await wb.xlsx.writeBuffer();

@@ -206,7 +206,7 @@
     <div class="nav-links">
       <a href="index.html">Home</a>
       <a href="index.html#services">Services</a>
-      <a href="inventory.html" class="active">Products</a>
+      <a href="inventory.html" class="active">Container(용기)</a>
       <a href="brands.html">labelling(라벨)</a>
       <a href="index.html#contact">Contact</a>
       <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
@@ -275,8 +275,11 @@
     </div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
-      <h2 class="section-title" style="margin-bottom:0;">Container(용기)</h2>
-      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+      <h2 class="section-title" style="margin-bottom:0;">Products</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button id="restoreBackupBtn" class="secondary" type="button">↺ Restore last backup</button>
+        <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+      </div>
     </div>
     <div id="productGroupsArea"></div>
 
@@ -329,6 +332,7 @@
   const txCheckedByInput = document.getElementById('txCheckedBy');
   const productGroupsArea = document.getElementById('productGroupsArea');
   const exportBtn = document.getElementById('exportBtn');
+  const restoreBackupBtn = document.getElementById('restoreBackupBtn');
   const deleteAllBtn = document.getElementById('deleteAllBtn');
   const historySearch = document.getElementById('historySearch');
 
@@ -352,6 +356,7 @@
   const firestoreDb = firebase.firestore();
   const auth = firebase.auth();
   const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('inventory');
+  const BACKUP_DOC = firestoreDb.collection('wellmadewellness').doc('inventory_backup');
 
   const authGate = document.getElementById('authGate');
   const logoutBtn = document.getElementById('logoutBtn');
@@ -370,11 +375,17 @@
 
   let state = { products: [], products2: [], products3: [], transactions: [] };
   const GROUPS = [
-    { key: 'products', label: 'Conatiner(용기)' },
-    { key: 'products2', label: 'Plastic CAP 플라스틱 뚜껑' },
-    { key: 'products3', label: 'Aluminum CAP 알루미늄 뚜껑' }
+    { key: 'products', label: 'Products' },
+    { key: 'products2', label: 'Products 2' },
+    { key: 'products3', label: 'Products 3' }
   ];
   let productSearchQuery = {}; // group key -> current search text
+
+  function saveBackup(reason) {
+    // Snapshot the state as it is RIGHT NOW, before a destructive change is applied.
+    BACKUP_DOC.set({ state: JSON.parse(JSON.stringify(state)), savedAt: Date.now(), reason: reason || '' })
+      .catch(() => { /* best-effort — never block the actual action on this */ });
+  }
 
   function saveState() {
     STATE_DOC.set(state)
@@ -571,9 +582,10 @@
       const p = state[key].find(p => p.id === id);
       const relatedCount = state.transactions.filter(t => t.productId === id).length;
       const msg = relatedCount > 0
-        ? `Delete "${p ? p.name : 'this product'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? This cannot be undone.`
-        : `Delete "${p ? p.name : 'this product'}"? This cannot be undone.`;
+        ? `Delete "${p ? p.name : 'this product'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? You can undo this with "Restore last backup" right after.`
+        : `Delete "${p ? p.name : 'this product'}"? You can undo this with "Restore last backup" right after.`;
       if (!window.confirm(msg)) return;
+      saveBackup(`before deleting product "${p ? p.name : id}"`);
       state.transactions = state.transactions.filter(t => t.productId !== id);
       state[key] = state[key].filter(p => p.id !== id);
       saveState();
@@ -665,6 +677,7 @@
     const delBtn = e.target.closest('[data-del-tx]');
     if (delBtn) {
       const id = delBtn.getAttribute('data-del-tx');
+      saveBackup('before deleting one transaction');
       state.transactions = state.transactions.filter(t => t.id !== id);
       saveState();
       renderAll();
@@ -706,10 +719,38 @@
     }
   });
 
+  restoreBackupBtn.addEventListener('click', () => {
+    restoreBackupBtn.disabled = true;
+    BACKUP_DOC.get().then((doc) => {
+      restoreBackupBtn.disabled = false;
+      if (!doc.exists) {
+        window.alert('No backup found yet — a backup is saved automatically right before you delete something.');
+        return;
+      }
+      const backup = doc.data();
+      const when = backup.savedAt ? new Date(backup.savedAt).toLocaleString() : 'an earlier point';
+      const reason = backup.reason ? ` (${backup.reason})` : '';
+      const msg = `Restore data from ${when}${reason}?\n\nThis will overwrite everything currently on this page with that backup. Your current data will itself be backed up first, so you can restore forward again if needed.`;
+      if (!window.confirm(msg)) return;
+      saveBackup('before restoring a backup (undo the restore)');
+      state = backup.state || state;
+      if (!Array.isArray(state.products)) state.products = [];
+      if (!Array.isArray(state.products2)) state.products2 = [];
+      if (!Array.isArray(state.products3)) state.products3 = [];
+      if (!Array.isArray(state.transactions)) state.transactions = [];
+      saveState();
+      renderAll();
+    }).catch((e) => {
+      restoreBackupBtn.disabled = false;
+      window.alert('Could not load backup: ' + (e && e.message ? e.message : 'error'));
+    });
+  });
+
   deleteAllBtn.addEventListener('click', () => {
     if (state.transactions.length === 0) return;
-    const msg = `Delete all ${state.transactions.length} transaction${state.transactions.length === 1 ? '' : 's'}? Products themselves will stay. This cannot be undone.`;
+    const msg = `Delete all ${state.transactions.length} transaction${state.transactions.length === 1 ? '' : 's'}? Products themselves will stay. You can undo this with "Restore last backup" right after.`;
     if (!window.confirm(msg)) return;
+    saveBackup(`before deleting all ${state.transactions.length} transactions`);
     state.transactions = [];
     saveState();
     renderAll();

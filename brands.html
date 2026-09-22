@@ -281,7 +281,10 @@
 
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
       <h2 class="section-title" style="margin-bottom:0;">Brands &amp; labels</h2>
-      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button id="restoreBackupBtn" class="secondary" type="button">↺ Restore last backup</button>
+        <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+      </div>
     </div>
     <div id="brandsArea"></div>
 
@@ -334,6 +337,7 @@
   const newBrandInput = document.getElementById('newBrandName');
   const addBrandBtn = document.getElementById('addBrandBtn');
   const exportBtn = document.getElementById('exportBtn');
+  const restoreBackupBtn = document.getElementById('restoreBackupBtn');
   const deleteAllBtn = document.getElementById('deleteAllBtn');
   const historySearch = document.getElementById('historySearch');
   const historyBrandFilter = document.getElementById('historyBrandFilter');
@@ -359,6 +363,7 @@
   const firestoreDb = firebase.firestore();
   const auth = firebase.auth();
   const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('brands');
+  const BACKUP_DOC = firestoreDb.collection('wellmadewellness').doc('brands_backup');
 
   const authGate = document.getElementById('authGate');
   const logoutBtn = document.getElementById('logoutBtn');
@@ -379,6 +384,11 @@
   let editingId = null; // transaction id currently being edited
   let expandedBrands = new Set(); // brand ids currently expanded to show their labels
   let brandSearchQuery = new Map(); // brand id -> current label search text
+
+  function saveBackup(reason) {
+    BACKUP_DOC.set({ state: JSON.parse(JSON.stringify(state)), savedAt: Date.now(), reason: reason || '' })
+      .catch(() => { /* best-effort — never block the actual action on this */ });
+  }
 
   function saveState() {
     STATE_DOC.set(state)
@@ -677,9 +687,10 @@
       const l = state.labels.find(l => l.id === id);
       const relatedCount = state.transactions.filter(t => t.labelId === id).length;
       const msg = relatedCount > 0
-        ? `Delete "${l ? l.name : 'this label'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? This cannot be undone.`
-        : `Delete "${l ? l.name : 'this label'}"? This cannot be undone.`;
+        ? `Delete "${l ? l.name : 'this label'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? You can undo this with "Restore last backup" right after.`
+        : `Delete "${l ? l.name : 'this label'}"? You can undo this with "Restore last backup" right after.`;
       if (!window.confirm(msg)) return;
+      saveBackup(`before deleting label "${l ? l.name : id}"`);
       state.transactions = state.transactions.filter(t => t.labelId !== id);
       state.labels = state.labels.filter(l => l.id !== id);
       saveState();
@@ -706,8 +717,9 @@
       const b = state.brands.find(b => b.id === id);
       const labelIds = state.labels.filter(l => l.brandId === id).map(l => l.id);
       const relatedTxCount = state.transactions.filter(t => labelIds.includes(t.labelId)).length;
-      const msg = `Delete "${b ? b.name : 'this brand'}", its ${labelIds.length} label${labelIds.length === 1 ? '' : 's'}, and ${relatedTxCount} transaction${relatedTxCount === 1 ? '' : 's'}? This cannot be undone.`;
+      const msg = `Delete "${b ? b.name : 'this brand'}", its ${labelIds.length} label${labelIds.length === 1 ? '' : 's'}, and ${relatedTxCount} transaction${relatedTxCount === 1 ? '' : 's'}? You can undo this with "Restore last backup" right after.`;
       if (!window.confirm(msg)) return;
+      saveBackup(`before deleting brand "${b ? b.name : id}"`);
       state.transactions = state.transactions.filter(t => !labelIds.includes(t.labelId));
       state.labels = state.labels.filter(l => l.brandId !== id);
       state.brands = state.brands.filter(b => b.id !== id);
@@ -779,6 +791,7 @@
     const delBtn = e.target.closest('[data-del-tx]');
     if (delBtn) {
       const id = delBtn.getAttribute('data-del-tx');
+      saveBackup('before deleting one transaction');
       state.transactions = state.transactions.filter(t => t.id !== id);
       saveState();
       renderAll();
@@ -837,10 +850,37 @@
   });
 
   // ---------- Delete all history ----------
+  restoreBackupBtn.addEventListener('click', () => {
+    restoreBackupBtn.disabled = true;
+    BACKUP_DOC.get().then((doc) => {
+      restoreBackupBtn.disabled = false;
+      if (!doc.exists) {
+        window.alert('No backup found yet — a backup is saved automatically right before you delete something.');
+        return;
+      }
+      const backup = doc.data();
+      const when = backup.savedAt ? new Date(backup.savedAt).toLocaleString() : 'an earlier point';
+      const reason = backup.reason ? ` (${backup.reason})` : '';
+      const msg = `Restore data from ${when}${reason}?\n\nThis will overwrite everything currently on this page with that backup. Your current data will itself be backed up first, so you can restore forward again if needed.`;
+      if (!window.confirm(msg)) return;
+      saveBackup('before restoring a backup (undo the restore)');
+      state = backup.state || state;
+      if (!Array.isArray(state.brands)) state.brands = [];
+      if (!Array.isArray(state.labels)) state.labels = [];
+      if (!Array.isArray(state.transactions)) state.transactions = [];
+      saveState();
+      renderAll();
+    }).catch((e) => {
+      restoreBackupBtn.disabled = false;
+      window.alert('Could not load backup: ' + (e && e.message ? e.message : 'error'));
+    });
+  });
+
   deleteAllBtn.addEventListener('click', () => {
     if (state.transactions.length === 0) return;
-    const msg = `Delete all ${state.transactions.length} transaction${state.transactions.length === 1 ? '' : 's'}? Brands and labels will stay. This cannot be undone.`;
+    const msg = `Delete all ${state.transactions.length} transaction${state.transactions.length === 1 ? '' : 's'}? Brands and labels will stay. You can undo this with "Restore last backup" right after.`;
     if (!window.confirm(msg)) return;
+    saveBackup(`before deleting all ${state.transactions.length} transactions`);
     state.transactions = [];
     saveState();
     renderAll();

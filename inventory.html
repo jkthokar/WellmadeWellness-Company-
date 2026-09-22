@@ -139,7 +139,9 @@
   button:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* table */
-  .tbl-scroll { overflow-x: auto; }
+  .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 560px; border: 1px solid var(--rule); border-radius: 4px; }
+  .tbl-scroll table { margin: 0; }
+  .tbl-scroll thead th { position: sticky; top: 0; background: var(--ivory-warm); z-index: 1; }
   table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
   th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
   th { color: var(--ink-soft); font-weight: 600; font-size: 0.78rem; }
@@ -164,6 +166,9 @@
     .nav-links { display: none; }
     .card { padding: 24px 20px; }
   }
+
+  .history-search-row { max-width: 340px; margin-bottom: 18px; }
+  .history-search-row input { border-color: var(--ochre); }
 
   #authGate {
     position: fixed; inset: 0; z-index: 9999;
@@ -208,14 +213,6 @@
   <div class="wrap">
     <div class="status" id="status">Connecting to shared storage…</div>
 
-    <h2 class="section-title">Products</h2>
-    <div class="add-product">
-      <input id="newProductName" placeholder="Add a product (e.g. Product E)" maxlength="60">
-      <button id="addProductBtn">Add</button>
-      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
-    </div>
-    <div id="summaryArea" class="summary-grid"></div>
-
     <h2 class="section-title">Log a transaction</h2>
     <div class="card">
       <form class="inline" id="txForm">
@@ -249,10 +246,21 @@
       </form>
     </div>
 
-    <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <h2 class="section-title">Products</h2>
+    <div class="add-product">
+      <input id="newProductName" placeholder="Add a product (e.g. Product E)" maxlength="60">
+      <button id="addProductBtn">Add</button>
+      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+    </div>
+    <div id="summaryArea" class="summary-grid"></div>
+
+    <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
       <span>Transaction history</span>
       <button id="deleteAllBtn" class="secondary" type="button">Delete all history</button>
     </h2>
+    <div class="history-search-row">
+      <input type="text" id="historySearch" placeholder="🔍 Search by product name…" maxlength="60">
+    </div>
     <div class="tbl-scroll">
       <table>
         <thead>
@@ -290,6 +298,7 @@
   const addProductBtn = document.getElementById('addProductBtn');
   const exportBtn = document.getElementById('exportBtn');
   const deleteAllBtn = document.getElementById('deleteAllBtn');
+  const historySearch = document.getElementById('historySearch');
 
   txDateInput.value = new Date().toISOString().slice(0, 10);
 
@@ -405,7 +414,15 @@
       txBody.innerHTML = '<tr><td colspan="6" class="empty">No transactions logged yet.</td></tr>';
       return;
     }
-    const sorted = state.transactions.slice().sort((a, b) => {
+    const query = (historySearch && historySearch.value || '').trim().toLowerCase();
+    const filtered = query
+      ? state.transactions.filter(t => productName(t.productId).toLowerCase().includes(query) || t.id === editingId)
+      : state.transactions;
+    if (filtered.length === 0) {
+      txBody.innerHTML = `<tr><td colspan="6" class="empty">No transactions match "${escapeHtml(historySearch.value)}".</td></tr>`;
+      return;
+    }
+    const sorted = filtered.slice().sort((a, b) => {
       if (a.date !== b.date) return a.date < b.date ? 1 : -1;
       return (b.createdAt || 0) - (a.createdAt || 0);
     });
@@ -557,6 +574,10 @@
     state.transactions = [];
     saveState();
     renderAll();
+  });
+
+  historySearch.addEventListener('input', () => {
+    renderTransactions();
   });
 
   function sheetNameFor(name, used) {

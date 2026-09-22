@@ -79,8 +79,9 @@
   .brand-name { font-family: 'Fraunces', serif; font-size: 1.35rem; }
   .brand-actions { display: flex; gap: 8px; align-items: center; }
 
-  .add-label-row { display: flex; gap: 8px; margin-bottom: 16px; max-width: 420px; }
-  .add-label-row input { flex: 1; }
+  .add-label-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .add-label-row input { flex: 1 1 180px; min-width: 140px; }
+  .add-label-row .search-input { border-color: var(--ochre); }
 
   .label-grid {
     display: grid;
@@ -148,7 +149,9 @@
   button.small { padding: 4px 12px; font-size: 0.72rem; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .tbl-scroll { overflow-x: auto; }
+  .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 560px; border: 1px solid var(--rule); border-radius: 4px; }
+  .tbl-scroll table { margin: 0; }
+  .tbl-scroll thead th { position: sticky; top: 0; background: var(--ivory-warm); z-index: 1; }
   table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
   th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
   th { color: var(--ink-soft); font-weight: 600; font-size: 0.78rem; }
@@ -177,6 +180,10 @@
     .nav-links { display: none; }
     .card, .brand-card { padding: 22px 18px; }
   }
+
+  .history-search-row { display: flex; gap: 10px; max-width: 520px; margin-bottom: 18px; flex-wrap: wrap; }
+  .history-search-row select { max-width: 200px; }
+  .history-search-row input { flex: 1 1 220px; border-color: var(--ochre); }
 
   #authGate {
     position: fixed; inset: 0; z-index: 9999;
@@ -221,18 +228,6 @@
   <div class="wrap">
     <div class="status" id="status">Connecting to shared storage…</div>
 
-    <h2 class="section-title">Add a brand</h2>
-    <div class="add-brand">
-      <input id="newBrandName" placeholder="Add a brand (e.g. Brand E)" maxlength="60">
-      <button id="addBrandBtn">Add brand</button>
-    </div>
-
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-      <h2 class="section-title" style="margin-bottom:0;">Brands &amp; labels</h2>
-      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
-    </div>
-    <div id="brandsArea"></div>
-
     <h2 class="section-title">Log a transaction</h2>
     <div class="card">
       <form class="inline" id="txForm">
@@ -265,24 +260,50 @@
           <input id="txNote" type="text" maxlength="120" placeholder="Supplier, customer, reason…">
         </div>
         <div>
+          <label for="txHandledBy">Used by</label>
+          <input id="txHandledBy" type="text" maxlength="60" placeholder="Staff name">
+        </div>
+        <div>
+          <label for="txCheckedBy">Checked by</label>
+          <input id="txCheckedBy" type="text" maxlength="60" placeholder="Checker name">
+        </div>
+        <div>
           <button type="submit" id="txSubmitBtn">Add entry</button>
         </div>
       </form>
     </div>
 
-    <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <h2 class="section-title">Add a brand</h2>
+    <div class="add-brand">
+      <input id="newBrandName" placeholder="Add a brand (e.g. Brand E)" maxlength="60">
+      <button id="addBrandBtn">Add brand</button>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+      <h2 class="section-title" style="margin-bottom:0;">Brands &amp; labels</h2>
+      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+    </div>
+    <div id="brandsArea"></div>
+
+    <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
       <span>Transaction history</span>
       <button id="deleteAllBtn" class="secondary" type="button">Delete all history</button>
     </h2>
+    <div class="history-search-row">
+      <select id="historyBrandFilter">
+        <option value="">All brands</option>
+      </select>
+      <input type="text" id="historySearch" placeholder="🔍 Search by label name…" maxlength="60">
+    </div>
     <div class="tbl-scroll">
       <table>
         <thead>
           <tr>
-            <th>Date</th><th>Brand</th><th>Label</th><th>Type</th><th class="num">Qty</th><th>Note</th><th></th>
+            <th>Date</th><th>Brand</th><th>Label</th><th>Type</th><th class="num">Qty</th><th>Note</th><th>Used by</th><th>Checked by</th><th></th>
           </tr>
         </thead>
         <tbody id="txBody">
-          <tr><td colspan="7" class="empty">Loading…</td></tr>
+          <tr><td colspan="9" class="empty">Loading…</td></tr>
         </tbody>
       </table>
     </div>
@@ -308,10 +329,14 @@
   const txQtyInput = document.getElementById('txQty');
   const txDateInput = document.getElementById('txDate');
   const txNoteInput = document.getElementById('txNote');
+  const txHandledByInput = document.getElementById('txHandledBy');
+  const txCheckedByInput = document.getElementById('txCheckedBy');
   const newBrandInput = document.getElementById('newBrandName');
   const addBrandBtn = document.getElementById('addBrandBtn');
   const exportBtn = document.getElementById('exportBtn');
   const deleteAllBtn = document.getElementById('deleteAllBtn');
+  const historySearch = document.getElementById('historySearch');
+  const historyBrandFilter = document.getElementById('historyBrandFilter');
 
   txDateInput.value = new Date().toISOString().slice(0, 10);
 
@@ -352,6 +377,8 @@
 
   let state = { brands: [], labels: [], transactions: [] };
   let editingId = null; // transaction id currently being edited
+  let expandedBrands = new Set(); // brand ids currently expanded to show their labels
+  let brandSearchQuery = new Map(); // brand id -> current label search text
 
   function saveState() {
     STATE_DOC.set(state)
@@ -439,12 +466,19 @@
     }
     const sortedBrands = state.brands.slice().sort((a, b) => a.name.localeCompare(b.name));
     brandsArea.innerHTML = sortedBrands.map(b => {
-      const labelsForBrand = state.labels
+      const allLabelsForBrand = state.labels
         .filter(l => l.brandId === b.id)
         .slice().sort((a, b2) => a.name.localeCompare(b2.name));
+      const isOpen = expandedBrands.has(b.id);
+      const query = (brandSearchQuery.get(b.id) || '').trim().toLowerCase();
+      const labelsForBrand = query
+        ? allLabelsForBrand.filter(l => l.name.toLowerCase().includes(query))
+        : allLabelsForBrand;
 
-      const labelCards = labelsForBrand.length === 0
+      const labelCards = allLabelsForBrand.length === 0
         ? '<div class="empty">No labels yet for this brand.</div>'
+        : labelsForBrand.length === 0
+        ? `<div class="empty">No labels match "${escapeHtml(brandSearchQuery.get(b.id) || '')}".</div>`
         : `<div class="label-grid">${labelsForBrand.map(l => {
             const t = labelTotals(l.id);
             return `
@@ -464,32 +498,69 @@
             `;
           }).join('')}</div>`;
 
+      const body = isOpen
+        ? `
+          <div class="add-label-row">
+            <input type="text" placeholder="Add a label for ${escapeHtml(b.name)}" maxlength="60" data-add-label-input="${escapeHtml(b.id)}">
+            <button class="secondary small" data-add-label-btn="${escapeHtml(b.id)}">Add label</button>
+            <input type="text" class="search-input" placeholder="🔍 Search labels…" maxlength="60" data-search-label="${escapeHtml(b.id)}" value="${escapeHtml(brandSearchQuery.get(b.id) || '')}">
+          </div>
+          ${labelCards}
+        `
+        : '';
+
       return `
         <div class="brand-card">
-          <div class="brand-head">
-            <div class="brand-name">${escapeHtml(b.name)}</div>
+          <div class="brand-head" data-toggle-brand="${escapeHtml(b.id)}" style="cursor:pointer;">
+            <div class="brand-name">
+              <span class="brand-caret">${isOpen ? '▾' : '▸'}</span>
+              ${escapeHtml(b.name)}
+              <span style="color:var(--ink-soft);font-weight:400;font-size:0.85rem;">(${allLabelsForBrand.length} label${allLabelsForBrand.length === 1 ? '' : 's'})</span>
+            </div>
             <div class="brand-actions">
               <button class="secondary small" data-edit-brand="${escapeHtml(b.id)}" title="Rename this brand">Edit</button>
               <button class="secondary small" data-del-brand="${escapeHtml(b.id)}">Delete brand</button>
             </div>
           </div>
-          <div class="add-label-row">
-            <input type="text" placeholder="Add a label for ${escapeHtml(b.name)}" maxlength="60" data-add-label-input="${escapeHtml(b.id)}">
-            <button class="secondary small" data-add-label-btn="${escapeHtml(b.id)}">Add label</button>
-          </div>
-          ${labelCards}
+          ${body}
         </div>
       `;
     }).join('');
   }
 
   // ---------- Transaction history ----------
+  function renderHistoryBrandFilter() {
+    const prev = historyBrandFilter.value;
+    const options = state.brands
+      .slice().sort((a, b) => a.name.localeCompare(b.name))
+      .map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.name)}</option>`)
+      .join('');
+    historyBrandFilter.innerHTML = `<option value="">All brands</option>${options}`;
+    if (prev && state.brands.some(b => b.id === prev)) historyBrandFilter.value = prev;
+  }
+
   function renderTransactions() {
     if (state.transactions.length === 0) {
-      txBody.innerHTML = '<tr><td colspan="7" class="empty">No transactions logged yet.</td></tr>';
+      txBody.innerHTML = '<tr><td colspan="9" class="empty">No transactions logged yet.</td></tr>';
       return;
     }
-    const sorted = state.transactions.slice().sort((a, b) => {
+    const query = (historySearch && historySearch.value || '').trim().toLowerCase();
+    const brandFilterId = historyBrandFilter ? historyBrandFilter.value : '';
+    let filtered = state.transactions;
+    if (brandFilterId) {
+      filtered = filtered.filter(t => labelBrandId(t.labelId) === brandFilterId || t.id === editingId);
+    }
+    if (query) {
+      filtered = filtered.filter(t => labelName(t.labelId).toLowerCase().includes(query) || t.id === editingId);
+    }
+    if (filtered.length === 0) {
+      const label = query
+        ? `"${escapeHtml(historySearch.value)}"`
+        : (brandFilterId ? `"${escapeHtml(brandName(brandFilterId))}"` : '');
+      txBody.innerHTML = `<tr><td colspan="9" class="empty">No transactions match ${label}.</td></tr>`;
+      return;
+    }
+    const sorted = filtered.slice().sort((a, b) => {
       if (a.date !== b.date) return a.date < b.date ? 1 : -1;
       return (b.createdAt || 0) - (a.createdAt || 0);
     });
@@ -525,6 +596,8 @@
             </td>
             <td><input type="number" min="1" step="1" data-edit-field="quantity" value="${Number(t.quantity) || 0}" style="width:70px;"></td>
             <td><input type="text" data-edit-field="note" value="${escapeHtml(t.note || '')}" style="width:150px;"></td>
+            <td><input type="text" data-edit-field="handledBy" value="${escapeHtml(t.handledBy || '')}" style="width:110px;"></td>
+            <td><input type="text" data-edit-field="checkedBy" value="${escapeHtml(t.checkedBy || '')}" style="width:110px;"></td>
             <td style="white-space:nowrap;">
               <button data-save-tx="${escapeHtml(t.id)}" style="padding:6px 12px;font-size:0.8rem;">Save</button>
               <button class="secondary" data-cancel-edit style="padding:5px 10px;font-size:0.75rem;">Cancel</button>
@@ -540,6 +613,8 @@
         <td><span class="pill ${t.type}">${t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold'}</span></td>
         <td class="num">${Number(t.quantity) || 0}</td>
         <td>${escapeHtml(t.note || '')}</td>
+        <td>${escapeHtml(t.handledBy || '')}</td>
+        <td>${escapeHtml(t.checkedBy || '')}</td>
         <td style="white-space:nowrap;">
           <button class="secondary" data-edit-tx="${escapeHtml(t.id)}">Edit</button>
           <button class="secondary" data-del-tx="${escapeHtml(t.id)}">Delete</button>
@@ -552,6 +627,7 @@
   function renderAll() {
     renderTxBrandSelect();
     renderBrands();
+    renderHistoryBrandFilter();
     renderTransactions();
   }
 
@@ -639,6 +715,14 @@
       renderAll();
       return;
     }
+    const toggleBtn = e.target.closest('[data-toggle-brand]');
+    if (toggleBtn) {
+      const id = toggleBtn.getAttribute('data-toggle-brand');
+      if (expandedBrands.has(id)) expandedBrands.delete(id);
+      else expandedBrands.add(id);
+      renderBrands();
+      return;
+    }
   });
 
   brandsArea.addEventListener('keydown', (e) => {
@@ -651,6 +735,21 @@
     }
   });
 
+  brandsArea.addEventListener('input', (e) => {
+    const searchInput = e.target.closest('[data-search-label]');
+    if (!searchInput) return;
+    const brandId = searchInput.getAttribute('data-search-label');
+    const cursorPos = searchInput.selectionStart;
+    if (searchInput.value) brandSearchQuery.set(brandId, searchInput.value);
+    else brandSearchQuery.delete(brandId);
+    renderBrands();
+    const restored = brandsArea.querySelector(`[data-search-label="${brandId}"]`);
+    if (restored) {
+      restored.focus();
+      restored.setSelectionRange(cursorPos, cursorPos);
+    }
+  });
+
   // ---------- Log transaction ----------
   txForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -659,14 +758,18 @@
     const quantity = parseInt(txQtyInput.value, 10);
     const date = txDateInput.value;
     const note = txNoteInput.value.trim();
+    const handledBy = txHandledByInput.value.trim();
+    const checkedBy = txCheckedByInput.value.trim();
     if (!labelId) { statusEl.textContent = 'Add a label for this brand first.'; return; }
     if (!quantity || quantity <= 0) { statusEl.textContent = 'Enter a valid quantity.'; return; }
 
     state.transactions.push({
-      id: 't' + Date.now(), labelId, type, quantity, date, note, createdAt: Date.now()
+      id: 't' + Date.now(), labelId, type, quantity, date, note, handledBy, checkedBy, createdAt: Date.now()
     });
     txQtyInput.value = '';
     txNoteInput.value = '';
+    txHandledByInput.value = '';
+    txCheckedByInput.value = '';
     saveState();
     renderAll();
   });
@@ -709,6 +812,8 @@
       t.type = row.querySelector('[data-edit-field="type"]').value;
       t.quantity = newQty;
       t.note = row.querySelector('[data-edit-field="note"]').value.trim();
+      t.handledBy = row.querySelector('[data-edit-field="handledBy"]').value.trim();
+      t.checkedBy = row.querySelector('[data-edit-field="checkedBy"]').value.trim();
       editingId = null;
       saveState();
       renderAll();
@@ -739,6 +844,14 @@
     state.transactions = [];
     saveState();
     renderAll();
+  });
+
+  historySearch.addEventListener('input', () => {
+    renderTransactions();
+  });
+
+  historyBrandFilter.addEventListener('change', () => {
+    renderTransactions();
   });
 
   // ---------- Export to Excel ----------
@@ -816,7 +929,9 @@
             { header: 'Date', key: 'date', width: 14 },
             { header: 'Type', key: 'type', width: 12 },
             { header: 'Quantity', key: 'qty', width: 12 },
-            { header: 'Note', key: 'note', width: 32 }
+            { header: 'Note', key: 'note', width: 32 },
+            { header: 'Used by', key: 'handledBy', width: 18 },
+            { header: 'Checked by', key: 'checkedBy', width: 18 }
           ];
           styleHeaderRow(sheet.getRow(1));
 
@@ -829,7 +944,7 @@
           labelTx.forEach(t => {
             const q = Number(t.quantity) || 0;
             const typeLabel = t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold';
-            const row = sheet.addRow({ date: t.date || '', type: typeLabel, qty: q, note: t.note || '' });
+            const row = sheet.addRow({ date: t.date || '', type: typeLabel, qty: q, note: t.note || '', handledBy: t.handledBy || '', checkedBy: t.checkedBy || '' });
             row.eachCell(cell => {
               cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
             });

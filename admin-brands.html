@@ -409,6 +409,7 @@
       STATE_DOC.set(state);
     }
     renderAll();
+    statusEl.textContent = 'Connected — live data.';
   }, (e) => {
     statusEl.textContent = 'Could not connect to shared storage: ' + (e && e.message ? e.message : 'error');
   });

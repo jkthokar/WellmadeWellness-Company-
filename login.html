@@ -100,7 +100,7 @@
 <div class="card">
   <div class="wordmark">Wellmade<span>Wellness</span></div>
   <h1>Sign in</h1>
-
+  <p class="sub">Staff access to admin pages for Inventory, Brands, and Production.</p>
 
   <div class="error" id="errorBox"></div>
 
@@ -148,7 +148,7 @@
 
   // Where to send the user after login: ?next=inventory.html, default to inventory.html
   const params = new URLSearchParams(window.location.search);
-  const next = params.get('next') || 'inventory.html';
+  const next = params.get('next') || 'admin-inventory.html';
 
   // If already signed in, skip straight to the destination
   auth.onAuthStateChanged((user) => {

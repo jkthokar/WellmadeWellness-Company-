@@ -6,84 +6,37 @@
 <title>Inventory — WellmadeWellness</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --pine: #1E3327;
-    --pine-deep: #16261D;
-    --ivory: #EEF0E5;
-    --ivory-warm: #F5F6EF;
-    --ink: #23241F;
-    --ink-soft: #55574C;
-    --ochre: #C08A2E;
-    --rule: #D5D8C9;
-    --green: #3E7A4C;
-    --green-soft: #E6EFE4;
-    --red: #B0453A;
-    --red-soft: #F6E7E4;
-    --blue: #3E6A8A;
-    --blue-soft: #E6EDF2;
+    --pine: #1E3327; --pine-deep: #16261D; --ivory: #EEF0E5; --ivory-warm: #F5F6EF;
+    --ink: #23241F; --ink-soft: #55574C; --ochre: #C08A2E; --rule: #D5D8C9;
+    --green: #3E7A4C; --green-soft: #E6EFE4; --red: #B0453A; --red-soft: #F6E7E4;
+    --blue: #3E6A8A; --blue-soft: #E6EDF2;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Inter', sans-serif;
-    color: var(--ink);
-    background: var(--ivory-warm);
-    line-height: 1.6;
-  }
+  body { font-family: 'Inter', sans-serif; color: var(--ink); background: var(--ivory-warm); line-height: 1.6; }
   h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; }
   a { color: inherit; text-decoration: none; }
   .wrap { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
-
-  nav {
-    position: sticky; top: 0; z-index: 50;
-    background: var(--ivory-warm);
-    border-bottom: 1px solid var(--rule);
-  }
+  nav { position: sticky; top: 0; z-index: 50; background: var(--ivory-warm); border-bottom: 1px solid var(--rule); }
   nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
   .wordmark { font-family: 'Fraunces', serif; font-size: 1.25rem; font-weight: 600; }
   .wordmark span { color: var(--ochre); }
-  .nav-links { display: flex; gap: 36px; font-size: 0.95rem; }
+  .nav-links { display: flex; gap: 32px; font-size: 0.95rem; flex-wrap: wrap; align-items: center; }
   .nav-links a { color: var(--ink-soft); transition: color 0.2s ease; }
   .nav-links a:hover, .nav-links a.active { color: var(--pine); }
-
-  header.page-head {
-    background: var(--pine);
-    color: var(--ivory);
-    padding: 64px 0 46px;
-  }
+  header.page-head { background: var(--pine); color: var(--ivory); padding: 64px 0 46px; }
   header.page-head h1 { font-size: clamp(2rem, 4vw, 2.8rem); }
-  header.page-head p { color: #C9D2C4; margin-top: 10px; max-width: 48ch; }
-
+  header.page-head p { color: #C9D2C4; margin-top: 10px; max-width: 52ch; }
   main { padding: 56px 0 100px; }
-
-  .section-title {
-    font-size: 1.3rem;
-    margin-bottom: 20px;
-  }
-
-  .status {
-    font-size: 0.85rem;
-    color: var(--ink-soft);
-    margin-bottom: 28px;
-  }
-
-  /* summary cards */
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 20px;
-  }
-  .stat-card {
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    padding: 20px 22px;
-    background: var(--ivory);
-  }
+  .section-title { font-size: 1.3rem; margin-bottom: 20px; }
+  .status { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 28px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+  .stat-card { border: 1px solid var(--rule); border-radius: 4px; padding: 20px 22px; background: var(--ivory); }
   .stat-card .pname { font-family: 'Fraunces', serif; font-size: 1.2rem; margin-bottom: 14px; }
   .stat-line { display: flex; justify-content: space-between; font-size: 0.9rem; padding: 3px 0; color: var(--ink-soft); }
   .stat-line b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
@@ -93,64 +46,24 @@
     color: var(--pine);
   }
   .stat-remaining span.neg { color: var(--red); }
-
-  /* add product */
-  .add-product { display: flex; gap: 10px; margin-bottom: 16px; max-width: 720px; flex-wrap: wrap; }
-  .add-product input { flex: 1 1 180px; min-width: 140px; }
-
-  .product-group-card {
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    background: var(--ivory);
-    padding: 22px 24px;
-    margin-bottom: 28px;
-  }
-  .product-group-card h3 {
-    font-family: 'Fraunces', serif;
-    font-size: 1.15rem;
-    margin-bottom: 14px;
-  }
-
-  /* form */
-  .card {
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    padding: 30px 32px;
-    margin-bottom: 60px;
-    background: var(--ivory);
-  }
-  form.inline {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
-    gap: 18px;
-    align-items: end;
-  }
+  .product-group-card { border: 1px solid var(--rule); border-radius: 4px; background: var(--ivory); padding: 22px 24px; margin-bottom: 28px; }
+  .product-group-card h3 { font-family: 'Fraunces', serif; font-size: 1.15rem; margin-bottom: 14px; }
+  .search-row { display: flex; gap: 10px; margin-bottom: 16px; max-width: 340px; }
+  .search-row input { border-color: var(--ochre); }
+  .card { border: 1px solid var(--rule); border-radius: 4px; padding: 30px 32px; margin-bottom: 60px; background: var(--ivory); }
   label { display: block; font-size: 0.8rem; color: var(--ink-soft); margin-bottom: 6px; }
   input, select {
-    width: 100%;
-    border: none;
-    border-bottom: 1px solid var(--ink);
-    background: transparent;
-    padding: 9px 2px;
-    font-family: inherit;
-    font-size: 0.95rem;
-    color: var(--ink);
+    width: 100%; border: none; border-bottom: 1px solid var(--ink); background: transparent;
+    padding: 9px 2px; font-family: inherit; font-size: 0.95rem; color: var(--ink);
   }
   input:focus, select:focus { outline: none; border-bottom: 2px solid var(--ochre); }
-
   button {
     border: none; cursor: pointer; font-family: inherit; font-weight: 600;
-    background: var(--ochre); color: var(--pine-deep);
-    padding: 12px 24px; border-radius: 100px; font-size: 0.9rem;
+    background: var(--ochre); color: var(--pine-deep); padding: 12px 24px; border-radius: 100px; font-size: 0.9rem;
   }
   button:hover { filter: brightness(1.05); }
-  button.secondary {
-    background: transparent; color: var(--ink-soft);
-    border: 1px solid var(--rule); padding: 6px 14px; border-radius: 100px; font-size: 0.78rem;
-  }
+  button.secondary { background: transparent; color: var(--ink-soft); border: 1px solid var(--rule); padding: 6px 14px; border-radius: 100px; font-size: 0.78rem; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  /* table */
   .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 560px; border: 1px solid var(--rule); border-radius: 4px; }
   .tbl-scroll table { margin: 0; }
   .tbl-scroll thead th { position: sticky; top: 0; background: var(--ivory-warm); z-index: 1; }
@@ -160,56 +73,28 @@
   tbody tr:hover { background: var(--ivory); }
   .num { text-align: right; font-variant-numeric: tabular-nums; }
   .empty { color: var(--ink-soft); font-size: 0.9rem; padding: 16px 0; }
-
   .pill { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
   .pill.buy { background: var(--blue-soft); color: var(--blue); }
   .pill.use { background: #F3E9D8; color: var(--ochre); }
   .pill.sell { background: var(--green-soft); color: var(--green); }
-
-  footer {
-    background: var(--pine);
-    color: #9FB09A;
-    padding: 34px 0;
-    font-size: 0.85rem;
-  }
+  footer { background: var(--pine); color: #9FB09A; padding: 34px 0; font-size: 0.85rem; }
   footer .wrap { display: flex; justify-content: space-between; }
-
-  @media (max-width: 720px) {
-    .nav-links { display: none; }
-    .card { padding: 24px 20px; }
-  }
-
-  .history-search-row { max-width: 340px; margin-bottom: 18px; }
-  .history-search-row input { border-color: var(--ochre); }
-
-  #authGate {
-    position: fixed; inset: 0; z-index: 9999;
-    background: var(--pine); color: var(--ivory);
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Inter', sans-serif; font-size: 0.95rem;
-  }
-  #authGate.hidden { display: none; }
-  .logout-btn {
-    background: transparent; border: 1px solid var(--rule); color: var(--ink-soft);
-    padding: 6px 16px; border-radius: 100px; font-size: 0.82rem; cursor: pointer; font-family: inherit; font-weight: 600;
-  }
-  .logout-btn:hover { color: var(--pine); }
+  .notice { background: var(--blue-soft); color: var(--blue); font-size: 0.85rem; padding: 10px 16px; border-radius: 4px; margin-bottom: 24px; }
+  @media (max-width: 720px) { .nav-links { display: none; } .card { padding: 24px 20px; } }
 </style>
 </head>
 <body>
-
-<div id="authGate">Checking access…</div>
 
 <nav>
   <div class="wrap">
     <a href="index.html" class="wordmark">Wellmade<span>Wellness</span></a>
     <div class="nav-links">
       <a href="index.html">Home</a>
-      <a href="index.html#services">Services</a>
       <a href="inventory.html" class="active">Container(용기)</a>
       <a href="brands.html">labelling(라벨)</a>
+      <a href="production.html">Production(생산)</a>
       <a href="index.html#contact">Contact</a>
-      <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
+      <a href="login.html">Staff login</a>
     </div>
   </div>
 </nav>
@@ -217,7 +102,7 @@
 <header class="page-head">
   <div class="wrap">
     <h1>Container Management System <br>"용기 관리 시스템"</h1>
-    <p>Track how much of each container is bought from suppliers, used internally, and sold — with remaining stock calculated automatically.</p>
+    <p>Live stock levels — bought, used, and sold, with remaining stock calculated automatically. View only; staff sign in to make changes.</p>
   </div>
 </header>
 
@@ -225,81 +110,25 @@
   <div class="wrap">
     <div class="status" id="status">Connecting to shared storage…</div>
 
-    <h2 class="section-title">Log a transaction</h2>
-    <div class="card">
-      <form class="inline" id="txForm">
-        <div>
-          <label for="txProduct">Product</label>
-          <select id="txProduct" required></select>
-        </div>
-        <div>
-          <label for="txType">Type</label>
-          <select id="txType" required>
-            <option value="buy">Bought (from supplier)</option>
-            <option value="use">Used (internal)</option>
-            <option value="sell">Sold (to customer)</option>
-          </select>
-        </div>
-        <div id="qtyWrap">
-          <label for="txQty">Quantity</label>
-          <input id="txQty" type="number" min="1" step="1" required>
-        </div>
-        <div id="boxWrap" style="display:none;">
-          <label for="txBoxes">Number of boxes</label>
-          <input id="txBoxes" type="number" min="1" step="1">
-        </div>
-        <div id="perBoxWrap" style="display:none;">
-          <label for="txQtyPerBox">Qty per box</label>
-          <input id="txQtyPerBox" type="number" min="1" step="1">
-        </div>
-        <div id="boxTotalWrap" style="display:none;">
-          <label>Total quantity</label>
-          <div id="boxTotalDisplay" style="padding:9px 2px;color:var(--ink-soft);border-bottom:1px solid var(--rule);">—</div>
-        </div>
-        <div>
-          <label for="txDate">Date</label>
-          <input id="txDate" type="date" required>
-        </div>
-        <div>
-          <label for="txHandledBy">Entered by</label>
-          <input id="txHandledBy" type="text" maxlength="60" placeholder="Staff name">
-        </div>
-        <div>
-          <label for="txCheckedBy">Checked by</label>
-          <input id="txCheckedBy" type="text" maxlength="60" placeholder="Checker name">
-        </div>
-        <div>
-          <button type="submit" id="txSubmitBtn">Add entry</button>
-        </div>
-      </form>
-    </div>
-
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
-      <h2 class="section-title" style="margin-bottom:0;">Products</h2>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button id="restoreBackupBtn" class="secondary" type="button">↺ Restore last backup</button>
-        <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
-      </div>
+    <h2 class="section-title">Products</h2>
+    <div class="search-row">
+      <input id="productSearch" type="text" placeholder="🔍 Search products…" maxlength="60">
     </div>
     <div id="productGroupsArea"></div>
 
-    <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:44px;">
       <span>Transaction history</span>
-      <button id="deleteAllBtn" class="secondary" type="button">Delete all history</button>
+      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
     </h2>
-    <div class="history-search-row">
+    <div class="search-row">
       <input type="text" id="historySearch" placeholder="🔍 Search by product name…" maxlength="60">
     </div>
     <div class="tbl-scroll">
       <table>
         <thead>
-          <tr>
-            <th>Date</th><th>Product</th><th>Type</th><th class="num">Qty</th><th>Entered by</th><th>Checked by</th><th></th>
-          </tr>
+          <tr><th>Date</th><th>Product</th><th>Type</th><th class="num">Qty</th><th>Entered by</th><th>Checked by</th></tr>
         </thead>
-        <tbody id="txBody">
-          <tr><td colspan="7" class="empty">Loading…</td></tr>
-        </tbody>
+        <tbody id="txBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -315,33 +144,12 @@
 <script>
 (function () {
   const statusEl = document.getElementById('status');
-  const txBody = document.getElementById('txBody');
-  const txForm = document.getElementById('txForm');
-  const txProductSel = document.getElementById('txProduct');
-  const txTypeSel = document.getElementById('txType');
-  const txQtyInput = document.getElementById('txQty');
-  const qtyWrap = document.getElementById('qtyWrap');
-  const boxWrap = document.getElementById('boxWrap');
-  const perBoxWrap = document.getElementById('perBoxWrap');
-  const boxTotalWrap = document.getElementById('boxTotalWrap');
-  const boxTotalDisplay = document.getElementById('boxTotalDisplay');
-  const txBoxesInput = document.getElementById('txBoxes');
-  const txQtyPerBoxInput = document.getElementById('txQtyPerBox');
-  const txDateInput = document.getElementById('txDate');
-  const txHandledByInput = document.getElementById('txHandledBy');
-  const txCheckedByInput = document.getElementById('txCheckedBy');
   const productGroupsArea = document.getElementById('productGroupsArea');
-  const exportBtn = document.getElementById('exportBtn');
-  const restoreBackupBtn = document.getElementById('restoreBackupBtn');
-  const deleteAllBtn = document.getElementById('deleteAllBtn');
+  const productSearch = document.getElementById('productSearch');
+  const txBody = document.getElementById('txBody');
   const historySearch = document.getElementById('historySearch');
+  const exportBtn = document.getElementById('exportBtn');
 
-  txDateInput.value = new Date().toISOString().slice(0, 10);
-
-  const DEFAULT_PRODUCTS = ['Product A', 'Product B', 'Product C', 'Product D'];
-
-  // ===== FIREBASE CONFIG — paste your own project's values here =====
-  // Get these from: Firebase Console → Project settings → Your apps → Web app → SDK setup and configuration
   const firebaseConfig = {
     apiKey: "AIzaSyDdT2jqlbWGutlCDX8n2XVHKxLQnYiim-8",
     authDomain: "wellmadewellness-589e8.firebaseapp.com",
@@ -350,48 +158,17 @@
     messagingSenderId: "571195991033",
     appId: "1:571195991033:web:8427c140a9f6997b4f9328"
   };
-  // ====================================================================
-
   firebase.initializeApp(firebaseConfig);
   const firestoreDb = firebase.firestore();
-  const auth = firebase.auth();
   const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('inventory');
-  const BACKUP_DOC = firestoreDb.collection('wellmadewellness').doc('inventory_backup');
 
-  const authGate = document.getElementById('authGate');
-  const logoutBtn = document.getElementById('logoutBtn');
-
-  auth.onAuthStateChanged((user) => {
-    if (!user) {
-      window.location.href = 'login.html?next=inventory.html';
-    } else {
-      authGate.classList.add('hidden');
-    }
-  });
-
-  logoutBtn.addEventListener('click', () => {
-    auth.signOut().then(() => { window.location.href = 'login.html'; });
-  });
-
-  let state = { products: [], products2: [], products3: [], transactions: [] };
   const GROUPS = [
-    { key: 'products', label: 'Container(용기)' },
-    { key: 'products2', label: 'Plastic CAP(플라스틱 캡)' },
-    { key: 'products3', label: 'Almunim CAP(알루미늄 캡)' }
+    { key: 'products', label: 'Products' },
+    { key: 'products2', label: 'Products 2' },
+    { key: 'products3', label: 'Products 3' }
   ];
-  let productSearchQuery = {}; // group key -> current search text
-
-  function saveBackup(reason) {
-    // Snapshot the state as it is RIGHT NOW, before a destructive change is applied.
-    BACKUP_DOC.set({ state: JSON.parse(JSON.stringify(state)), savedAt: Date.now(), reason: reason || '' })
-      .catch(() => { /* best-effort — never block the actual action on this */ });
-  }
-
-  function saveState() {
-    STATE_DOC.set(state)
-      .then(() => { statusEl.textContent = 'Saved — synced live for everyone viewing this page.'; })
-      .catch((e) => { statusEl.textContent = 'Could not save: ' + (e && e.message ? e.message : 'error'); });
-  }
+  let state = { products: [], products2: [], products3: [], transactions: [] };
+  let productSearchQuery = {};
 
   STATE_DOC.onSnapshot((doc) => {
     if (doc.exists) {
@@ -400,13 +177,13 @@
       if (!Array.isArray(state.products2)) state.products2 = [];
       if (!Array.isArray(state.products3)) state.products3 = [];
       if (!Array.isArray(state.transactions)) state.transactions = [];
+      statusEl.textContent = 'Connected — live data.';
     } else {
-      state = { products: DEFAULT_PRODUCTS.map((name, i) => ({ id: 'p' + i, name })), products2: [], products3: [], transactions: [] };
-      STATE_DOC.set(state);
+      statusEl.textContent = 'No data found yet.';
     }
     renderAll();
   }, (e) => {
-    statusEl.textContent = 'Could not connect to shared storage: ' + (e && e.message ? e.message : 'error');
+    statusEl.textContent = 'Could not connect: ' + (e && e.message ? e.message : 'error');
   });
 
   function escapeHtml(str) {
@@ -423,24 +200,6 @@
     return '(deleted product)';
   }
 
-  function findProductGroupKey(id) {
-    for (const g of GROUPS) {
-      if (state[g.key].some(p => p.id === id)) return g.key;
-    }
-    return null;
-  }
-
-  function renderProductSelect() {
-    const prev = txProductSel.value;
-    txProductSel.innerHTML = GROUPS.map(g => {
-      const items = state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name));
-      if (items.length === 0) return '';
-      const options = items.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
-      return `<optgroup label="${escapeHtml(g.label)}">${options}</optgroup>`;
-    }).join('');
-    if (prev && findProductGroupKey(prev)) txProductSel.value = prev;
-  }
-
   function renderProductGroups() {
     productGroupsArea.innerHTML = GROUPS.map(g => {
       const products = state[g.key] || [];
@@ -450,7 +209,7 @@
         .sort((a, b) => a.name.localeCompare(b.name));
 
       const grid = products.length === 0
-        ? '<div class="empty">No products yet — add one above.</div>'
+        ? '<div class="empty">No products yet.</div>'
         : filtered.length === 0
         ? `<div class="empty">No products match "${escapeHtml(productSearchQuery[g.key] || '')}".</div>`
         : `<div class="summary-grid">${filtered.map(p => {
@@ -465,10 +224,7 @@
             const remaining = bought - used - sold;
             return `
               <div class="stat-card">
-                <div class="pname" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-                  <span>${escapeHtml(p.name)}</span>
-                  <button class="secondary" data-del-product="${escapeHtml(p.id)}" title="Delete this product" style="padding:3px 10px;font-size:0.72rem;">Delete</button>
-                </div>
+                <div class="pname">${escapeHtml(p.name)}</div>
                 <div class="stat-line"><span>Bought</span><b>${bought}</b></div>
                 <div class="stat-line"><span>Used</span><b>${used}</b></div>
                 <div class="stat-line"><span>Sold</span><b>${sold}</b></div>
@@ -477,69 +233,37 @@
             `;
           }).join('')}</div>`;
 
-      return `
-        <div class="product-group-card">
-          <h3>${escapeHtml(g.label)}</h3>
-          <div class="add-product">
-            <input type="text" placeholder="Add a product (e.g. Product E)" maxlength="60" data-add-product-input="${g.key}">
-            <button data-add-product-btn="${g.key}">Add</button>
-            <input type="text" placeholder="🔍 Search ${escapeHtml(g.label.toLowerCase())}…" maxlength="60" style="border-color:var(--ochre);" data-product-search="${g.key}" value="${escapeHtml(productSearchQuery[g.key] || '')}">
-          </div>
-          ${grid}
-        </div>
-      `;
+      return `<div class="product-group-card"><h3>${escapeHtml(g.label)}</h3>${grid}</div>`;
     }).join('');
   }
 
-  let editingId = null;
+  productSearch.addEventListener('input', () => {
+    // A single shared search box filters all 3 groups at once.
+    GROUPS.forEach(g => {
+      if (productSearch.value) productSearchQuery[g.key] = productSearch.value;
+      else delete productSearchQuery[g.key];
+    });
+    renderProductGroups();
+  });
 
   function renderTransactions() {
     if (state.transactions.length === 0) {
-      txBody.innerHTML = '<tr><td colspan="7" class="empty">No transactions logged yet.</td></tr>';
+      txBody.innerHTML = '<tr><td colspan="6" class="empty">No transactions logged yet.</td></tr>';
       return;
     }
-    const query = (historySearch && historySearch.value || '').trim().toLowerCase();
+    const query = (historySearch.value || '').trim().toLowerCase();
     const filtered = query
-      ? state.transactions.filter(t => productName(t.productId).toLowerCase().includes(query) || t.id === editingId)
+      ? state.transactions.filter(t => productName(t.productId).toLowerCase().includes(query))
       : state.transactions;
     if (filtered.length === 0) {
-      txBody.innerHTML = `<tr><td colspan="7" class="empty">No transactions match "${escapeHtml(historySearch.value)}".</td></tr>`;
+      txBody.innerHTML = `<tr><td colspan="6" class="empty">No transactions match "${escapeHtml(historySearch.value)}".</td></tr>`;
       return;
     }
     const sorted = filtered.slice().sort((a, b) => {
       if (a.date !== b.date) return a.date < b.date ? 1 : -1;
       return (b.createdAt || 0) - (a.createdAt || 0);
     });
-    txBody.innerHTML = sorted.map(t => {
-      if (t.id === editingId) {
-        const productOptions = GROUPS.map(g => {
-          const items = state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name));
-          if (items.length === 0) return '';
-          const opts = items.map(p => `<option value="${escapeHtml(p.id)}" ${p.id === t.productId ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('');
-          return `<optgroup label="${escapeHtml(g.label)}">${opts}</optgroup>`;
-        }).join('');
-        return `
-          <tr data-edit-row="${escapeHtml(t.id)}">
-            <td><input type="date" data-edit-field="date" value="${escapeHtml(t.date || '')}" style="width:130px;"></td>
-            <td><select data-edit-field="productId" style="width:130px;">${productOptions}</select></td>
-            <td>
-              <select data-edit-field="type" style="width:100px;">
-                <option value="buy" ${t.type === 'buy' ? 'selected' : ''}>Bought</option>
-                <option value="use" ${t.type === 'use' ? 'selected' : ''}>Used</option>
-                <option value="sell" ${t.type === 'sell' ? 'selected' : ''}>Sold</option>
-              </select>
-            </td>
-            <td><input type="number" min="1" step="1" data-edit-field="quantity" value="${Number(t.quantity) || 0}" style="width:70px;"></td>
-            <td><input type="text" data-edit-field="handledBy" value="${escapeHtml(t.handledBy || '')}" style="width:110px;"></td>
-            <td><input type="text" data-edit-field="checkedBy" value="${escapeHtml(t.checkedBy || '')}" style="width:110px;"></td>
-            <td style="white-space:nowrap;">
-              <button data-save-tx="${escapeHtml(t.id)}" style="padding:6px 12px;font-size:0.8rem;">Save</button>
-              <button class="secondary" data-cancel-edit style="padding:5px 10px;font-size:0.75rem;">Cancel</button>
-            </td>
-          </tr>
-        `;
-      }
-      return `
+    txBody.innerHTML = sorted.map(t => `
       <tr>
         <td>${escapeHtml(t.date || '')}</td>
         <td>${escapeHtml(productName(t.productId))}</td>
@@ -547,251 +271,40 @@
         <td class="num">${Number(t.quantity) || 0}</td>
         <td>${escapeHtml(t.handledBy || '')}</td>
         <td>${escapeHtml(t.checkedBy || '')}</td>
-        <td style="white-space:nowrap;">
-          <button class="secondary" data-edit-tx="${escapeHtml(t.id)}">Edit</button>
-          <button class="secondary" data-del-tx="${escapeHtml(t.id)}">Delete</button>
-        </td>
       </tr>
-    `;
-    }).join('');
+    `).join('');
   }
+
+  historySearch.addEventListener('input', renderTransactions);
 
   function renderAll() {
-    renderProductSelect();
     renderProductGroups();
     renderTransactions();
   }
 
-  productGroupsArea.addEventListener('click', (e) => {
-    const addBtn = e.target.closest('[data-add-product-btn]');
-    if (addBtn) {
-      const key = addBtn.getAttribute('data-add-product-btn');
-      const input = productGroupsArea.querySelector(`[data-add-product-input="${key}"]`);
-      const name = input ? input.value.trim() : '';
-      if (!name) return;
-      state[key].push({ id: 'p' + Date.now() + Math.floor(Math.random() * 1000), name });
-      saveState();
-      renderAll();
-      return;
-    }
-    const delBtn = e.target.closest('[data-del-product]');
-    if (delBtn) {
-      const id = delBtn.getAttribute('data-del-product');
-      const key = findProductGroupKey(id);
-      if (!key) return;
-      const p = state[key].find(p => p.id === id);
-      const relatedCount = state.transactions.filter(t => t.productId === id).length;
-      const msg = relatedCount > 0
-        ? `Delete "${p ? p.name : 'this product'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? You can undo this with "Restore last backup" right after.`
-        : `Delete "${p ? p.name : 'this product'}"? You can undo this with "Restore last backup" right after.`;
-      if (!window.confirm(msg)) return;
-      saveBackup(`before deleting product "${p ? p.name : id}"`);
-      state.transactions = state.transactions.filter(t => t.productId !== id);
-      state[key] = state[key].filter(p => p.id !== id);
-      saveState();
-      renderAll();
-      return;
-    }
-  });
-
-  productGroupsArea.addEventListener('keydown', (e) => {
-    const input = e.target.closest('[data-add-product-input]');
-    if (input && e.key === 'Enter') {
-      e.preventDefault();
-      const key = input.getAttribute('data-add-product-input');
-      const btn = productGroupsArea.querySelector(`[data-add-product-btn="${key}"]`);
-      if (btn) btn.click();
-    }
-  });
-
-  productGroupsArea.addEventListener('input', (e) => {
-    const searchInput = e.target.closest('[data-product-search]');
-    if (!searchInput) return;
-    const key = searchInput.getAttribute('data-product-search');
-    const cursorPos = searchInput.selectionStart;
-    if (searchInput.value) productSearchQuery[key] = searchInput.value;
-    else delete productSearchQuery[key];
-    renderProductGroups();
-    const restored = productGroupsArea.querySelector(`[data-product-search="${key}"]`);
-    if (restored) {
-      restored.focus();
-      restored.setSelectionRange(cursorPos, cursorPos);
-    }
-  });
-
-  txForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const productId = txProductSel.value;
-    const type = txTypeSel.value;
-    let quantity;
-    if (type === 'buy') {
-      const boxes = parseInt(txBoxesInput.value, 10);
-      const perBox = parseInt(txQtyPerBoxInput.value, 10);
-      if (!boxes || boxes <= 0 || !perBox || perBox <= 0) {
-        statusEl.textContent = 'Enter a valid number of boxes and quantity per box.';
-        return;
-      }
-      quantity = boxes * perBox;
-    } else {
-      quantity = parseInt(txQtyInput.value, 10);
-      if (!quantity || quantity <= 0) { statusEl.textContent = 'Enter a valid quantity.'; return; }
-    }
-    const date = txDateInput.value;
-    const handledBy = txHandledByInput.value.trim();
-    const checkedBy = txCheckedByInput.value.trim();
-    if (!productId) { statusEl.textContent = 'Add a product first.'; return; }
-
-    state.transactions.push({
-      id: 't' + Date.now(), productId, type, quantity, date, handledBy, checkedBy, createdAt: Date.now()
-    });
-    txQtyInput.value = '';
-    txBoxesInput.value = '';
-    txQtyPerBoxInput.value = '';
-    boxTotalDisplay.textContent = '—';
-    txHandledByInput.value = '';
-    txCheckedByInput.value = '';
-    saveState();
-    renderAll();
-  });
-
-  function updateTxTypeFields() {
-    const isBuy = txTypeSel.value === 'buy';
-    qtyWrap.style.display = isBuy ? 'none' : '';
-    boxWrap.style.display = isBuy ? '' : 'none';
-    perBoxWrap.style.display = isBuy ? '' : 'none';
-    boxTotalWrap.style.display = isBuy ? '' : 'none';
-    txQtyInput.required = !isBuy;
-  }
-  txTypeSel.addEventListener('change', updateTxTypeFields);
-  updateTxTypeFields();
-
-  function updateBoxTotal() {
-    const boxes = parseInt(txBoxesInput.value, 10);
-    const perBox = parseInt(txQtyPerBoxInput.value, 10);
-    boxTotalDisplay.textContent = (boxes > 0 && perBox > 0) ? (boxes * perBox) : '—';
-  }
-  txBoxesInput.addEventListener('input', updateBoxTotal);
-  txQtyPerBoxInput.addEventListener('input', updateBoxTotal);
-
-  txBody.addEventListener('click', (e) => {
-    const delBtn = e.target.closest('[data-del-tx]');
-    if (delBtn) {
-      const id = delBtn.getAttribute('data-del-tx');
-      saveBackup('before deleting one transaction');
-      state.transactions = state.transactions.filter(t => t.id !== id);
-      saveState();
-      renderAll();
-      return;
-    }
-    const editBtn = e.target.closest('[data-edit-tx]');
-    if (editBtn) {
-      editingId = editBtn.getAttribute('data-edit-tx');
-      renderTransactions();
-      return;
-    }
-    const cancelBtn = e.target.closest('[data-cancel-edit]');
-    if (cancelBtn) {
-      editingId = null;
-      renderTransactions();
-      return;
-    }
-    const saveBtn = e.target.closest('[data-save-tx]');
-    if (saveBtn) {
-      const id = saveBtn.getAttribute('data-save-tx');
-      const row = saveBtn.closest('tr');
-      const t = state.transactions.find(t => t.id === id);
-      if (!t) return;
-      const newQty = parseInt(row.querySelector('[data-edit-field="quantity"]').value, 10);
-      if (!newQty || newQty <= 0) {
-        statusEl.textContent = 'Enter a valid quantity before saving.';
-        return;
-      }
-      t.date = row.querySelector('[data-edit-field="date"]').value || t.date;
-      t.productId = row.querySelector('[data-edit-field="productId"]').value;
-      t.type = row.querySelector('[data-edit-field="type"]').value;
-      t.quantity = newQty;
-      t.handledBy = row.querySelector('[data-edit-field="handledBy"]').value.trim();
-      t.checkedBy = row.querySelector('[data-edit-field="checkedBy"]').value.trim();
-      editingId = null;
-      saveState();
-      renderAll();
-      return;
-    }
-  });
-
-  restoreBackupBtn.addEventListener('click', () => {
-    restoreBackupBtn.disabled = true;
-    BACKUP_DOC.get().then((doc) => {
-      restoreBackupBtn.disabled = false;
-      if (!doc.exists) {
-        window.alert('No backup found yet — a backup is saved automatically right before you delete something.');
-        return;
-      }
-      const backup = doc.data();
-      const when = backup.savedAt ? new Date(backup.savedAt).toLocaleString() : 'an earlier point';
-      const reason = backup.reason ? ` (${backup.reason})` : '';
-      const msg = `Restore data from ${when}${reason}?\n\nThis will overwrite everything currently on this page with that backup. Your current data will itself be backed up first, so you can restore forward again if needed.`;
-      if (!window.confirm(msg)) return;
-      saveBackup('before restoring a backup (undo the restore)');
-      state = backup.state || state;
-      if (!Array.isArray(state.products)) state.products = [];
-      if (!Array.isArray(state.products2)) state.products2 = [];
-      if (!Array.isArray(state.products3)) state.products3 = [];
-      if (!Array.isArray(state.transactions)) state.transactions = [];
-      saveState();
-      renderAll();
-    }).catch((e) => {
-      restoreBackupBtn.disabled = false;
-      window.alert('Could not load backup: ' + (e && e.message ? e.message : 'error'));
-    });
-  });
-
-  deleteAllBtn.addEventListener('click', () => {
-    if (state.transactions.length === 0) return;
-    const msg = `Delete all ${state.transactions.length} transaction${state.transactions.length === 1 ? '' : 's'}? Products themselves will stay. You can undo this with "Restore last backup" right after.`;
-    if (!window.confirm(msg)) return;
-    saveBackup(`before deleting all ${state.transactions.length} transactions`);
-    state.transactions = [];
-    saveState();
-    renderAll();
-  });
-
-  historySearch.addEventListener('input', () => {
-    renderTransactions();
-  });
-
+  // ---------- Export to Excel (read-only action, still fine on the public page) ----------
   function sheetNameFor(name, used) {
-    let base = String(name || 'Product').replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 28) || 'Product';
-    let candidate = base;
-    let n = 2;
-    while (used.has(candidate.toLowerCase())) {
-      candidate = (base + ' ' + n).slice(0, 31);
-      n++;
-    }
+    let base = String(name || 'Sheet').replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 28) || 'Sheet';
+    let candidate = base; let n = 2;
+    while (used.has(candidate.toLowerCase())) { candidate = (base + ' ' + n).slice(0, 31); n++; }
     used.add(candidate.toLowerCase());
     return candidate;
   }
-
   const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3327' } };
   const HEADER_FONT = { color: { argb: 'FFFFFFFF' }, bold: true };
-  const BUY_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6EDF2' } }; // light blue, matches "Bought" pill
+  const BUY_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6EDF2' } };
   const BUY_FONT = { color: { argb: 'FF3E6A8A' }, bold: true };
   const THIN_BORDER = { style: 'thin', color: { argb: 'FFD5D8C9' } };
-
   function styleHeaderRow(row) {
     row.eachCell(cell => {
-      cell.fill = HEADER_FILL;
-      cell.font = HEADER_FONT;
+      cell.fill = HEADER_FILL; cell.font = HEADER_FONT;
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
       cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
     });
   }
 
   exportBtn.addEventListener('click', async () => {
-    if (typeof ExcelJS === 'undefined') {
-      statusEl.textContent = 'Excel library failed to load — check your connection and try again.';
-      return;
-    }
+    if (typeof ExcelJS === 'undefined') { statusEl.textContent = 'Excel library failed to load.'; return; }
     exportBtn.disabled = true;
     try {
       const wb = new ExcelJS.Workbook();
@@ -799,74 +312,50 @@
       wb.created = new Date();
       const usedNames = new Set();
 
-      // ---- Summary sheet, with a Group column since there are multiple groups ----
       const summarySheet = wb.addWorksheet(sheetNameFor('Summary', usedNames));
       summarySheet.columns = [
-        { header: 'Group', key: 'group', width: 16 },
-        { header: 'Product', key: 'product', width: 24 },
-        { header: 'Bought', key: 'bought', width: 12 },
-        { header: 'Used', key: 'used', width: 12 },
-        { header: 'Sold', key: 'sold', width: 12 },
-        { header: 'Remaining', key: 'remaining', width: 14 }
+        { header: 'Group', key: 'group', width: 16 }, { header: 'Product', key: 'product', width: 24 },
+        { header: 'Bought', key: 'bought', width: 12 }, { header: 'Used', key: 'used', width: 12 },
+        { header: 'Sold', key: 'sold', width: 12 }, { header: 'Remaining', key: 'remaining', width: 14 }
       ];
       styleHeaderRow(summarySheet.getRow(1));
       GROUPS.forEach(g => {
-        const sortedProducts = state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name));
-        sortedProducts.forEach(p => {
+        state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
           let bought = 0, used = 0, sold = 0;
           state.transactions.forEach(t => {
             if (t.productId !== p.id) return;
             const q = Number(t.quantity) || 0;
-            if (t.type === 'buy') bought += q;
-            else if (t.type === 'use') used += q;
-            else if (t.type === 'sell') sold += q;
+            if (t.type === 'buy') bought += q; else if (t.type === 'use') used += q; else if (t.type === 'sell') sold += q;
           });
           summarySheet.addRow({ group: g.label, product: p.name, bought, used, sold, remaining: bought - used - sold });
         });
       });
 
-      // ---- One sheet per product across all groups, date included, Bought rows highlighted ----
       GROUPS.forEach(g => {
-        const sortedProducts = state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name));
-        sortedProducts.forEach(p => {
-        const sheet = wb.addWorksheet(sheetNameFor(p.name, usedNames));
-        sheet.columns = [
-          { header: 'Date', key: 'date', width: 14 },
-          { header: 'Type', key: 'type', width: 12 },
-          { header: 'Quantity', key: 'qty', width: 12 },
-          { header: 'Entered by', key: 'handledBy', width: 18 },
-          { header: 'Checked by', key: 'checkedBy', width: 18 }
-        ];
-        styleHeaderRow(sheet.getRow(1));
-
-        const productTx = state.transactions
-          .filter(t => t.productId === p.id)
-          .slice()
-          .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-
-        let bought = 0, used = 0, sold = 0;
-        productTx.forEach(t => {
-          const q = Number(t.quantity) || 0;
-          const typeLabel = t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold';
-          const row = sheet.addRow({ date: t.date || '', type: typeLabel, qty: q, handledBy: t.handledBy || '', checkedBy: t.checkedBy || '' });
-          row.eachCell(cell => {
-            cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+        state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+          const sheet = wb.addWorksheet(sheetNameFor(p.name, usedNames));
+          sheet.columns = [
+            { header: 'Date', key: 'date', width: 14 }, { header: 'Type', key: 'type', width: 12 },
+            { header: 'Quantity', key: 'qty', width: 12 }, { header: 'Entered by', key: 'handledBy', width: 18 },
+            { header: 'Checked by', key: 'checkedBy', width: 18 }
+          ];
+          styleHeaderRow(sheet.getRow(1));
+          const productTx = state.transactions.filter(t => t.productId === p.id).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+          let bought = 0, used = 0, sold = 0;
+          productTx.forEach(t => {
+            const q = Number(t.quantity) || 0;
+            const typeLabel = t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold';
+            const row = sheet.addRow({ date: t.date || '', type: typeLabel, qty: q, handledBy: t.handledBy || '', checkedBy: t.checkedBy || '' });
+            row.eachCell(cell => { cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }; });
+            if (t.type === 'buy') { bought += q; row.eachCell(cell => { cell.fill = BUY_FILL; cell.font = BUY_FONT; }); }
+            else if (t.type === 'use') used += q;
+            else if (t.type === 'sell') sold += q;
           });
-          if (t.type === 'buy') {
-            bought += q;
-            row.eachCell(cell => { cell.fill = BUY_FILL; cell.font = BUY_FONT; });
-          } else if (t.type === 'use') {
-            used += q;
-          } else if (t.type === 'sell') {
-            sold += q;
-          }
-        });
-
-        sheet.addRow([]);
-        sheet.addRow(['', 'Total bought', bought, '']).font = { bold: true };
-        sheet.addRow(['', 'Total used', used, '']).font = { bold: true };
-        sheet.addRow(['', 'Total sold', sold, '']).font = { bold: true };
-        sheet.addRow(['', 'Remaining', bought - used - sold, '']).font = { bold: true };
+          sheet.addRow([]);
+          sheet.addRow(['', 'Total bought', bought, '']).font = { bold: true };
+          sheet.addRow(['', 'Total used', used, '']).font = { bold: true };
+          sheet.addRow(['', 'Total sold', sold, '']).font = { bold: true };
+          sheet.addRow(['', 'Remaining', bought - used - sold, '']).font = { bold: true };
         });
       });
 
@@ -875,11 +364,8 @@
       const dateStr = new Date().toISOString().slice(0, 10);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `inventory-${dateStr}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      a.href = url; a.download = `inventory-${dateStr}.xlsx`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
       statusEl.textContent = 'Could not export: ' + (err && err.message ? err.message : 'error');

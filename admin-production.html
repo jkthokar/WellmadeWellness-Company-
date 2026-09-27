@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Production Log (Admin) — WellmadeWellness</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pine: #1E3327;
+    --pine-deep: #16261D;
+    --ivory: #EEF0E5;
+    --ivory-warm: #F5F6EF;
+    --ink: #23241F;
+    --ink-soft: #55574C;
+    --ochre: #C08A2E;
+    --rule: #D5D8C9;
+    --green: #3E7A4C;
+    --green-soft: #E6EFE4;
+    --red: #B0453A;
+    --red-soft: #F6E7E4;
+    --blue: #3E6A8A;
+    --blue-soft: #E6EDF2;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    background: var(--ivory-warm);
+    line-height: 1.6;
+  }
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--ivory-warm);
+    border-bottom: 1px solid var(--rule);
+  }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
+  .wordmark { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; }
+  .wordmark span { color: var(--ochre); }
+  .nav-links { display: flex; gap: 28px; font-size: 0.92rem; flex-wrap: wrap; align-items: center; }
+  .nav-links a { color: var(--ink-soft); transition: color 0.2s ease; }
+  .nav-links a:hover, .nav-links a.active { color: var(--pine); }
+
+  header.page-head {
+    background: var(--pine);
+    color: var(--ivory);
+    padding: 56px 0 40px;
+  }
+  header.page-head h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); }
+  header.page-head p { color: #C9D2C4; margin-top: 10px; max-width: 60ch; }
+
+  main { padding: 48px 0 100px; }
+
+  .section-title { font-size: 1.25rem; margin-bottom: 16px; }
+  .status { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 24px; }
+
+  .card {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 26px 28px;
+    margin-bottom: 44px;
+    background: var(--ivory);
+  }
+  form.inline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px,1fr));
+    gap: 16px;
+    align-items: end;
+  }
+  label { display: block; font-size: 0.78rem; color: var(--ink-soft); margin-bottom: 6px; }
+  input, select {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    background: transparent;
+    padding: 8px 2px;
+    font-family: inherit;
+    font-size: 0.92rem;
+    color: var(--ink);
+  }
+  input:focus, select:focus { outline: none; border-bottom: 2px solid var(--ochre); }
+
+  button {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 600;
+    background: var(--ochre); color: var(--pine-deep);
+    padding: 11px 22px; border-radius: 100px; font-size: 0.88rem;
+  }
+  button:hover { filter: brightness(1.05); }
+  button.secondary {
+    background: transparent; color: var(--ink-soft);
+    border: 1px solid var(--rule); padding: 6px 14px; border-radius: 100px; font-size: 0.78rem;
+  }
+  button.small { padding: 4px 12px; font-size: 0.72rem; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 480px; border: 1px solid var(--rule); border-radius: 4px; }
+  .tbl-scroll table { margin: 0; }
+  .tbl-scroll thead th { position: sticky; top: 0; background: var(--ivory-warm); z-index: 1; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  th, td { text-align: left; padding: 10px 9px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th { color: var(--ink-soft); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  tbody tr:hover { background: var(--ivory); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--ink-soft); font-size: 0.88rem; padding: 14px 0; }
+
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+  .pill.thaw { background: var(--blue-soft); color: var(--blue); }
+  .pill.mix { background: #F3E9D8; color: var(--ochre); }
+  .pill.cure { background: var(--green-soft); color: var(--green); }
+  .pill.in { background: var(--green-soft); color: var(--green); }
+  .pill.used { background: var(--red-soft); color: var(--red); }
+  .pill.warn { background: var(--red-soft); color: var(--red); }
+  .pill.reminder { background: #F3E9D8; color: var(--ochre); }
+  tr.low-stock { background: var(--red-soft); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
+
+  .search-row { display: flex; gap: 10px; margin-bottom: 16px; max-width: 340px; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+  .stat-card { border: 1px solid var(--rule); border-radius: 4px; padding: 16px 18px; background: var(--ivory); }
+  .stat-card .pname { font-family: 'Fraunces', serif; font-size: 1.05rem; margin-bottom: 10px; }
+  .stat-card .stat-num { font-size: 1.7rem; font-weight: 700; color: var(--pine); font-variant-numeric: tabular-nums; }
+  .stat-card .stat-sub { font-size: 0.78rem; color: var(--ink-soft); margin-top: 2px; }
+  .search-row input { border-color: var(--ochre); }
+
+  footer {
+    background: var(--pine);
+    color: #9FB09A;
+    padding: 32px 0;
+    font-size: 0.85rem;
+  }
+  footer .wrap { display: flex; justify-content: space-between; }
+
+  #authGate {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--pine); color: var(--ivory);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Inter', sans-serif; font-size: 0.95rem;
+  }
+  #authGate.hidden { display: none; }
+  .logout-btn {
+    background: transparent; border: 1px solid var(--rule); color: var(--ink-soft);
+    padding: 6px 16px; border-radius: 100px; font-size: 0.8rem; cursor: pointer; font-family: inherit; font-weight: 600;
+  }
+  .logout-btn:hover { color: var(--pine); }
+
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+    .card { padding: 20px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="authGate">Checking access…</div>
+
+<nav>
+  <div class="wrap">
+    <a href="index.html" class="wordmark">Wellmade<span>Wellness</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="admin-inventory.html">Admin: Container</a>
+      <a href="admin-brands.html">Admin: Labelling</a>
+      <a href="admin-production.html" class="active">Admin: Production</a>
+      <a href="production.html">View public site ↗</a>
+      <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="wrap">
+    <h1>명란생산일지 <br>Production Log</h1>
+    <p>Track thawing, mixing, and curing work by batch, plus running stock for both warehouses and auxiliary materials.</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="status" id="status">Connecting to shared storage…</div>
+
+    <!-- ============ Daily dashboard ============ -->
+    <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <span>일일 작업 대시보드 · Today's dashboard</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <label for="dashDate" style="margin-bottom:0;font-size:0.8rem;color:var(--ink-soft);">날짜 · Date</label>
+        <input type="date" id="dashDate" style="width:auto;border-bottom:1px solid var(--ink);padding:6px 4px;">
+      </div>
+    </h2>
+    <div class="summary-grid" id="dashCards" style="margin-bottom:20px;">
+    </div>
+    <div class="tbl-scroll" style="max-height:320px;margin-bottom:44px;">
+      <table>
+        <thead><tr><th>작업명 · Stage</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>교반일자 · Mix date</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th></tr></thead>
+        <tbody id="dashBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- ============ Stage work log ============ -->
+    <h2 class="section-title">작업 기록 · Log a work entry</h2>
+    <div class="card">
+      <form class="inline" id="stageForm">
+        <div>
+          <label for="stageSelect">작업명 · Stage</label>
+          <select id="stageSelect" required>
+            <option value="thaw">해동 · Thawing</option>
+            <option value="mix">교반 · Mixing</option>
+            <option value="cure">수절 · Curing</option>
+          </select>
+        </div>
+        <div>
+          <label for="stageOrigin">원산지 · Origin</label>
+          <input id="stageOrigin" type="text" maxlength="40" placeholder="러시아">
+        </div>
+        <div>
+          <label for="stageGrade">등급 · Grade</label>
+          <input id="stageGrade" type="text" maxlength="40" placeholder="S / KL / M…">
+        </div>
+        <div>
+          <label for="stageAmount">작업량 · Amount (box/kg)</label>
+          <input id="stageAmount" type="number" step="0.01" min="0" required>
+        </div>
+        <div id="mixDateWrap" style="display:none;">
+          <label for="stageMixDate">교반일자 · Mix date</label>
+          <input id="stageMixDate" type="date">
+        </div>
+        <div>
+          <label for="stageWorker">작업자 · Worker</label>
+          <input id="stageWorker" type="text" maxlength="60" placeholder="Staff name">
+        </div>
+        <div>
+          <label for="stageWorkTime">작업시간 · Work time</label>
+          <input id="stageWorkTime" type="text" maxlength="40" placeholder="e.g. 09:00–11:30">
+        </div>
+        <div>
+          <label for="stageDate">작성일자 · Date</label>
+          <input id="stageDate" type="date" required>
+        </div>
+        <div>
+          <label for="stageCheckedBy">검토자 · Checked by (manager)</label>
+          <input id="stageCheckedBy" type="text" maxlength="60" placeholder="Manager name">
+        </div>
+        <div>
+          <button type="submit" id="stageSubmitBtn">Add entry</button>
+        </div>
+      </form>
+    </div>
+
+    <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <span>작업 이력 · Work history</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button id="restoreBackupBtn" class="secondary" type="button">↺ Restore last backup</button>
+        <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+        <button id="deleteAllBtn" class="secondary" type="button">Delete all history</button>
+      </div>
+    </h2>
+
+    <h3 style="font-size:1.05rem;margin-bottom:10px;">해동 이력 · Thawing history</h3>
+    <div class="search-row">
+      <input type="text" id="thawSearch" placeholder="🔍 Search origin or grade…" maxlength="60">
+    </div>
+    <div class="tbl-scroll" style="margin-bottom:36px;">
+      <table>
+        <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th><th></th></tr></thead>
+        <tbody id="thawBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <h3 style="font-size:1.05rem;margin-bottom:10px;">교반 이력 · Mixing history</h3>
+    <div class="search-row">
+      <input type="text" id="mixSearch" placeholder="🔍 Search origin or grade…" maxlength="60">
+    </div>
+    <div class="tbl-scroll" style="margin-bottom:36px;">
+      <table>
+        <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th><th></th></tr></thead>
+        <tbody id="mixBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <h3 style="font-size:1.05rem;margin-bottom:10px;">수절 이력 · Curing history</h3>
+    <div class="search-row">
+      <input type="text" id="cureSearch" placeholder="🔍 Search origin or grade…" maxlength="60">
+    </div>
+    <div class="tbl-scroll" style="margin-bottom:36px;">
+      <table>
+        <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>교반일자 · Mix date</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th><th></th></tr></thead>
+        <tbody id="cureBody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- ============ Roe stock status ============ -->
+    <h2 class="section-title">명란 재고현황 · Roe stock status</h2>
+    <div class="two-col">
+      <div>
+        <h3 style="font-size:1.05rem;margin-bottom:12px;">냉동창고 · Frozen warehouse</h3>
+        <div class="card" style="margin-bottom:20px;">
+          <form class="inline" id="frozenForm">
+            <div>
+              <label for="frozenOrigin">원산지 · Origin</label>
+              <input id="frozenOrigin" type="text" maxlength="40" placeholder="러시아">
+            </div>
+            <div>
+              <label for="frozenGrade">등급 · Grade</label>
+              <input id="frozenGrade" type="text" maxlength="40" placeholder="KIREMO">
+            </div>
+            <div>
+              <label for="frozenQty">재고량 · Qty</label>
+              <input id="frozenQty" type="number" step="0.01" required>
+            </div>
+            <div><button type="submit">Add / Update</button></div>
+          </form>
+        </div>
+        <div class="search-row">
+          <input type="text" id="frozenSearch" placeholder="🔍 Search…" maxlength="60">
+        </div>
+        <div class="tbl-scroll" style="max-height:360px;">
+          <table>
+            <thead><tr><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">재고량 · Qty</th><th></th></tr></thead>
+            <tbody id="frozenBody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:1.05rem;margin-bottom:12px;">냉장창고 · Refrigerated warehouse</h3>
+        <div class="card" style="margin-bottom:20px;">
+          <form class="inline" id="fridgeForm">
+            <div>
+              <label for="fridgeOrigin">원산지 · Origin</label>
+              <input id="fridgeOrigin" type="text" maxlength="40" placeholder="러시아">
+            </div>
+            <div>
+              <label for="fridgeGrade">등급 · Grade</label>
+              <input id="fridgeGrade" type="text" maxlength="40" placeholder="S">
+            </div>
+            <div>
+              <label for="fridgeMixDate">교반일자 · Mix date</label>
+              <input id="fridgeMixDate" type="date">
+            </div>
+            <div>
+              <label for="fridgeQty">재고량 · Qty</label>
+              <input id="fridgeQty" type="number" step="0.01" required>
+            </div>
+            <div><button type="submit">Add / Update</button></div>
+          </form>
+        </div>
+        <div class="search-row">
+          <input type="text" id="fridgeSearch" placeholder="🔍 Search…" maxlength="60">
+        </div>
+        <div class="tbl-scroll" style="max-height:360px;">
+          <table>
+            <thead><tr><th>원산지 · Origin</th><th>등급 · Grade</th><th>교반일자 · Mix date</th><th class="num">재고량 · Qty</th><th></th></tr></thead>
+            <tbody id="fridgeBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Auxiliary materials ============ -->
+    <h2 class="section-title" style="margin-top:44px;">부재료 재고 현황 · Auxiliary materials</h2>
+
+    <h3 style="font-size:1.05rem;margin-bottom:12px;">품목 관리 · Manage items</h3>
+    <div class="card" style="margin-bottom:20px;">
+      <form class="inline" id="materialForm">
+        <div>
+          <label for="materialName">품목명 · Item name</label>
+          <input id="materialName" type="text" maxlength="60" placeholder="e.g. 혼다시">
+        </div>
+        <div><button type="submit">Add item</button></div>
+      </form>
+    </div>
+
+    <h3 style="font-size:1.05rem;margin-bottom:12px;">입출고 기록 · Log a material transaction</h3>
+    <div class="card" style="margin-bottom:20px;">
+      <form class="inline" id="materialLogForm">
+        <div>
+          <label for="materialLogItem">품목명 · Item</label>
+          <select id="materialLogItem" required></select>
+        </div>
+        <div>
+          <label for="materialLogType">구분 · Type</label>
+          <select id="materialLogType" required>
+            <option value="in">당일입고 · In (bought from supplier)</option>
+            <option value="used">사용량 · Used (production)</option>
+          </select>
+        </div>
+        <div>
+          <label for="materialLogQty">수량 · Quantity</label>
+          <input id="materialLogQty" type="number" step="0.01" min="0" required>
+        </div>
+        <div>
+          <label for="materialLogDate">일자 · Date</label>
+          <input id="materialLogDate" type="date" required>
+        </div>
+        <div>
+          <label for="materialLogBy">입력자 · Entered by</label>
+          <input id="materialLogBy" type="text" maxlength="60" placeholder="Staff name">
+        </div>
+        <div>
+          <label for="materialLogCheckedBy">검토자 · Checked by</label>
+          <input id="materialLogCheckedBy" type="text" maxlength="60" placeholder="Manager name">
+        </div>
+        <div><button type="submit">Log entry</button></div>
+      </form>
+    </div>
+
+    <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:8px;">
+      <span>재고 현황 · Current stock status</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <label for="matDate" style="margin-bottom:0;font-size:0.8rem;color:var(--ink-soft);">기준일 · As of</label>
+        <input type="date" id="matDate" style="width:auto;border-bottom:1px solid var(--ink);padding:6px 4px;">
+      </div>
+    </h2>
+    <div class="search-row">
+      <input type="text" id="materialSummarySearch" placeholder="🔍 Search item name…" maxlength="60">
+    </div>
+    <div class="tbl-scroll" style="margin-bottom:36px;">
+      <table>
+        <thead>
+          <tr><th>품목명 · Item</th><th class="num">전일재고 · Prev</th><th class="num">당일입고 · In</th><th class="num">사용량 · Used</th><th class="num">현재고 · Current</th><th>알림 · Notice</th></tr>
+        </thead>
+        <tbody id="materialsSummaryBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <h3 style="font-size:1.05rem;margin-bottom:10px;">입출고 이력 · Transaction history</h3>
+    <div class="search-row">
+      <input type="text" id="materialSearch" placeholder="🔍 Search item name…" maxlength="60">
+    </div>
+    <div class="tbl-scroll" style="margin-bottom:20px;">
+      <table>
+        <thead>
+          <tr><th>일자 · Date</th><th>품목명 · Item</th><th>구분 · Type</th><th class="num">수량 · Qty</th><th class="num">전일재고 · Prev</th><th class="num">현재고 · Current</th><th>입력자 · Entered by</th><th>검토자 · Checked by</th><th></th></tr>
+        </thead>
+        <tbody id="materialsBody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 WellmadeWellness</span>
+    <span>Sokcho, South Korea</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const statusEl = document.getElementById('status');
+
+  // ---------- Firebase ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdT2jqlbWGutlCDX8n2XVHKxLQnYiim-8",
+    authDomain: "wellmadewellness-589e8.firebaseapp.com",
+    projectId: "wellmadewellness-589e8",
+    storageBucket: "wellmadewellness-589e8.firebasestorage.app",
+    messagingSenderId: "571195991033",
+    appId: "1:571195991033:web:8427c140a9f6997b4f9328"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const firestoreDb = firebase.firestore();
+  const auth = firebase.auth();
+  const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('production');
+  const BACKUP_DOC = firestoreDb.collection('wellmadewellness').doc('production_backup');
+
+  const authGate = document.getElementById('authGate');
+  const logoutBtn = document.getElementById('logoutBtn');
+  auth.onAuthStateChanged((user) => {
+    if (!user) window.location.href = 'login.html?next=admin-production.html';
+    else authGate.classList.add('hidden');
+  });
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut().then(() => { window.location.href = 'login.html'; });
+  });
+
+  const DEFAULT_MATERIALS = ['혼다시', '천일염', '한주소금', '솔비톨', 'L-글루탐산나트륨', '아질산나트륨',
+    '소르브산칼륨', '글리신', '니코틴산아미드', 'DL-사과산나트륨', '젖산칼슘', '미림',
+    '트랜스글루타미나아제', '리보뉴클레오티드이나트륨', '아스코브산나트륨', '과일혼합추출물'];
+
+  let state = { stageLogs: [], frozenStock: [], fridgeStock: [], materials: [], materialLogs: [] };
+
+  function saveBackup(reason) {
+    BACKUP_DOC.set({ state: JSON.parse(JSON.stringify(state)), savedAt: Date.now(), reason: reason || '' })
+      .catch(() => {});
+  }
+  function saveState() {
+    STATE_DOC.set(state)
+      .then(() => { statusEl.textContent = 'Saved — synced live for everyone viewing this page.'; })
+      .catch((e) => { statusEl.textContent = 'Could not save: ' + (e && e.message ? e.message : 'error'); });
+  }
+
+  STATE_DOC.onSnapshot((doc) => {
+    if (doc.exists) {
+      state = doc.data();
+      if (!Array.isArray(state.stageLogs)) state.stageLogs = [];
+      if (!Array.isArray(state.frozenStock)) state.frozenStock = [];
+      if (!Array.isArray(state.fridgeStock)) state.fridgeStock = [];
+      if (!Array.isArray(state.materials)) state.materials = [];
+      if (!Array.isArray(state.materialLogs)) state.materialLogs = [];
+      // migrate old flat-table materials (had prevStock/todayIn/used/currentStock on the item itself) to the plain catalog shape
+      state.materials = state.materials.map(m => ({ id: m.id, name: m.name }));
+    } else {
+      state = {
+        stageLogs: [], frozenStock: [], fridgeStock: [],
+        materials: DEFAULT_MATERIALS.map((name, i) => ({ id: 'mat' + i, name })),
+        materialLogs: []
+      };
+      STATE_DOC.set(state);
+    }
+    renderAll();
+  }, (e) => {
+    statusEl.textContent = 'Could not connect to shared storage: ' + (e && e.message ? e.message : 'error');
+  });
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+  }
+  const STAGE_LABEL = { thaw: '해동 · Thawing', mix: '교반 · Mixing', cure: '수절 · Curing' };
+
+  // ---------- Stage work log ----------
+  const stageForm = document.getElementById('stageForm');
+  const stageSelect = document.getElementById('stageSelect');
+  const stageOrigin = document.getElementById('stageOrigin');
+  const stageGrade = document.getElementById('stageGrade');
+  const stageAmount = document.getElementById('stageAmount');
+  const mixDateWrap = document.getElementById('mixDateWrap');
+  const stageMixDate = document.getElementById('stageMixDate');
+  const stageWorker = document.getElementById('stageWorker');
+  const stageWorkTime = document.getElementById('stageWorkTime');
+  const stageDate = document.getElementById('stageDate');
+  const stageCheckedBy = document.getElementById('stageCheckedBy');
+  const deleteAllBtn = document.getElementById('deleteAllBtn');
+  const restoreBackupBtn = document.getElementById('restoreBackupBtn');
+  const exportBtn = document.getElementById('exportBtn');
+
+  const STAGE_TABLES = {
+    thaw: { body: document.getElementById('thawBody'), search: document.getElementById('thawSearch'), cols: 8 },
+    mix: { body: document.getElementById('mixBody'), search: document.getElementById('mixSearch'), cols: 8 },
+    cure: { body: document.getElementById('cureBody'), search: document.getElementById('cureSearch'), cols: 9 }
+  };
+
+  stageDate.value = new Date().toISOString().slice(0, 10);
+
+  // ---------- Daily dashboard ----------
+  const dashDate = document.getElementById('dashDate');
+  const dashCards = document.getElementById('dashCards');
+  const dashBody = document.getElementById('dashBody');
+  dashDate.value = new Date().toISOString().slice(0, 10);
+
+  function renderDashboard() {
+    const day = dashDate.value;
+    const todays = state.stageLogs.filter(s => s.date === day);
+
+    const totals = { thaw: 0, mix: 0, cure: 0 };
+    const counts = { thaw: 0, mix: 0, cure: 0 };
+    todays.forEach(s => {
+      if (totals[s.stage] !== undefined) {
+        totals[s.stage] += Number(s.amount) || 0;
+        counts[s.stage] += 1;
+      }
+    });
+
+    dashCards.innerHTML = ['thaw', 'mix', 'cure'].map(stage => `
+      <div class="stat-card">
+        <div class="pname">${escapeHtml(STAGE_LABEL[stage])}</div>
+        <div class="stat-num">${totals[stage].toLocaleString()}</div>
+        <div class="stat-sub">${counts[stage]} entr${counts[stage] === 1 ? 'y' : 'ies'} logged</div>
+      </div>
+    `).join('');
+
+    if (todays.length === 0) {
+      dashBody.innerHTML = '<tr><td colspan="8" class="empty">No work logged for this date yet.</td></tr>';
+      return;
+    }
+    const sorted = todays.slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    dashBody.innerHTML = sorted.map(s => `
+      <tr>
+        <td><span class="pill ${s.stage}">${escapeHtml(STAGE_LABEL[s.stage] || s.stage)}</span></td>
+        <td>${escapeHtml(s.origin || '')}</td>
+        <td>${escapeHtml(s.grade || '')}</td>
+        <td class="num">${s.amount || 0}</td>
+        <td>${escapeHtml(s.mixDate || '')}</td>
+        <td>${escapeHtml(s.worker || '')}</td>
+        <td>${escapeHtml(s.checkedBy || '')}</td>
+        <td>${escapeHtml(s.workTime || '')}</td>
+      </tr>
+    `).join('');
+  }
+
+  dashDate.addEventListener('change', renderDashboard);
+
+  function updateMixDateVisibility() {
+    mixDateWrap.style.display = stageSelect.value === 'cure' ? '' : 'none';
+  }
+  stageSelect.addEventListener('change', updateMixDateVisibility);
+  updateMixDateVisibility();
+
+  let editingStageId = null;
+
+  function renderStageTable(stage) {
+    const { body, search, cols } = STAGE_TABLES[stage];
+    const rows = state.stageLogs.filter(s => s.stage === stage);
+    if (rows.length === 0) {
+      body.innerHTML = `<tr><td colspan="${cols}" class="empty">No entries logged yet.</td></tr>`;
+      return;
+    }
+    const query = (search.value || '').trim().toLowerCase();
+    const filtered = query
+      ? rows.filter(s => (s.origin || '').toLowerCase().includes(query) || (s.grade || '').toLowerCase().includes(query) || s.id === editingStageId)
+      : rows;
+    if (filtered.length === 0) {
+      body.innerHTML = `<tr><td colspan="${cols}" class="empty">No entries match "${escapeHtml(search.value)}".</td></tr>`;
+      return;
+    }
+    const sorted = filtered.slice().sort((a, b) => {
+      if (a.date !== b.date) return (a.date || '') < (b.date || '') ? 1 : -1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+    body.innerHTML = sorted.map(s => {
+      const mixDateCell = stage === 'cure'
+        ? (s.id === editingStageId
+            ? `<td><input type="date" data-ef="mixDate" value="${escapeHtml(s.mixDate || '')}" style="width:120px;"></td>`
+            : `<td>${escapeHtml(s.mixDate || '')}</td>`)
+        : '';
+      if (s.id === editingStageId) {
+        return `
+        <tr data-row="${escapeHtml(s.id)}">
+          <td><input type="date" data-ef="date" value="${escapeHtml(s.date || '')}" style="width:120px;"></td>
+          <td><input type="text" data-ef="origin" value="${escapeHtml(s.origin || '')}" style="width:90px;"></td>
+          <td><input type="text" data-ef="grade" value="${escapeHtml(s.grade || '')}" style="width:80px;"></td>
+          <td><input type="number" step="0.01" data-ef="amount" value="${s.amount || 0}" style="width:80px;"></td>
+          ${mixDateCell}
+          <td><input type="text" data-ef="worker" value="${escapeHtml(s.worker || '')}" style="width:90px;"></td>
+          <td><input type="text" data-ef="checkedBy" value="${escapeHtml(s.checkedBy || '')}" style="width:90px;"></td>
+          <td><input type="text" data-ef="workTime" value="${escapeHtml(s.workTime || '')}" style="width:100px;"></td>
+          <td style="white-space:nowrap;">
+            <button data-save="${escapeHtml(s.id)}" style="padding:6px 12px;font-size:0.78rem;">Save</button>
+            <button class="secondary" data-cancel style="padding:5px 10px;font-size:0.72rem;">Cancel</button>
+          </td>
+        </tr>`;
+      }
+      return `
+      <tr>
+        <td>${escapeHtml(s.date || '')}</td>
+        <td>${escapeHtml(s.origin || '')}</td>
+        <td>${escapeHtml(s.grade || '')}</td>
+        <td class="num">${s.amount || 0}</td>
+        ${mixDateCell}
+        <td>${escapeHtml(s.worker || '')}</td>
+        <td>${escapeHtml(s.checkedBy || '')}</td>
+        <td>${escapeHtml(s.workTime || '')}</td>
+        <td style="white-space:nowrap;">
+          <button class="secondary" data-edit="${escapeHtml(s.id)}">Edit</button>
+          <button class="secondary" data-del="${escapeHtml(s.id)}">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderStageLog() {
+    renderStageTable('thaw');
+    renderStageTable('mix');
+    renderStageTable('cure');
+  }
+
+  stageForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const amount = parseFloat(stageAmount.value);
+    if (!amount || amount <= 0) { statusEl.textContent = 'Enter a valid amount.'; return; }
+    state.stageLogs.push({
+      id: 'sl' + Date.now(),
+      stage: stageSelect.value,
+      origin: stageOrigin.value.trim(),
+      grade: stageGrade.value.trim(),
+      amount,
+      mixDate: stageSelect.value === 'cure' ? stageMixDate.value : '',
+      worker: stageWorker.value.trim(),
+      workTime: stageWorkTime.value.trim(),
+      date: stageDate.value,
+      checkedBy: stageCheckedBy.value.trim(),
+      createdAt: Date.now()
+    });
+    stageOrigin.value = ''; stageGrade.value = ''; stageAmount.value = '';
+    stageWorker.value = ''; stageWorkTime.value = ''; stageMixDate.value = ''; stageCheckedBy.value = '';
+    saveState();
+    renderAll();
+  });
+
+  Object.keys(STAGE_TABLES).forEach(stage => {
+    const { body, search } = STAGE_TABLES[stage];
+    search.addEventListener('input', () => renderStageTable(stage));
+
+    body.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('[data-edit]');
+      if (editBtn) { editingStageId = editBtn.getAttribute('data-edit'); renderStageLog(); return; }
+      const cancelBtn = e.target.closest('[data-cancel]');
+      if (cancelBtn) { editingStageId = null; renderStageLog(); return; }
+      const delBtn = e.target.closest('[data-del]');
+      if (delBtn) {
+        const id = delBtn.getAttribute('data-del');
+        if (!window.confirm('Delete this entry? You can undo this with "Restore last backup" right after.')) return;
+        saveBackup('before deleting one work entry');
+        state.stageLogs = state.stageLogs.filter(s => s.id !== id);
+        saveState(); renderAll();
+        return;
+      }
+      const saveBtn = e.target.closest('[data-save]');
+      if (saveBtn) {
+        const id = saveBtn.getAttribute('data-save');
+        const row = saveBtn.closest('tr');
+        const s = state.stageLogs.find(s => s.id === id);
+        if (!s) return;
+        s.date = row.querySelector('[data-ef="date"]').value;
+        s.origin = row.querySelector('[data-ef="origin"]').value.trim();
+        s.grade = row.querySelector('[data-ef="grade"]').value.trim();
+        s.amount = parseFloat(row.querySelector('[data-ef="amount"]').value) || 0;
+        const mixDateInput = row.querySelector('[data-ef="mixDate"]');
+        if (mixDateInput) s.mixDate = mixDateInput.value;
+        s.worker = row.querySelector('[data-ef="worker"]').value.trim();
+        s.checkedBy = row.querySelector('[data-ef="checkedBy"]').value.trim();
+        s.workTime = row.querySelector('[data-ef="workTime"]').value.trim();
+        editingStageId = null;
+        saveState(); renderAll();
+        return;
+      }
+    });
+  });
+
+  deleteAllBtn.addEventListener('click', () => {
+    if (state.stageLogs.length === 0) return;
+    if (!window.confirm(`Delete all ${state.stageLogs.length} work entries? Stock tables will stay. You can undo this with "Restore last backup" right after.`)) return;
+    saveBackup(`before deleting all ${state.stageLogs.length} work entries`);
+    state.stageLogs = [];
+    saveState(); renderAll();
+  });
+
+  restoreBackupBtn.addEventListener('click', () => {
+    restoreBackupBtn.disabled = true;
+    BACKUP_DOC.get().then((doc) => {
+      restoreBackupBtn.disabled = false;
+      if (!doc.exists) { window.alert('No backup found yet — a backup is saved automatically right before you delete something.'); return; }
+      const backup = doc.data();
+      const when = backup.savedAt ? new Date(backup.savedAt).toLocaleString() : 'an earlier point';
+      const reason = backup.reason ? ` (${backup.reason})` : '';
+      if (!window.confirm(`Restore data from ${when}${reason}?\n\nThis will overwrite everything on this page. Your current data will itself be backed up first.`)) return;
+      saveBackup('before restoring a backup (undo the restore)');
+      state = backup.state || state;
+      if (!Array.isArray(state.stageLogs)) state.stageLogs = [];
+      if (!Array.isArray(state.frozenStock)) state.frozenStock = [];
+      if (!Array.isArray(state.fridgeStock)) state.fridgeStock = [];
+      if (!Array.isArray(state.materials)) state.materials = [];
+      if (!Array.isArray(state.materialLogs)) state.materialLogs = [];
+      saveState(); renderAll();
+    }).catch((e) => {
+      restoreBackupBtn.disabled = false;
+      window.alert('Could not load backup: ' + (e && e.message ? e.message : 'error'));
+    });
+  });
+
+  // ---------- Frozen stock ----------
+  const frozenForm = document.getElementById('frozenForm');
+  const frozenOrigin = document.getElementById('frozenOrigin');
+  const frozenGrade = document.getElementById('frozenGrade');
+  const frozenQty = document.getElementById('frozenQty');
+  const frozenBody = document.getElementById('frozenBody');
+  const frozenSearch = document.getElementById('frozenSearch');
+  let editingFrozenId = null;
+
+  function renderFrozen() {
+    if (state.frozenStock.length === 0) {
+      frozenBody.innerHTML = '<tr><td colspan="4" class="empty">No stock rows yet.</td></tr>';
+      return;
+    }
+    const query = (frozenSearch.value || '').trim().toLowerCase();
+    const filtered = query
+      ? state.frozenStock.filter(r => r.origin.toLowerCase().includes(query) || r.grade.toLowerCase().includes(query) || r.id === editingFrozenId)
+      : state.frozenStock;
+    if (filtered.length === 0) {
+      frozenBody.innerHTML = `<tr><td colspan="4" class="empty">No rows match "${escapeHtml(frozenSearch.value)}".</td></tr>`;
+      return;
+    }
+    frozenBody.innerHTML = filtered.map(r => {
+      if (r.id === editingFrozenId) {
+        return `
+        <tr>
+          <td><input type="text" data-ff="origin" value="${escapeHtml(r.origin)}" style="width:90px;"></td>
+          <td><input type="text" data-ff="grade" value="${escapeHtml(r.grade)}" style="width:90px;"></td>
+          <td><input type="number" step="0.01" data-ff="qty" value="${r.qty}" style="width:80px;"></td>
+          <td style="white-space:nowrap;">
+            <button data-save-frozen="${escapeHtml(r.id)}" style="padding:6px 12px;font-size:0.78rem;">Save</button>
+            <button class="secondary" data-cancel-frozen style="padding:5px 10px;font-size:0.72rem;">Cancel</button>
+          </td>
+        </tr>`;
+      }
+      return `
+      <tr>
+        <td>${escapeHtml(r.origin)}</td>
+        <td>${escapeHtml(r.grade)}</td>
+        <td class="num">${r.qty}</td>
+        <td style="white-space:nowrap;">
+          <button class="secondary small" data-edit-frozen="${escapeHtml(r.id)}">Edit</button>
+          <button class="secondary small" data-del-frozen="${escapeHtml(r.id)}">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  frozenForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const origin = frozenOrigin.value.trim(), grade = frozenGrade.value.trim();
+    const qty = parseFloat(frozenQty.value);
+    if (!origin || !grade || isNaN(qty)) return;
+    const existing = state.frozenStock.find(r => r.origin === origin && r.grade === grade);
+    if (existing) existing.qty = qty;
+    else state.frozenStock.push({ id: 'fz' + Date.now(), origin, grade, qty });
+    frozenOrigin.value = ''; frozenGrade.value = ''; frozenQty.value = '';
+    saveState(); renderAll();
+  });
+
+  frozenSearch.addEventListener('input', renderFrozen);
+
+  frozenBody.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-edit-frozen]');
+    if (editBtn) { editingFrozenId = editBtn.getAttribute('data-edit-frozen'); renderFrozen(); return; }
+    const cancelBtn = e.target.closest('[data-cancel-frozen]');
+    if (cancelBtn) { editingFrozenId = null; renderFrozen(); return; }
+    const saveBtn = e.target.closest('[data-save-frozen]');
+    if (saveBtn) {
+      const id = saveBtn.getAttribute('data-save-frozen');
+      const row = saveBtn.closest('tr');
+      const r = state.frozenStock.find(r => r.id === id);
+      if (!r) return;
+      r.origin = row.querySelector('[data-ff="origin"]').value.trim();
+      r.grade = row.querySelector('[data-ff="grade"]').value.trim();
+      r.qty = parseFloat(row.querySelector('[data-ff="qty"]').value) || 0;
+      editingFrozenId = null;
+      saveState(); renderAll();
+      return;
+    }
+    const btn = e.target.closest('[data-del-frozen]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-del-frozen');
+    if (!window.confirm('Delete this row?')) return;
+    saveBackup('before deleting a frozen-warehouse row');
+    state.frozenStock = state.frozenStock.filter(r => r.id !== id);
+    saveState(); renderAll();
+  });
+
+  // ---------- Fridge stock ----------
+  const fridgeForm = document.getElementById('fridgeForm');
+  const fridgeOrigin = document.getElementById('fridgeOrigin');
+  const fridgeGrade = document.getElementById('fridgeGrade');
+  const fridgeMixDate = document.getElementById('fridgeMixDate');
+  const fridgeQty = document.getElementById('fridgeQty');
+  const fridgeBody = document.getElementById('fridgeBody');
+  const fridgeSearch = document.getElementById('fridgeSearch');
+  let editingFridgeId = null;
+
+  function renderFridge() {
+    if (state.fridgeStock.length === 0) {
+      fridgeBody.innerHTML = '<tr><td colspan="5" class="empty">No stock rows yet.</td></tr>';
+      return;
+    }
+    const query = (fridgeSearch.value || '').trim().toLowerCase();
+    const filtered = query
+      ? state.fridgeStock.filter(r => r.origin.toLowerCase().includes(query) || r.grade.toLowerCase().includes(query) || r.id === editingFridgeId)
+      : state.fridgeStock;
+    if (filtered.length === 0) {
+      fridgeBody.innerHTML = `<tr><td colspan="5" class="empty">No rows match "${escapeHtml(fridgeSearch.value)}".</td></tr>`;
+      return;
+    }
+    fridgeBody.innerHTML = filtered.map(r => {
+      if (r.id === editingFridgeId) {
+        return `
+        <tr>
+          <td><input type="text" data-fr="origin" value="${escapeHtml(r.origin)}" style="width:90px;"></td>
+          <td><input type="text" data-fr="grade" value="${escapeHtml(r.grade)}" style="width:80px;"></td>
+          <td><input type="date" data-fr="mixDate" value="${escapeHtml(r.mixDate || '')}" style="width:120px;"></td>
+          <td><input type="number" step="0.01" data-fr="qty" value="${r.qty}" style="width:80px;"></td>
+          <td style="white-space:nowrap;">
+            <button data-save-fridge="${escapeHtml(r.id)}" style="padding:6px 12px;font-size:0.78rem;">Save</button>
+            <button class="secondary" data-cancel-fridge style="padding:5px 10px;font-size:0.72rem;">Cancel</button>
+          </td>
+        </tr>`;
+      }
+      return `
+      <tr>
+        <td>${escapeHtml(r.origin)}</td>
+        <td>${escapeHtml(r.grade)}</td>
+        <td>${escapeHtml(r.mixDate || '')}</td>
+        <td class="num">${r.qty}</td>
+        <td style="white-space:nowrap;">
+          <button class="secondary small" data-edit-fridge="${escapeHtml(r.id)}">Edit</button>
+          <button class="secondary small" data-del-fridge="${escapeHtml(r.id)}">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  fridgeForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const origin = fridgeOrigin.value.trim(), grade = fridgeGrade.value.trim(), mixDate = fridgeMixDate.value;
+    const qty = parseFloat(fridgeQty.value);
+    if (!origin || !grade || isNaN(qty)) return;
+    const existing = state.fridgeStock.find(r => r.origin === origin && r.grade === grade && r.mixDate === mixDate);
+    if (existing) existing.qty = qty;
+    else state.fridgeStock.push({ id: 'fr' + Date.now(), origin, grade, mixDate, qty });
+    fridgeOrigin.value = ''; fridgeGrade.value = ''; fridgeMixDate.value = ''; fridgeQty.value = '';
+    saveState(); renderAll();
+  });
+
+  fridgeSearch.addEventListener('input', renderFridge);
+
+  fridgeBody.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-edit-fridge]');
+    if (editBtn) { editingFridgeId = editBtn.getAttribute('data-edit-fridge'); renderFridge(); return; }
+    const cancelBtn = e.target.closest('[data-cancel-fridge]');
+    if (cancelBtn) { editingFridgeId = null; renderFridge(); return; }
+    const saveBtn = e.target.closest('[data-save-fridge]');
+    if (saveBtn) {
+      const id = saveBtn.getAttribute('data-save-fridge');
+      const row = saveBtn.closest('tr');
+      const r = state.fridgeStock.find(r => r.id === id);
+      if (!r) return;
+      r.origin = row.querySelector('[data-fr="origin"]').value.trim();
+      r.grade = row.querySelector('[data-fr="grade"]').value.trim();
+      r.mixDate = row.querySelector('[data-fr="mixDate"]').value;
+      r.qty = parseFloat(row.querySelector('[data-fr="qty"]').value) || 0;
+      editingFridgeId = null;
+      saveState(); renderAll();
+      return;
+    }
+    const btn = e.target.closest('[data-del-fridge]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-del-fridge');
+    if (!window.confirm('Delete this row?')) return;
+    saveBackup('before deleting a fridge-warehouse row');
+    state.fridgeStock = state.fridgeStock.filter(r => r.id !== id);
+    saveState(); renderAll();
+  });
+
+  // ---------- Auxiliary materials ----------
+  const materialForm = document.getElementById('materialForm');
+  const materialName = document.getElementById('materialName');
+  const materialsBody = document.getElementById('materialsBody');
+  const materialSearch = document.getElementById('materialSearch');
+  const materialLogForm = document.getElementById('materialLogForm');
+  const materialLogItem = document.getElementById('materialLogItem');
+  const materialLogType = document.getElementById('materialLogType');
+  const materialLogQty = document.getElementById('materialLogQty');
+  const materialLogDate = document.getElementById('materialLogDate');
+  const materialLogBy = document.getElementById('materialLogBy');
+  const materialLogCheckedBy = document.getElementById('materialLogCheckedBy');
+  materialLogDate.value = new Date().toISOString().slice(0, 10);
+
+  const materialsSummaryBody = document.getElementById('materialsSummaryBody');
+  const materialSummarySearch = document.getElementById('materialSummarySearch');
+  const matDate = document.getElementById('matDate');
+  matDate.value = new Date().toISOString().slice(0, 10);
+
+  let editingMaterialLogId = null;
+
+  // Fixed catalog order, matching the paper 부재료 재고 현황 form exactly — the summary
+  // table always displays items in this order (any item not on this list is appended
+  // after, in the order it was added).
+  const MATERIAL_ORDER = DEFAULT_MATERIALS;
+
+  // Reorder low: alert when current stock falls below this number. Items not listed here
+  // get no numeric warning.
+  const LOW_STOCK_THRESHOLDS = {
+    '혼다시': 10, '천일염': 5, '한주소금': 40, 'L-글루탐산나트륨': 30, '아질산나트륨': 5,
+    '소르브산칼륨': 5, '글리신': 5, '니코틴산아미드': 5, 'DL-사과산나트륨': 5, '젖산칼슘': 5,
+    '미림': 10, '트랜스글루타미나아제': 5, '리보뉴클레오티드이나트륨': 10, '아스코브산나트륨': 5, '과일혼합추출물': 5
+  };
+  // Items that get a schedule-based reminder instead of (or alongside) a stock threshold.
+  const SCHEDULE_REMINDERS = { '솔비톨': '매주 월요일 구매 · Buy every Monday' };
+
+  function orderedMaterials() {
+    return state.materials.slice().sort((a, b) => {
+      let ia = MATERIAL_ORDER.indexOf(a.name); if (ia === -1) ia = Infinity;
+      let ib = MATERIAL_ORDER.indexOf(b.name); if (ib === -1) ib = Infinity;
+      return ia - ib;
+    });
+  }
+
+  function populateMaterialItemSelect() {
+    const prevValue = materialLogItem.value;
+    materialLogItem.innerHTML = orderedMaterials().map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}</option>`).join('');
+    if (state.materials.some(m => m.id === prevValue)) materialLogItem.value = prevValue;
+  }
+
+  // Per-item stock as of a given date: 전일재고 Prev is the running balance from every
+  // transaction dated before asOfDate; 당일입고 In / 사용량 Used are that date's own
+  // transactions; 현재고 Current = Prev + In − Used. Computed fresh from the transaction
+  // log every render, never typed by hand.
+  function computeMaterialSummary(asOfDate) {
+    const rows = {};
+    state.materials.forEach(m => { rows[m.id] = { id: m.id, name: m.name, prevStock: 0, todayIn: 0, used: 0, currentStock: 0 }; });
+    const byMat = {};
+    state.materialLogs.forEach(l => { (byMat[l.materialId] = byMat[l.materialId] || []).push(l); });
+    Object.keys(byMat).forEach(matId => {
+      if (!rows[matId]) return; // logged item no longer in the catalog
+      const logs = byMat[matId];
+      let balance = 0, todayIn = 0, todayUsed = 0;
+      logs.forEach(l => {
+        const qty = Number(l.quantity) || 0;
+        if (l.date < asOfDate) balance += l.type === 'in' ? qty : -qty;
+        else if (l.date === asOfDate) { if (l.type === 'in') todayIn += qty; else todayUsed += qty; }
+      });
+      rows[matId].prevStock = balance;
+      rows[matId].todayIn = todayIn;
+      rows[matId].used = todayUsed;
+      rows[matId].currentStock = balance + todayIn - todayUsed;
+    });
+    return rows;
+  }
+
+  function renderMaterialSummary() {
+    const asOf = matDate.value || new Date().toISOString().slice(0, 10);
+    const summary = computeMaterialSummary(asOf);
+    const ordered = orderedMaterials();
+    if (ordered.length === 0) {
+      materialsSummaryBody.innerHTML = '<tr><td colspan="6" class="empty">No items yet.</td></tr>';
+      return;
+    }
+    const query = (materialSummarySearch.value || '').trim().toLowerCase();
+    const filtered = query ? ordered.filter(m => m.name.toLowerCase().includes(query)) : ordered;
+    if (filtered.length === 0) {
+      materialsSummaryBody.innerHTML = `<tr><td colspan="6" class="empty">No items match "${escapeHtml(materialSummarySearch.value)}".</td></tr>`;
+      return;
+    }
+    materialsSummaryBody.innerHTML = filtered.map(m => {
+      const r = summary[m.id] || { prevStock: 0, todayIn: 0, used: 0, currentStock: 0 };
+      const reminder = SCHEDULE_REMINDERS[m.name];
+      const threshold = LOW_STOCK_THRESHOLDS[m.name];
+      const isLow = threshold !== undefined && r.currentStock < threshold;
+      let notice = '';
+      if (isLow) notice += `<span class="pill warn">⚠ 재고 부족 · Low — order from supplier</span>`;
+      if (reminder) notice += `${isLow ? ' ' : ''}<span class="pill reminder">🗓 ${escapeHtml(reminder)}</span>`;
+      return `
+      <tr${isLow ? ' class="low-stock"' : ''}>
+        <td>${escapeHtml(m.name)}</td>
+        <td class="num">${r.prevStock.toLocaleString()}</td>
+        <td class="num">${r.todayIn.toLocaleString()}</td>
+        <td class="num">${r.used.toLocaleString()}</td>
+        <td class="num">${r.currentStock.toLocaleString()}</td>
+        <td>${notice}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  matDate.addEventListener('change', renderMaterialSummary);
+  materialSummarySearch.addEventListener('input', renderMaterialSummary);
+
+  // Walks every logged transaction in chronological order and stamps each one with the
+  // running stock balance before (prev) and after (current) it — same idea as a bank
+  // statement running balance, computed fresh every render rather than typed by hand.
+  function computeMaterialLedger() {
+    const sorted = state.materialLogs.slice().sort((a, b) => {
+      if (a.date !== b.date) return (a.date || '') < (b.date || '') ? -1 : 1;
+      return (a.createdAt || 0) - (b.createdAt || 0);
+    });
+    const running = {};
+    sorted.forEach(log => {
+      const prev = running[log.materialId] || 0;
+      const inQty = log.type === 'in' ? (Number(log.quantity) || 0) : 0;
+      const usedQty = log.type === 'used' ? (Number(log.quantity) || 0) : 0;
+      const current = prev + inQty - usedQty;
+      running[log.materialId] = current;
+      log._prev = prev;
+      log._current = current;
+    });
+    return sorted;
+  }
+
+  function materialName_(id) {
+    const m = state.materials.find(m => m.id === id);
+    return m ? m.name : '(deleted item)';
+  }
+
+  function renderMaterials() {
+    populateMaterialItemSelect();
+    const ledger = computeMaterialLedger();
+    if (ledger.length === 0) {
+      materialsBody.innerHTML = '<tr><td colspan="9" class="empty">No transactions logged yet.</td></tr>';
+      return;
+    }
+    const query = (materialSearch.value || '').trim().toLowerCase();
+    const filtered = query
+      ? ledger.filter(l => materialName_(l.materialId).toLowerCase().includes(query) || l.id === editingMaterialLogId)
+      : ledger;
+    if (filtered.length === 0) {
+      materialsBody.innerHTML = `<tr><td colspan="9" class="empty">No transactions match "${escapeHtml(materialSearch.value)}".</td></tr>`;
+      return;
+    }
+    const displayOrder = filtered.slice().reverse(); // newest first
+    materialsBody.innerHTML = displayOrder.map(l => {
+      if (l.id === editingMaterialLogId) {
+        return `
+        <tr>
+          <td><input type="date" data-ml="date" value="${escapeHtml(l.date || '')}" style="width:120px;"></td>
+          <td>
+            <select data-ml="materialId" style="width:120px;">
+              ${orderedMaterials().map(m => `<option value="${escapeHtml(m.id)}" ${m.id === l.materialId ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
+            </select>
+          </td>
+          <td>
+            <select data-ml="type" style="width:100px;">
+              <option value="in" ${l.type === 'in' ? 'selected' : ''}>In</option>
+              <option value="used" ${l.type === 'used' ? 'selected' : ''}>Used</option>
+            </select>
+          </td>
+          <td><input type="number" step="0.01" min="0" data-ml="quantity" value="${l.quantity || 0}" style="width:80px;"></td>
+          <td class="num">${l._prev.toLocaleString()}</td>
+          <td class="num">${l._current.toLocaleString()}</td>
+          <td><input type="text" data-ml="handledBy" value="${escapeHtml(l.handledBy || '')}" style="width:90px;"></td>
+          <td><input type="text" data-ml="checkedBy" value="${escapeHtml(l.checkedBy || '')}" style="width:90px;"></td>
+          <td style="white-space:nowrap;">
+            <button data-save-mat="${escapeHtml(l.id)}" style="padding:6px 12px;font-size:0.78rem;">Save</button>
+            <button class="secondary" data-cancel-mat style="padding:5px 10px;font-size:0.72rem;">Cancel</button>
+          </td>
+        </tr>`;
+      }
+      return `
+      <tr>
+        <td>${escapeHtml(l.date || '')}</td>
+        <td>${escapeHtml(materialName_(l.materialId))}</td>
+        <td><span class="pill ${l.type}">${l.type === 'in' ? '당일입고 · In' : '사용량 · Used'}</span></td>
+        <td class="num">${(Number(l.quantity) || 0).toLocaleString()}</td>
+        <td class="num">${l._prev.toLocaleString()}</td>
+        <td class="num">${l._current.toLocaleString()}</td>
+        <td>${escapeHtml(l.handledBy || '')}</td>
+        <td>${escapeHtml(l.checkedBy || '')}</td>
+        <td style="white-space:nowrap;">
+          <button class="secondary small" data-edit-mat="${escapeHtml(l.id)}">Edit</button>
+          <button class="secondary small" data-del-mat="${escapeHtml(l.id)}">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  materialForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = materialName.value.trim();
+    if (!name) return;
+    state.materials.push({ id: 'mat' + Date.now(), name });
+    materialName.value = '';
+    saveState(); renderAll();
+  });
+
+  materialLogForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const materialId = materialLogItem.value;
+    const quantity = parseFloat(materialLogQty.value);
+    if (!materialId) { statusEl.textContent = 'Add an item first, then log a transaction against it.'; return; }
+    if (!quantity || quantity <= 0) { statusEl.textContent = 'Enter a valid quantity.'; return; }
+    state.materialLogs.push({
+      id: 'ml' + Date.now(),
+      materialId,
+      type: materialLogType.value,
+      quantity,
+      date: materialLogDate.value,
+      handledBy: materialLogBy.value.trim(),
+      checkedBy: materialLogCheckedBy.value.trim(),
+      createdAt: Date.now()
+    });
+    materialLogQty.value = ''; materialLogBy.value = ''; materialLogCheckedBy.value = '';
+    saveState(); renderAll();
+  });
+
+  materialSearch.addEventListener('input', renderMaterials);
+
+  materialsBody.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-edit-mat]');
+    if (editBtn) { editingMaterialLogId = editBtn.getAttribute('data-edit-mat'); renderMaterials(); return; }
+    const cancelBtn = e.target.closest('[data-cancel-mat]');
+    if (cancelBtn) { editingMaterialLogId = null; renderMaterials(); return; }
+    const saveBtn = e.target.closest('[data-save-mat]');
+    if (saveBtn) {
+      const id = saveBtn.getAttribute('data-save-mat');
+      const row = saveBtn.closest('tr');
+      const l = state.materialLogs.find(l => l.id === id);
+      if (!l) return;
+      l.date = row.querySelector('[data-ml="date"]').value;
+      l.materialId = row.querySelector('[data-ml="materialId"]').value;
+      l.type = row.querySelector('[data-ml="type"]').value;
+      l.quantity = parseFloat(row.querySelector('[data-ml="quantity"]').value) || 0;
+      l.handledBy = row.querySelector('[data-ml="handledBy"]').value.trim();
+      l.checkedBy = row.querySelector('[data-ml="checkedBy"]').value.trim();
+      editingMaterialLogId = null;
+      saveState(); renderAll();
+      return;
+    }
+    const btn = e.target.closest('[data-del-mat]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-del-mat');
+    if (!window.confirm('Delete this transaction? You can undo this with "Restore last backup" right after.')) return;
+    saveBackup('before deleting a material transaction');
+    state.materialLogs = state.materialLogs.filter(l => l.id !== id);
+    saveState(); renderAll();
+  });
+
+  function renderAll() {
+    renderDashboard();
+    renderStageLog();
+    renderFrozen();
+    renderFridge();
+    renderMaterials();
+    renderMaterialSummary();
+  }
+
+  // ---------- Export to Excel ----------
+  const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3327' } };
+  const HEADER_FONT = { color: { argb: 'FFFFFFFF' }, bold: true };
+  const THIN_BORDER = { style: 'thin', color: { argb: 'FFD5D8C9' } };
+  function styleHeaderRow(row) {
+    row.eachCell(cell => {
+      cell.fill = HEADER_FILL; cell.font = HEADER_FONT;
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+    });
+  }
+
+  exportBtn.addEventListener('click', async () => {
+    if (typeof ExcelJS === 'undefined') { statusEl.textContent = 'Excel library failed to load.'; return; }
+    exportBtn.disabled = true;
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'WellmadeWellness Production';
+      wb.created = new Date();
+
+      const workSheet = wb.addWorksheet('Work Log');
+      workSheet.columns = [
+        { header: '일자 · Date', key: 'date', width: 14 }, { header: '작업명 · Stage', key: 'stage', width: 14 },
+        { header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 },
+        { header: '작업량 · Amount', key: 'amount', width: 12 }, { header: '교반일자 · Mix date', key: 'mixDate', width: 14 },
+        { header: '작업자 · Worker', key: 'worker', width: 16 }, { header: '검토자 · Checked by', key: 'checkedBy', width: 16 },
+        { header: '작업시간 · Work time', key: 'workTime', width: 16 }
+      ];
+      styleHeaderRow(workSheet.getRow(1));
+      state.stageLogs.slice().sort((a, b) => (a.date || '').localeCompare(b.date || '')).forEach(s => {
+        const row = workSheet.addRow({ date: s.date, stage: STAGE_LABEL[s.stage] || s.stage, origin: s.origin, grade: s.grade, amount: s.amount, mixDate: s.mixDate, worker: s.worker, checkedBy: s.checkedBy, workTime: s.workTime });
+        row.eachCell(c => { c.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }; });
+      });
+
+      const frozenSheet = wb.addWorksheet('Frozen Warehouse');
+      frozenSheet.columns = [{ header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 }, { header: '재고량 · Qty', key: 'qty', width: 12 }];
+      styleHeaderRow(frozenSheet.getRow(1));
+      state.frozenStock.forEach(r => frozenSheet.addRow(r));
+
+      const fridgeSheet = wb.addWorksheet('Fridge Warehouse');
+      fridgeSheet.columns = [{ header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 }, { header: '교반일자 · Mix date', key: 'mixDate', width: 14 }, { header: '재고량 · Qty', key: 'qty', width: 12 }];
+      styleHeaderRow(fridgeSheet.getRow(1));
+      state.fridgeStock.forEach(r => fridgeSheet.addRow(r));
+
+      const matStatusSheet = wb.addWorksheet('Materials Status');
+      matStatusSheet.columns = [
+        { header: '품목명 · Item', key: 'name', width: 22 }, { header: '전일재고 · Prev stock', key: 'prevStock', width: 14 },
+        { header: '당일입고 · Today in', key: 'todayIn', width: 14 }, { header: '사용량 · Used', key: 'used', width: 12 },
+        { header: '현재고 · Current stock', key: 'currentStock', width: 16 }, { header: '알림 · Notice', key: 'notice', width: 26 }
+      ];
+      styleHeaderRow(matStatusSheet.getRow(1));
+      const matAsOf = matDate.value || new Date().toISOString().slice(0, 10);
+      const matSummary = computeMaterialSummary(matAsOf);
+      orderedMaterials().forEach(m => {
+        const r = matSummary[m.id] || { prevStock: 0, todayIn: 0, used: 0, currentStock: 0 };
+        const threshold = LOW_STOCK_THRESHOLDS[m.name];
+        const isLow = threshold !== undefined && r.currentStock < threshold;
+        const reminder = SCHEDULE_REMINDERS[m.name];
+        const notice = [isLow ? '재고 부족 · Low — order from supplier' : '', reminder ? '매주 월요일 구매 · Buy every Monday' : ''].filter(Boolean).join(' / ');
+        const row = matStatusSheet.addRow({ name: m.name, prevStock: r.prevStock, todayIn: r.todayIn, used: r.used, currentStock: r.currentStock, notice });
+        row.eachCell(c => { c.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }; });
+        if (isLow) row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF6E7E4' } }; });
+      });
+
+      const matSheet = wb.addWorksheet('Materials Log');
+      matSheet.columns = [
+        { header: '일자 · Date', key: 'date', width: 14 }, { header: '품목명 · Item', key: 'name', width: 22 },
+        { header: '구분 · Type', key: 'type', width: 14 }, { header: '수량 · Quantity', key: 'quantity', width: 12 },
+        { header: '전일재고 · Prev stock', key: 'prevStock', width: 14 }, { header: '현재고 · Current stock', key: 'currentStock', width: 16 },
+        { header: '입력자 · Entered by', key: 'handledBy', width: 16 }, { header: '검토자 · Checked by', key: 'checkedBy', width: 16 }
+      ];
+      styleHeaderRow(matSheet.getRow(1));
+      const matLedger = computeMaterialLedger();
+      matLedger.forEach(l => {
+        const row = matSheet.addRow({
+          date: l.date,
+          name: materialName_(l.materialId),
+          type: l.type === 'in' ? '당일입고 · In' : '사용량 · Used',
+          quantity: l.quantity,
+          prevStock: l._prev,
+          currentStock: l._current,
+          handledBy: l.handledBy,
+          checkedBy: l.checkedBy
+        });
+        row.eachCell(c => { c.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }; });
+      });
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `production-${dateStr}.xlsx`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      statusEl.textContent = 'Could not export: ' + (err && err.message ? err.message : 'error');
+    } finally {
+      exportBtn.disabled = false;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Production Log — WellmadeWellness</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pine: #1E3327; --pine-deep: #16261D; --ivory: #EEF0E5; --ivory-warm: #F5F6EF;
+    --ink: #23241F; --ink-soft: #55574C; --ochre: #C08A2E; --rule: #D5D8C9;
+    --green: #3E7A4C; --green-soft: #E6EFE4; --red: #B0453A; --red-soft: #F6E7E4;
+    --blue: #3E6A8A; --blue-soft: #E6EDF2;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; color: var(--ink); background: var(--ivory-warm); line-height: 1.6; }
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+  nav { position: sticky; top: 0; z-index: 50; background: var(--ivory-warm); border-bottom: 1px solid var(--rule); }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
+  .wordmark { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; }
+  .wordmark span { color: var(--ochre); }
+  .nav-links { display: flex; gap: 24px; font-size: 0.92rem; flex-wrap: wrap; align-items: center; }
+  .nav-links a { color: var(--ink-soft); transition: color 0.2s ease; }
+  .nav-links a:hover, .nav-links a.active { color: var(--pine); }
+  header.page-head { background: var(--pine); color: var(--ivory); padding: 56px 0 40px; }
+  header.page-head h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); }
+  header.page-head p { color: #C9D2C4; margin-top: 10px; max-width: 60ch; }
+  main { padding: 48px 0 100px; }
+  .section-title { font-size: 1.25rem; margin-bottom: 16px; }
+  .status { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  th, td { text-align: left; padding: 10px 9px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th { color: var(--ink-soft); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  tbody tr:hover { background: var(--ivory); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+  .pill.warn { background: var(--red-soft); color: var(--red); }
+  .pill.reminder { background: #F3E9D8; color: var(--ochre); }
+  tr.low-stock { background: var(--red-soft); }
+  .empty { color: var(--ink-soft); font-size: 0.88rem; padding: 14px 0; }
+  .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 480px; border: 1px solid var(--rule); border-radius: 4px; }
+  .tbl-scroll table { margin: 0; }
+  .tbl-scroll thead th { position: sticky; top: 0; background: var(--ivory-warm); z-index: 1; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
+  .search-row { display: flex; gap: 10px; margin-bottom: 16px; max-width: 340px; }
+  .search-row input {
+    width: 100%; border: none; border-bottom: 1px solid var(--ink); background: transparent;
+    padding: 8px 2px; font-family: inherit; font-size: 0.92rem; color: var(--ink); border-color: var(--ochre);
+  }
+  .search-row input:focus { outline: none; border-bottom: 2px solid var(--ochre); }
+  button {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 600;
+    background: var(--ochre); color: var(--pine-deep); padding: 11px 22px; border-radius: 100px; font-size: 0.88rem;
+  }
+  button.secondary { background: transparent; color: var(--ink-soft); border: 1px solid var(--rule); padding: 6px 14px; border-radius: 100px; font-size: 0.78rem; }
+  button:hover { filter: brightness(1.05); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  footer { background: var(--pine); color: #9FB09A; padding: 32px 0; font-size: 0.85rem; }
+  footer .wrap { display: flex; justify-content: space-between; }
+  @media (max-width: 720px) { .nav-links { display: none; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a href="index.html" class="wordmark">Wellmade<span>Wellness</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="inventory.html">Container(용기)</a>
+      <a href="brands.html">labelling(라벨)</a>
+      <a href="production.html" class="active">Production(생산)</a>
+      <a href="index.html#contact">Contact</a>
+      <a href="login.html">Staff login</a>
+    </div>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="wrap">
+    <h1>명란생산일지 <br>Production Log</h1>
+    <p>Live thawing, mixing, and curing history, plus current stock for both warehouses and auxiliary materials. View only; staff sign in to make changes.</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="status" id="status">Connecting to shared storage…</div>
+
+    <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <span>작업 이력 · Work history</span>
+      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+    </h2>
+
+    <h3 style="font-size:1.05rem;margin-bottom:10px;">해동 이력 · Thawing history</h3>
+    <div class="search-row"><input type="text" id="thawSearch" placeholder="🔍 Search origin or grade…" maxlength="60"></div>
+    <div class="tbl-scroll" style="margin-bottom:36px;">
+      <table>
+        <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th></tr></thead>
+        <tbody id="thawBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <h3 style="font-size:1.05rem;margin-bottom:10px;">교반 이력 · Mixing history</h3>
+    <div class="search-row"><input type="text" id="mixSearch" placeholder="🔍 Search origin or grade…" maxlength="60"></div>
+    <div class="tbl-scroll" style="margin-bottom:36px;">
+      <table>
+        <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th></tr></thead>
+        <tbody id="mixBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <h3 style="font-size:1.05rem;margin-bottom:10px;">수절 이력 · Curing history</h3>
+    <div class="search-row"><input type="text" id="cureSearch" placeholder="🔍 Search origin or grade…" maxlength="60"></div>
+    <div class="tbl-scroll" style="margin-bottom:36px;">
+      <table>
+        <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>교반일자 · Mix date</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th></tr></thead>
+        <tbody id="cureBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <h2 class="section-title">명란 재고현황 · Roe stock status</h2>
+    <div class="two-col">
+      <div>
+        <h3 style="font-size:1.05rem;margin-bottom:12px;">냉동창고 · Frozen warehouse</h3>
+        <div class="search-row"><input type="text" id="frozenSearch" placeholder="🔍 Search…" maxlength="60"></div>
+        <div class="tbl-scroll" style="max-height:360px;">
+          <table>
+            <thead><tr><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">재고량 · Qty</th></tr></thead>
+            <tbody id="frozenBody"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:1.05rem;margin-bottom:12px;">냉장창고 · Refrigerated warehouse</h3>
+        <div class="search-row"><input type="text" id="fridgeSearch" placeholder="🔍 Search…" maxlength="60"></div>
+        <div class="tbl-scroll" style="max-height:360px;">
+          <table>
+            <thead><tr><th>원산지 · Origin</th><th>등급 · Grade</th><th>교반일자 · Mix date</th><th class="num">재고량 · Qty</th></tr></thead>
+            <tbody id="fridgeBody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:44px;">
+      <span>부재료 재고 현황 · Auxiliary materials</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <label for="matDate" style="margin-bottom:0;font-size:0.8rem;color:var(--ink-soft);">기준일 · As of</label>
+        <input type="date" id="matDate" style="width:auto;border-bottom:1px solid var(--ink);padding:6px 4px;">
+      </div>
+    </h2>
+    <div class="search-row"><input type="text" id="materialSummarySearch" placeholder="🔍 Search item name…" maxlength="60"></div>
+    <div class="tbl-scroll" style="margin-bottom:36px;">
+      <table>
+        <thead><tr><th>품목명 · Item</th><th class="num">전일재고 · Prev</th><th class="num">당일입고 · In</th><th class="num">사용량 · Used</th><th class="num">현재고 · Current</th><th>알림 · Notice</th></tr></thead>
+        <tbody id="materialsSummaryBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <h3 style="font-size:1.05rem;margin-bottom:10px;">입출고 이력 · Transaction history</h3>
+    <div class="search-row"><input type="text" id="materialSearch" placeholder="🔍 Search item name…" maxlength="60"></div>
+    <div class="tbl-scroll" style="margin-bottom:20px;">
+      <table>
+        <thead><tr><th>일자 · Date</th><th>품목명 · Item</th><th>구분 · Type</th><th class="num">수량 · Qty</th><th class="num">전일재고 · Prev</th><th class="num">현재고 · Current</th></tr></thead>
+        <tbody id="materialsBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 WellmadeWellness</span>
+    <span>Sokcho, South Korea</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const statusEl = document.getElementById('status');
+  const exportBtn = document.getElementById('exportBtn');
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdT2jqlbWGutlCDX8n2XVHKxLQnYiim-8",
+    authDomain: "wellmadewellness-589e8.firebaseapp.com",
+    projectId: "wellmadewellness-589e8",
+    storageBucket: "wellmadewellness-589e8.firebasestorage.app",
+    messagingSenderId: "571195991033",
+    appId: "1:571195991033:web:8427c140a9f6997b4f9328"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const firestoreDb = firebase.firestore();
+  const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('production');
+
+  let state = { stageLogs: [], frozenStock: [], fridgeStock: [], materials: [], materialLogs: [] };
+
+  STATE_DOC.onSnapshot((doc) => {
+    if (doc.exists) {
+      state = doc.data();
+      if (!Array.isArray(state.stageLogs)) state.stageLogs = [];
+      if (!Array.isArray(state.frozenStock)) state.frozenStock = [];
+      if (!Array.isArray(state.fridgeStock)) state.fridgeStock = [];
+      if (!Array.isArray(state.materials)) state.materials = [];
+      if (!Array.isArray(state.materialLogs)) state.materialLogs = [];
+      statusEl.textContent = 'Connected — live data.';
+    } else {
+      statusEl.textContent = 'No data found yet.';
+    }
+    renderAll();
+  }, (e) => {
+    statusEl.textContent = 'Could not connect: ' + (e && e.message ? e.message : 'error');
+  });
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+  }
+  const STAGE_LABEL = { thaw: '해동 · Thawing', mix: '교반 · Mixing', cure: '수절 · Curing' };
+
+  const STAGE_TABLES = {
+    thaw: { body: document.getElementById('thawBody'), search: document.getElementById('thawSearch'), cols: 7 },
+    mix: { body: document.getElementById('mixBody'), search: document.getElementById('mixSearch'), cols: 7 },
+    cure: { body: document.getElementById('cureBody'), search: document.getElementById('cureSearch'), cols: 8 }
+  };
+
+  function renderStageTable(stage) {
+    const { body, search, cols } = STAGE_TABLES[stage];
+    const rows = state.stageLogs.filter(s => s.stage === stage);
+    if (rows.length === 0) {
+      body.innerHTML = `<tr><td colspan="${cols}" class="empty">No entries logged yet.</td></tr>`;
+      return;
+    }
+    const query = (search.value || '').trim().toLowerCase();
+    const filtered = query
+      ? rows.filter(s => (s.origin || '').toLowerCase().includes(query) || (s.grade || '').toLowerCase().includes(query))
+      : rows;
+    if (filtered.length === 0) {
+      body.innerHTML = `<tr><td colspan="${cols}" class="empty">No entries match "${escapeHtml(search.value)}".</td></tr>`;
+      return;
+    }
+    const sorted = filtered.slice().sort((a, b) => {
+      if (a.date !== b.date) return (a.date || '') < (b.date || '') ? 1 : -1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+    body.innerHTML = sorted.map(s => `
+      <tr>
+        <td>${escapeHtml(s.date || '')}</td>
+        <td>${escapeHtml(s.origin || '')}</td>
+        <td>${escapeHtml(s.grade || '')}</td>
+        <td class="num">${s.amount || 0}</td>
+        ${stage === 'cure' ? `<td>${escapeHtml(s.mixDate || '')}</td>` : ''}
+        <td>${escapeHtml(s.worker || '')}</td>
+        <td>${escapeHtml(s.checkedBy || '')}</td>
+        <td>${escapeHtml(s.workTime || '')}</td>
+      </tr>`).join('');
+  }
+
+  Object.keys(STAGE_TABLES).forEach(stage => {
+    STAGE_TABLES[stage].search.addEventListener('input', () => renderStageTable(stage));
+  });
+
+  const frozenBody = document.getElementById('frozenBody');
+  const frozenSearch = document.getElementById('frozenSearch');
+  function renderFrozen() {
+    if (state.frozenStock.length === 0) { frozenBody.innerHTML = '<tr><td colspan="3" class="empty">No stock rows yet.</td></tr>'; return; }
+    const query = (frozenSearch.value || '').trim().toLowerCase();
+    const filtered = query ? state.frozenStock.filter(r => r.origin.toLowerCase().includes(query) || r.grade.toLowerCase().includes(query)) : state.frozenStock;
+    if (filtered.length === 0) { frozenBody.innerHTML = `<tr><td colspan="3" class="empty">No rows match "${escapeHtml(frozenSearch.value)}".</td></tr>`; return; }
+    frozenBody.innerHTML = filtered.map(r => `<tr><td>${escapeHtml(r.origin)}</td><td>${escapeHtml(r.grade)}</td><td class="num">${r.qty}</td></tr>`).join('');
+  }
+  frozenSearch.addEventListener('input', renderFrozen);
+
+  const fridgeBody = document.getElementById('fridgeBody');
+  const fridgeSearch = document.getElementById('fridgeSearch');
+  function renderFridge() {
+    if (state.fridgeStock.length === 0) { fridgeBody.innerHTML = '<tr><td colspan="4" class="empty">No stock rows yet.</td></tr>'; return; }
+    const query = (fridgeSearch.value || '').trim().toLowerCase();
+    const filtered = query ? state.fridgeStock.filter(r => r.origin.toLowerCase().includes(query) || r.grade.toLowerCase().includes(query)) : state.fridgeStock;
+    if (filtered.length === 0) { fridgeBody.innerHTML = `<tr><td colspan="4" class="empty">No rows match "${escapeHtml(fridgeSearch.value)}".</td></tr>`; return; }
+    fridgeBody.innerHTML = filtered.map(r => `<tr><td>${escapeHtml(r.origin)}</td><td>${escapeHtml(r.grade)}</td><td>${escapeHtml(r.mixDate || '')}</td><td class="num">${r.qty}</td></tr>`).join('');
+  }
+  fridgeSearch.addEventListener('input', renderFridge);
+
+  const materialsBody = document.getElementById('materialsBody');
+  const materialSearch = document.getElementById('materialSearch');
+  const materialsSummaryBody = document.getElementById('materialsSummaryBody');
+  const materialSummarySearch = document.getElementById('materialSummarySearch');
+  const matDate = document.getElementById('matDate');
+  matDate.value = new Date().toISOString().slice(0, 10);
+
+  // Fixed catalog order, matching the paper 부재료 재고 현황 form exactly.
+  const MATERIAL_ORDER = ['혼다시', '천일염', '한주소금', '솔비톨', 'L-글루탐산나트륨', '아질산나트륨',
+    '소르브산칼륨', '글리신', '니코틴산아미드', 'DL-사과산나트륨', '젖산칼슘', '미림',
+    '트랜스글루타미나아제', '리보뉴클레오티드이나트륨', '아스코브산나트륨', '과일혼합추출물'];
+  const LOW_STOCK_THRESHOLDS = {
+    '혼다시': 10, '천일염': 5, '한주소금': 40, 'L-글루탐산나트륨': 30, '아질산나트륨': 5,
+    '소르브산칼륨': 5, '글리신': 5, '니코틴산아미드': 5, 'DL-사과산나트륨': 5, '젖산칼슘': 5,
+    '미림': 10, '트랜스글루타미나아제': 5, '리보뉴클레오티드이나트륨': 10, '아스코브산나트륨': 5, '과일혼합추출물': 5
+  };
+  const SCHEDULE_REMINDERS = { '솔비톨': '매주 월요일 구매 · Buy every Monday' };
+
+  function orderedMaterials() {
+    return state.materials.slice().sort((a, b) => {
+      let ia = MATERIAL_ORDER.indexOf(a.name); if (ia === -1) ia = Infinity;
+      let ib = MATERIAL_ORDER.indexOf(b.name); if (ib === -1) ib = Infinity;
+      return ia - ib;
+    });
+  }
+
+  function computeMaterialSummary(asOfDate) {
+    const rows = {};
+    state.materials.forEach(m => { rows[m.id] = { id: m.id, name: m.name, prevStock: 0, todayIn: 0, used: 0, currentStock: 0 }; });
+    const byMat = {};
+    state.materialLogs.forEach(l => { (byMat[l.materialId] = byMat[l.materialId] || []).push(l); });
+    Object.keys(byMat).forEach(matId => {
+      if (!rows[matId]) return;
+      let balance = 0, todayIn = 0, todayUsed = 0;
+      byMat[matId].forEach(l => {
+        const qty = Number(l.quantity) || 0;
+        if (l.date < asOfDate) balance += l.type === 'in' ? qty : -qty;
+        else if (l.date === asOfDate) { if (l.type === 'in') todayIn += qty; else todayUsed += qty; }
+      });
+      rows[matId].prevStock = balance;
+      rows[matId].todayIn = todayIn;
+      rows[matId].used = todayUsed;
+      rows[matId].currentStock = balance + todayIn - todayUsed;
+    });
+    return rows;
+  }
+
+  function renderMaterialSummary() {
+    const asOf = matDate.value || new Date().toISOString().slice(0, 10);
+    const summary = computeMaterialSummary(asOf);
+    const ordered = orderedMaterials();
+    if (ordered.length === 0) { materialsSummaryBody.innerHTML = '<tr><td colspan="6" class="empty">No items yet.</td></tr>'; return; }
+    const query = (materialSummarySearch.value || '').trim().toLowerCase();
+    const filtered = query ? ordered.filter(m => m.name.toLowerCase().includes(query)) : ordered;
+    if (filtered.length === 0) { materialsSummaryBody.innerHTML = `<tr><td colspan="6" class="empty">No items match "${escapeHtml(materialSummarySearch.value)}".</td></tr>`; return; }
+    materialsSummaryBody.innerHTML = filtered.map(m => {
+      const r = summary[m.id] || { prevStock: 0, todayIn: 0, used: 0, currentStock: 0 };
+      const reminder = SCHEDULE_REMINDERS[m.name];
+      const threshold = LOW_STOCK_THRESHOLDS[m.name];
+      const isLow = threshold !== undefined && r.currentStock < threshold;
+      let notice = '';
+      if (isLow) notice += `<span class="pill warn">⚠ 재고 부족 · Low — order from supplier</span>`;
+      if (reminder) notice += `${isLow ? ' ' : ''}<span class="pill reminder">🗓 ${escapeHtml(reminder)}</span>`;
+      return `
+      <tr${isLow ? ' class="low-stock"' : ''}>
+        <td>${escapeHtml(m.name)}</td>
+        <td class="num">${r.prevStock.toLocaleString()}</td>
+        <td class="num">${r.todayIn.toLocaleString()}</td>
+        <td class="num">${r.used.toLocaleString()}</td>
+        <td class="num">${r.currentStock.toLocaleString()}</td>
+        <td>${notice}</td>
+      </tr>`;
+    }).join('');
+  }
+  matDate.addEventListener('change', renderMaterialSummary);
+  materialSummarySearch.addEventListener('input', renderMaterialSummary);
+
+  function computeMaterialLedger() {
+    const sorted = state.materialLogs.slice().sort((a, b) => {
+      if (a.date !== b.date) return (a.date || '') < (b.date || '') ? -1 : 1;
+      return (a.createdAt || 0) - (b.createdAt || 0);
+    });
+    const running = {};
+    sorted.forEach(log => {
+      const prev = running[log.materialId] || 0;
+      const inQty = log.type === 'in' ? (Number(log.quantity) || 0) : 0;
+      const usedQty = log.type === 'used' ? (Number(log.quantity) || 0) : 0;
+      const current = prev + inQty - usedQty;
+      running[log.materialId] = current;
+      log._prev = prev;
+      log._current = current;
+    });
+    return sorted;
+  }
+  function materialName_(id) {
+    const m = state.materials.find(m => m.id === id);
+    return m ? m.name : '(deleted item)';
+  }
+
+  function renderMaterials() {
+    const ledger = computeMaterialLedger();
+    if (ledger.length === 0) { materialsBody.innerHTML = '<tr><td colspan="6" class="empty">No transactions logged yet.</td></tr>'; return; }
+    const query = (materialSearch.value || '').trim().toLowerCase();
+    const filtered = query ? ledger.filter(l => materialName_(l.materialId).toLowerCase().includes(query)) : ledger;
+    if (filtered.length === 0) { materialsBody.innerHTML = `<tr><td colspan="6" class="empty">No transactions match "${escapeHtml(materialSearch.value)}".</td></tr>`; return; }
+    const displayOrder = filtered.slice().reverse();
+    materialsBody.innerHTML = displayOrder.map(l => `
+      <tr>
+        <td>${escapeHtml(l.date || '')}</td>
+        <td>${escapeHtml(materialName_(l.materialId))}</td>
+        <td>${l.type === 'in' ? '당일입고 · In' : '사용량 · Used'}</td>
+        <td class="num">${(Number(l.quantity) || 0).toLocaleString()}</td>
+        <td class="num">${l._prev.toLocaleString()}</td>
+        <td class="num">${l._current.toLocaleString()}</td>
+      </tr>`).join('');
+  }
+  materialSearch.addEventListener('input', renderMaterials);
+
+  function renderAll() {
+    renderStageTable('thaw'); renderStageTable('mix'); renderStageTable('cure');
+    renderFrozen(); renderFridge(); renderMaterials(); renderMaterialSummary();
+  }
+
+  const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3327' } };
+  const HEADER_FONT = { color: { argb: 'FFFFFFFF' }, bold: true };
+  const THIN_BORDER = { style: 'thin', color: { argb: 'FFD5D8C9' } };
+  function styleHeaderRow(row) {
+    row.eachCell(cell => {
+      cell.fill = HEADER_FILL; cell.font = HEADER_FONT;
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+    });
+  }
+
+  exportBtn.addEventListener('click', async () => {
+    if (typeof ExcelJS === 'undefined') { statusEl.textContent = 'Excel library failed to load.'; return; }
+    exportBtn.disabled = true;
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'WellmadeWellness Production';
+      wb.created = new Date();
+
+      const workSheet = wb.addWorksheet('Work Log');
+      workSheet.columns = [
+        { header: '일자 · Date', key: 'date', width: 14 }, { header: '작업명 · Stage', key: 'stage', width: 14 },
+        { header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 },
+        { header: '작업량 · Amount', key: 'amount', width: 12 }, { header: '교반일자 · Mix date', key: 'mixDate', width: 14 },
+        { header: '작업자 · Worker', key: 'worker', width: 16 }, { header: '검토자 · Checked by', key: 'checkedBy', width: 16 },
+        { header: '작업시간 · Work time', key: 'workTime', width: 16 }
+      ];
+      styleHeaderRow(workSheet.getRow(1));
+      state.stageLogs.slice().sort((a, b) => (a.date || '').localeCompare(b.date || '')).forEach(s => {
+        const row = workSheet.addRow({ date: s.date, stage: STAGE_LABEL[s.stage] || s.stage, origin: s.origin, grade: s.grade, amount: s.amount, mixDate: s.mixDate, worker: s.worker, checkedBy: s.checkedBy, workTime: s.workTime });
+        row.eachCell(c => { c.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }; });
+      });
+
+      const frozenSheet = wb.addWorksheet('Frozen Warehouse');
+      frozenSheet.columns = [{ header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 }, { header: '재고량 · Qty', key: 'qty', width: 12 }];
+      styleHeaderRow(frozenSheet.getRow(1));
+      state.frozenStock.forEach(r => frozenSheet.addRow(r));
+
+      const fridgeSheet = wb.addWorksheet('Fridge Warehouse');
+      fridgeSheet.columns = [{ header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 }, { header: '교반일자 · Mix date', key: 'mixDate', width: 14 }, { header: '재고량 · Qty', key: 'qty', width: 12 }];
+      styleHeaderRow(fridgeSheet.getRow(1));
+      state.fridgeStock.forEach(r => fridgeSheet.addRow(r));
+
+      const matStatusSheet = wb.addWorksheet('Materials Status');
+      matStatusSheet.columns = [
+        { header: '품목명 · Item', key: 'name', width: 22 }, { header: '전일재고 · Prev stock', key: 'prevStock', width: 14 },
+        { header: '당일입고 · Today in', key: 'todayIn', width: 14 }, { header: '사용량 · Used', key: 'used', width: 12 },
+        { header: '현재고 · Current stock', key: 'currentStock', width: 16 }, { header: '알림 · Notice', key: 'notice', width: 26 }
+      ];
+      styleHeaderRow(matStatusSheet.getRow(1));
+      const matAsOf = matDate.value || new Date().toISOString().slice(0, 10);
+      const matSummary = computeMaterialSummary(matAsOf);
+      orderedMaterials().forEach(m => {
+        const r = matSummary[m.id] || { prevStock: 0, todayIn: 0, used: 0, currentStock: 0 };
+        const threshold = LOW_STOCK_THRESHOLDS[m.name];
+        const isLow = threshold !== undefined && r.currentStock < threshold;
+        const reminder = SCHEDULE_REMINDERS[m.name];
+        const notice = [isLow ? '재고 부족 · Low — order from supplier' : '', reminder ? '매주 월요일 구매 · Buy every Monday' : ''].filter(Boolean).join(' / ');
+        const row = matStatusSheet.addRow({ name: m.name, prevStock: r.prevStock, todayIn: r.todayIn, used: r.used, currentStock: r.currentStock, notice });
+        if (isLow) row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF6E7E4' } }; });
+      });
+
+      const matSheet = wb.addWorksheet('Materials Log');
+      matSheet.columns = [
+        { header: '일자 · Date', key: 'date', width: 14 }, { header: '품목명 · Item', key: 'name', width: 22 },
+        { header: '구분 · Type', key: 'type', width: 14 }, { header: '수량 · Quantity', key: 'quantity', width: 12 },
+        { header: '전일재고 · Prev stock', key: 'prevStock', width: 14 }, { header: '현재고 · Current stock', key: 'currentStock', width: 16 }
+      ];
+      styleHeaderRow(matSheet.getRow(1));
+      computeMaterialLedger().forEach(l => matSheet.addRow({
+        date: l.date, name: materialName_(l.materialId),
+        type: l.type === 'in' ? '당일입고 · In' : '사용량 · Used',
+        quantity: l.quantity, prevStock: l._prev, currentStock: l._current
+      }));
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `production-${dateStr}.xlsx`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      statusEl.textContent = 'Could not export: ' + (err && err.message ? err.message : 'error');
+    } finally {
+      exportBtn.disabled = false;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

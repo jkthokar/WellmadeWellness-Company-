@@ -100,19 +100,19 @@
     <div class="status" id="status">Connecting to shared storage…</div>
 
     <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-      <span>Brands &amp; labels</span>
+      <span>브랜드 및 라벨 · Brands &amp; labels</span>
       <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
     </h2>
     <div id="brandsArea"></div>
 
-    <h2 class="section-title" style="margin-top:44px;">Transaction history</h2>
+    <h2 class="section-title" style="margin-top:44px;">거래 이력 · Transaction history</h2>
     <div class="search-row">
-      <select id="historyBrandFilter"><option value="">All brands</option></select>
+      <select id="historyBrandFilter"><option value="">전체 브랜드 · All brands</option></select>
       <input type="text" id="historySearch" placeholder="🔍 Search by label name…" maxlength="60">
     </div>
     <div class="tbl-scroll">
       <table>
-        <thead><tr><th>Date</th><th>Brand</th><th>Label</th><th>Type</th><th class="num">Qty</th><th>Note</th><th>Used by</th><th>Checked by</th></tr></thead>
+        <thead><tr><th>일자 · Date</th><th>브랜드 · Brand</th><th>라벨 · Label</th><th>구분 · Type</th><th class="num">수량 · Qty</th><th>메모 · Note</th><th>담당자 · Used by</th><th>검토자 · Checked by</th></tr></thead>
         <tbody id="txBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
       </table>
     </div>
@@ -205,10 +205,10 @@
             return `
               <div class="label-card">
                 <div class="lname">${escapeHtml(l.name)}</div>
-                <div class="stat-line"><span>Bought</span><b>${t.bought}</b></div>
-                <div class="stat-line"><span>Used</span><b>${t.used}</b></div>
-                <div class="stat-line"><span>Sold</span><b>${t.sold}</b></div>
-                <div class="stat-remaining"><span>Remaining</span><span class="${t.remaining < 0 ? 'neg' : ''}">${t.remaining}</span></div>
+                <div class="stat-line"><span>매입 · Bought</span><b>${t.bought}</b></div>
+                <div class="stat-line"><span>사용 · Used</span><b>${t.used}</b></div>
+                <div class="stat-line"><span>판매 · Sold</span><b>${t.sold}</b></div>
+                <div class="stat-remaining"><span>재고량 · Remaining</span><span class="${t.remaining < 0 ? 'neg' : ''}">${t.remaining}</span></div>
               </div>`;
           }).join('')}</div>`;
 
@@ -282,7 +282,7 @@
         <td>${escapeHtml(t.date || '')}</td>
         <td>${escapeHtml(brandName(labelBrandId(t.labelId)))}</td>
         <td>${escapeHtml(labelName(t.labelId))}</td>
-        <td><span class="pill ${t.type}">${t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold'}</span></td>
+        <td><span class="pill ${t.type}">${t.type === 'buy' ? '매입 · Bought' : t.type === 'use' ? '사용 · Used' : '판매 · Sold'}</span></td>
         <td class="num">${Number(t.quantity) || 0}</td>
         <td>${escapeHtml(t.note || '')}</td>
         <td>${escapeHtml(t.handledBy || '')}</td>
@@ -333,9 +333,9 @@
 
       const summarySheet = wb.addWorksheet(sheetNameFor('Summary', usedNames));
       summarySheet.columns = [
-        { header: 'Brand', key: 'brand', width: 20 }, { header: 'Label', key: 'label', width: 22 },
-        { header: 'Bought', key: 'bought', width: 12 }, { header: 'Used', key: 'used', width: 12 },
-        { header: 'Sold', key: 'sold', width: 12 }, { header: 'Remaining', key: 'remaining', width: 14 }
+        { header: '브랜드 Brand', key: 'brand', width: 20 }, { header: '라벨 Label', key: 'label', width: 22 },
+        { header: '매입 Bought', key: 'bought', width: 12 }, { header: '사용 Used', key: 'used', width: 12 },
+        { header: '판매 Sold', key: 'sold', width: 12 }, { header: '재고량 Remaining', key: 'remaining', width: 14 }
       ];
       styleHeaderRow(summarySheet.getRow(1));
       sortedBrands.forEach(b => {
@@ -349,16 +349,16 @@
         state.labels.filter(l => l.brandId === b.id).sort((a, b2) => a.name.localeCompare(b2.name)).forEach(l => {
           const sheet = wb.addWorksheet(sheetNameFor(`${b.name} - ${l.name}`, usedNames));
           sheet.columns = [
-            { header: 'Date', key: 'date', width: 14 }, { header: 'Type', key: 'type', width: 12 },
-            { header: 'Quantity', key: 'qty', width: 12 }, { header: 'Note', key: 'note', width: 28 },
-            { header: 'Used by', key: 'handledBy', width: 18 }, { header: 'Checked by', key: 'checkedBy', width: 18 }
+            { header: '일자 Date', key: 'date', width: 14 }, { header: '구분 Type', key: 'type', width: 14 },
+            { header: '수량 Quantity', key: 'qty', width: 12 }, { header: '메모 Note', key: 'note', width: 28 },
+            { header: '담당자 Used by', key: 'handledBy', width: 18 }, { header: '검토자 Checked by', key: 'checkedBy', width: 18 }
           ];
           styleHeaderRow(sheet.getRow(1));
           const labelTx = state.transactions.filter(t => t.labelId === l.id).slice().sort((a, b3) => (a.date || '').localeCompare(b3.date || ''));
           let bought = 0, used = 0, sold = 0;
           labelTx.forEach(t => {
             const q = Number(t.quantity) || 0;
-            const typeLabel = t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold';
+            const typeLabel = t.type === 'buy' ? '매입 Bought' : t.type === 'use' ? '사용 Used' : '판매 Sold';
             const row = sheet.addRow({ date: t.date || '', type: typeLabel, qty: q, note: t.note || '', handledBy: t.handledBy || '', checkedBy: t.checkedBy || '' });
             row.eachCell(cell => { cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }; });
             if (t.type === 'buy') { bought += q; row.eachCell(cell => { cell.fill = BUY_FILL; cell.font = BUY_FONT; }); }
@@ -366,10 +366,10 @@
             else if (t.type === 'sell') sold += q;
           });
           sheet.addRow([]);
-          sheet.addRow(['', 'Total bought', bought, '']).font = { bold: true };
-          sheet.addRow(['', 'Total used', used, '']).font = { bold: true };
-          sheet.addRow(['', 'Total sold', sold, '']).font = { bold: true };
-          sheet.addRow(['', 'Remaining', bought - used - sold, '']).font = { bold: true };
+          sheet.addRow(['', '매입 Total bought', bought, '']).font = { bold: true };
+          sheet.addRow(['', '사용 Total used', used, '']).font = { bold: true };
+          sheet.addRow(['', '판매 Total sold', sold, '']).font = { bold: true };
+          sheet.addRow(['', '재고량 Remaining', bought - used - sold, '']).font = { bold: true };
         });
       });
 

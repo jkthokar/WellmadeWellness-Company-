@@ -146,9 +146,9 @@
     errorBox.classList.remove('show');
   }
 
-  // Where to send the user after login: ?next=inventory.html, default to inventory.html
+  // Where to send the user after login: ?next=inventory.html, default to the company dashboard
   const params = new URLSearchParams(window.location.search);
-  const next = params.get('next') || 'admin-inventory.html';
+  const next = params.get('next') || 'dashboard.html';
 
   // If already signed in, skip straight to the destination
   auth.onAuthStateChanged((user) => {

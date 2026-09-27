@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Inventory Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --border: #e4e2dd;
+    --text: #1f1e1c;
+    --text-muted: #6b6862;
+    --accent: #b5651d;
+    --accent-soft: #f2e3d5;
+    --green: #2f7a4a;
+    --green-soft: #e5f2e9;
+    --red: #b03a2e;
+    --red-soft: #fbe9e6;
+    --blue: #2f5f8a;
+    --blue-soft: #e6eef5;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #171614;
+      --surface: #211f1c;
+      --border: #34322d;
+      --text: #ece9e3;
+      --text-muted: #a8a49b;
+      --accent: #e0954f;
+      --accent-soft: #3a2c1c;
+      --green: #6fbf8b;
+      --green-soft: #1c2e22;
+      --red: #e2776a;
+      --red-soft: #3a2321;
+      --blue: #7fb0dd;
+      --blue-soft: #1e2a35;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #171614;
+    --surface: #211f1c;
+    --border: #34322d;
+    --text: #ece9e3;
+    --text-muted: #a8a49b;
+    --accent: #e0954f;
+    --accent-soft: #3a2c1c;
+    --green: #6fbf8b;
+    --green-soft: #1c2e22;
+    --red: #e2776a;
+    --red-soft: #3a2321;
+    --blue: #7fb0dd;
+    --blue-soft: #1e2a35;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; }
+  header { margin-bottom: 20px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .sub { color: var(--text-muted); font-size: 0.9rem; }
+  .status { font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; }
+  .status.err { color: var(--red); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+    margin-bottom: 20px;
+  }
+  .card h2 { font-size: 1.05rem; margin: 0 0 14px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--text-muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  tbody tr:hover { background: var(--accent-soft); }
+  .tbl-scroll { overflow-x: auto; }
+
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
+  .pill.buy { background: var(--blue-soft); color: var(--blue); }
+  .pill.use { background: var(--accent-soft); color: var(--accent); }
+  .pill.sell { background: var(--green-soft); color: var(--green); }
+
+  .num { font-variant-numeric: tabular-nums; text-align: right; }
+  .neg { color: var(--red); }
+
+  form.inline { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 10px; align-items: end; }
+  label { display: block; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 4px; }
+  input, select {
+    width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 0.9rem;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  button {
+    padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 0.88rem; font-weight: 600; background: var(--accent); color: white;
+  }
+  button:hover { filter: brightness(1.05); }
+  button.secondary { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  button.danger { background: var(--red); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .row-actions button { padding: 4px 9px; font-size: 0.76rem; margin-left: 4px; }
+
+  .add-product { display: flex; gap: 8px; margin-bottom: 14px; }
+  .add-product input { flex: 1; }
+
+  .empty { color: var(--text-muted); font-size: 0.88rem; padding: 10px 0; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 12px; }
+  .stat-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .stat-card .pname { font-weight: 700; font-size: 1rem; margin-bottom: 8px; }
+  .stat-line { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 2px 0; color: var(--text-muted); }
+  .stat-line b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .stat-remaining { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); font-weight: 700; display: flex; justify-content: space-between; }
+
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📦 Product Inventory Tracker</h1>
+    <div class="sub">Track how much of each product you buy, use internally, and sell.</div>
+    <div class="status" id="status">Connecting…</div>
+  </header>
+
+  <div class="card">
+    <h2>Products</h2>
+    <div class="add-product">
+      <input id="newProductName" placeholder="Add a product (e.g. Product E)" maxlength="60" />
+      <button id="addProductBtn">Add product</button>
+      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+    </div>
+    <div id="summaryArea" class="summary-grid"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Log a transaction</h2>
+    <form class="inline" id="txForm">
+      <div>
+        <label for="txProduct">Product</label>
+        <select id="txProduct" required></select>
+      </div>
+      <div>
+        <label for="txType">Type</label>
+        <select id="txType" required>
+          <option value="buy">Bought (from supplier)</option>
+          <option value="use">Used (internal)</option>
+          <option value="sell">Sold (to customer)</option>
+        </select>
+      </div>
+      <div>
+        <label for="txQty">Quantity</label>
+        <input id="txQty" type="number" min="1" step="1" required />
+      </div>
+      <div>
+        <label for="txDate">Date</label>
+        <input id="txDate" type="date" required />
+      </div>
+      <div>
+        <label for="txNote">Note (optional)</label>
+        <input id="txNote" type="text" maxlength="120" placeholder="Supplier, customer, reason…" />
+      </div>
+      <div>
+        <button type="submit" id="txSubmitBtn">Add entry</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Transaction history</h2>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Product</th>
+            <th>Type</th>
+            <th class="num">Qty</th>
+            <th>Note</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="txBody">
+          <tr><td colspan="6" class="empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const statusEl = document.getElementById('status');
+  const summaryArea = document.getElementById('summaryArea');
+  const txBody = document.getElementById('txBody');
+  const txForm = document.getElementById('txForm');
+  const txProductSel = document.getElementById('txProduct');
+  const txTypeSel = document.getElementById('txType');
+  const txQtyInput = document.getElementById('txQty');
+  const txDateInput = document.getElementById('txDate');
+  const txNoteInput = document.getElementById('txNote');
+  const txSubmitBtn = document.getElementById('txSubmitBtn');
+  const newProductInput = document.getElementById('newProductName');
+  const addProductBtn = document.getElementById('addProductBtn');
+  const exportBtn = document.getElementById('exportBtn');
+
+  txDateInput.value = new Date().toISOString().slice(0, 10);
+
+  let db = null;
+  let downloadsApi = null;
+  let products = [];   // [{id, name}]
+  let transactions = []; // [{id, productId, type, quantity, date, note, createdAt}]
+  let productsReady = false;
+  let txReady = false;
+
+  const DEFAULT_PRODUCTS = ['Product A', 'Product B', 'Product C', 'Product D'];
+
+  function setStatus(msg, isErr) {
+    statusEl.textContent = msg;
+    statusEl.className = 'status' + (isErr ? ' err' : '');
+  }
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+  }
+
+  function productName(id) {
+    const p = products.find(p => p.id === id);
+    return p ? p.name : '(deleted product)';
+  }
+
+  function renderProductSelect() {
+    const prev = txProductSel.value;
+    txProductSel.innerHTML = products
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`)
+      .join('');
+    if (prev && products.some(p => p.id === prev)) txProductSel.value = prev;
+  }
+
+  function renderSummary() {
+    if (!productsReady || !txReady) {
+      summaryArea.innerHTML = '<div class="empty">Loading…</div>';
+      return;
+    }
+    if (products.length === 0) {
+      summaryArea.innerHTML = '<div class="empty">No products yet — add one above.</div>';
+      return;
+    }
+    const sorted = products.slice().sort((a, b) => a.name.localeCompare(b.name));
+    summaryArea.innerHTML = sorted.map(p => {
+      let bought = 0, used = 0, sold = 0;
+      transactions.forEach(t => {
+        if (t.productId !== p.id) return;
+        const q = Number(t.quantity) || 0;
+        if (t.type === 'buy') bought += q;
+        else if (t.type === 'use') used += q;
+        else if (t.type === 'sell') sold += q;
+      });
+      const remaining = bought - used - sold;
+      return `
+        <div class="stat-card">
+          <div class="pname" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <span>${escapeHtml(p.name)}</span>
+            <button class="secondary" data-del-product="${escapeHtml(p.id)}" title="Delete this product" style="padding:3px 8px;font-size:0.72rem;">Delete</button>
+          </div>
+          <div class="stat-line"><span>Bought</span><b>${bought}</b></div>
+          <div class="stat-line"><span>Used</span><b>${used}</b></div>
+          <div class="stat-line"><span>Sold</span><b>${sold}</b></div>
+          <div class="stat-remaining"><span>Remaining stock</span><span class="${remaining < 0 ? 'neg' : ''}">${remaining}</span></div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderTransactions() {
+    if (!txReady) {
+      txBody.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
+      return;
+    }
+    if (transactions.length === 0) {
+      txBody.innerHTML = '<tr><td colspan="6" class="empty">No transactions logged yet.</td></tr>';
+      return;
+    }
+    const sorted = transactions.slice().sort((a, b) => {
+      const da = a.date || '', db_ = b.date || '';
+      if (da !== db_) return da < db_ ? 1 : -1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+    txBody.innerHTML = sorted.map(t => `
+      <tr>
+        <td>${escapeHtml(t.date || '')}</td>
+        <td>${escapeHtml(productName(t.productId))}</td>
+        <td><span class="pill ${t.type}">${t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold'}</span></td>
+        <td class="num">${Number(t.quantity) || 0}</td>
+        <td>${escapeHtml(t.note || '')}</td>
+        <td class="row-actions"><button class="secondary" data-del-tx="${escapeHtml(t.id)}">Delete</button></td>
+      </tr>
+    `).join('');
+  }
+
+  function renderAll() {
+    renderProductSelect();
+    renderSummary();
+    renderTransactions();
+  }
+
+  async function seedDefaultProducts() {
+    try {
+      for (const name of DEFAULT_PRODUCTS) {
+        await db.collection('products').add({ name, createdAt: Date.now() });
+      }
+    } catch (e) {
+      // ignore seed failures (e.g. read-only viewer)
+    }
+  }
+
+  async function init() {
+    if (!window.claude || !window.claude.use) {
+      setStatus('This page needs to be opened inside Claude to save data.', true);
+      return;
+    }
+    try {
+      db = await window.claude.use('db');
+    } catch (e) {
+      db = null;
+    }
+    if (!db) {
+      setStatus('Could not connect to storage. Data will not be saved.', true);
+      return;
+    }
+    setStatus('Connected — data syncs live for everyone with this page.');
+
+    try {
+      downloadsApi = await window.claude.use('downloads');
+    } catch (e) {
+      downloadsApi = null;
+    }
+    if (!downloadsApi) exportBtn.style.display = 'none';
+
+    const productsCol = db.collection('products');
+    const txCol = db.collection('transactions');
+
+    let seeded = false;
+    productsCol.orderBy('createdAt', 'asc').onSnapshot(
+      (snap) => {
+        products = snap.docs.map(d => ({ id: d.id, ...d.data }));
+        productsReady = true;
+        if (!seeded && products.length === 0) {
+          seeded = true;
+          seedDefaultProducts();
+        }
+        renderAll();
+      },
+      (err) => {
+        setStatus('Storage error: ' + (err && err.message ? err.message : 'unknown'), true);
+      }
+    );
+
+    txCol.orderBy('createdAt', 'desc').limit(500).onSnapshot(
+      (snap) => {
+        transactions = snap.docs.map(d => ({ id: d.id, ...d.data }));
+        txReady = true;
+        renderAll();
+      },
+      (err) => {
+        setStatus('Storage error: ' + (err && err.message ? err.message : 'unknown'), true);
+      }
+    );
+  }
+
+  addProductBtn.addEventListener('click', async () => {
+    const name = newProductInput.value.trim();
+    if (!name) return;
+    if (!db) { setStatus('Not connected to storage.', true); return; }
+    addProductBtn.disabled = true;
+    try {
+      await db.collection('products').add({ name, createdAt: Date.now() });
+      newProductInput.value = '';
+    } catch (e) {
+      setStatus('Could not add product: ' + (e && e.message ? e.message : 'error'), true);
+    } finally {
+      addProductBtn.disabled = false;
+    }
+  });
+
+  newProductInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addProductBtn.click(); }
+  });
+
+  txForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!db) { setStatus('Not connected to storage.', true); return; }
+    const productId = txProductSel.value;
+    const type = txTypeSel.value;
+    const quantity = parseInt(txQtyInput.value, 10);
+    const date = txDateInput.value;
+    const note = txNoteInput.value.trim();
+    if (!productId) { setStatus('Add a product first.', true); return; }
+    if (!quantity || quantity <= 0) { setStatus('Enter a valid quantity.', true); return; }
+
+    txSubmitBtn.disabled = true;
+    try {
+      await db.collection('transactions').add({
+        productId, type, quantity, date, note, createdAt: Date.now()
+      });
+      txQtyInput.value = '';
+      txNoteInput.value = '';
+      setStatus('Connected — data syncs live for everyone with this page.');
+    } catch (err) {
+      setStatus('Could not save entry: ' + (err && err.message ? err.message : 'error'), true);
+    } finally {
+      txSubmitBtn.disabled = false;
+    }
+  });
+
+  txBody.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-del-tx]');
+    if (!btn) return;
+    if (!db) return;
+    const id = btn.getAttribute('data-del-tx');
+    btn.disabled = true;
+    try {
+      await db.doc('transactions/' + id).delete();
+    } catch (err) {
+      setStatus('Could not delete entry: ' + (err && err.message ? err.message : 'error'), true);
+      btn.disabled = false;
+    }
+  });
+
+  summaryArea.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-del-product]');
+    if (!btn) return;
+    if (!db) return;
+    const id = btn.getAttribute('data-del-product');
+    const p = products.find(p => p.id === id);
+    const relatedCount = transactions.filter(t => t.productId === id).length;
+    const msg = relatedCount > 0
+      ? `Delete "${p ? p.name : 'this product'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? This cannot be undone.`
+      : `Delete "${p ? p.name : 'this product'}"? This cannot be undone.`;
+    if (!window.confirm(msg)) return;
+
+    btn.disabled = true;
+    try {
+      const related = transactions.filter(t => t.productId === id);
+      for (const t of related) {
+        await db.doc('transactions/' + t.id).delete();
+      }
+      await db.doc('products/' + id).delete();
+      setStatus('Connected — data syncs live for everyone with this page.');
+    } catch (err) {
+      setStatus('Could not delete product: ' + (err && err.message ? err.message : 'error'), true);
+      btn.disabled = false;
+    }
+  });
+
+  function sheetNameFor(name, used) {
+    let base = String(name || 'Product').replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 28) || 'Product';
+    let candidate = base;
+    let n = 2;
+    while (used.has(candidate.toLowerCase())) {
+      candidate = (base + ' ' + n).slice(0, 31);
+      n++;
+    }
+    used.add(candidate.toLowerCase());
+    return candidate;
+  }
+
+  exportBtn.addEventListener('click', async () => {
+    if (!downloadsApi) return;
+    if (typeof XLSX === 'undefined') {
+      setStatus('Excel library failed to load — try again.', true);
+      return;
+    }
+    exportBtn.disabled = true;
+    try {
+      const wb = XLSX.utils.book_new();
+      const usedNames = new Set();
+
+      // Summary sheet first
+      const summaryRows = [['Product', 'Bought', 'Used', 'Sold', 'Remaining']];
+      const sortedProducts = products.slice().sort((a, b) => a.name.localeCompare(b.name));
+      sortedProducts.forEach(p => {
+        let bought = 0, used = 0, sold = 0;
+        transactions.forEach(t => {
+          if (t.productId !== p.id) return;
+          const q = Number(t.quantity) || 0;
+          if (t.type === 'buy') bought += q;
+          else if (t.type === 'use') used += q;
+          else if (t.type === 'sell') sold += q;
+        });
+        summaryRows.push([p.name, bought, used, sold, bought - used - sold]);
+      });
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+      XLSX.utils.book_append_sheet(wb, summarySheet, sheetNameFor('Summary', usedNames));
+
+      // One sheet per product, each with only that product's transactions
+      sortedProducts.forEach(p => {
+        const rows = [['Date', 'Type', 'Quantity', 'Note']];
+        const productTx = transactions
+          .filter(t => t.productId === p.id)
+          .slice()
+          .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        let bought = 0, used = 0, sold = 0;
+        productTx.forEach(t => {
+          const q = Number(t.quantity) || 0;
+          const typeLabel = t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold';
+          rows.push([t.date || '', typeLabel, q, t.note || '']);
+          if (t.type === 'buy') bought += q;
+          else if (t.type === 'use') used += q;
+          else if (t.type === 'sell') sold += q;
+        });
+        rows.push([]);
+        rows.push(['', 'Total bought', bought, '']);
+        rows.push(['', 'Total used', used, '']);
+        rows.push(['', 'Total sold', sold, '']);
+        rows.push(['', 'Remaining', bought - used - sold, '']);
+        const sheet = XLSX.utils.aoa_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, sheet, sheetNameFor(p.name, usedNames));
+      });
+
+      const wbArray = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const dateStr = new Date().toISOString().slice(0, 10);
+
+      await downloadsApi.save({ filename: `inventory-${dateStr}.xlsx`, data: blob });
+      setStatus('Connected — data syncs live for everyone with this page.');
+    } catch (err) {
+      if (err && err.code === 'declined') {
+        // user cancelled, no message needed
+      } else {
+        setStatus('Could not export: ' + (err && err.message ? err.message : 'error'), true);
+      }
+    } finally {
+      exportBtn.disabled = false;
+    }
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>

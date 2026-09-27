@@ -16,7 +16,8 @@ Every internal tool is split into an **admin** version (staff sign-in required, 
 | Page | File | Description |
 |---|---|---|
 | Home | `index.html` | Public-facing site — company philosophy and a customer contact/booking form |
-| Sign in | `login.html` | Staff-only login gate protecting all three admin tools below |
+| Sign in | `login.html` | Staff-only login gate protecting every admin tool below (lands on the Dashboard after sign-in) |
+| Company Dashboard (admin) | `dashboard.html` | One-page overview combining Container, Labelling, and Production — KPI cards, a combined low-stock/reminder alert feed, a 7-day production trend, collapsible stock tables for every tool, a unified recent-activity feed, and a full multi-sheet Excel export |
 | Container (public) | `inventory.html` | Read-only view of container stock and transaction history, with search and Excel export |
 | Container (admin) | `admin-inventory.html` | Log Bought / Used / Sold transactions across three product groups, with live remaining-stock totals |
 | Labelling (public) | `brands.html` | Read-only view of brands, labels, and transaction history, with search and Excel export |
@@ -31,6 +32,7 @@ Every internal tool is split into an **admin** version (staff sign-in required, 
 - **Full audit trail** — every entry records who logged it and who checked it, with inline edit and delete
 - **Search & filter** — quickly find a specific product, brand, label, or production entry across a large history
 - **Automatic backups** — a snapshot is saved before every delete, with a one-click "Restore last backup"
+- **Company-wide dashboard** — every tool's stock, alerts, and recent activity combined into one page
 - **Daily work dashboard** — per-stage totals and entry counts for any selected day in the production log
 - **Auxiliary materials tracking** — logged as In/Used transactions with automatically computed running stock, plus low-stock warnings and a weekly-purchase reminder
 - **Bilingual labels** — Korean and English shown side by side throughout the production pages

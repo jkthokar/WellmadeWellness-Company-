@@ -205,6 +205,7 @@
     <a href="index.html" class="wordmark">Wellmade<span>Wellness</span></a>
     <div class="nav-links">
       <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
       <a href="admin-inventory.html" class="active">Admin: Container</a>
       <a href="admin-brands.html">Admin: Labelling</a>
       <a href="admin-production.html">Admin: Production</a>
@@ -234,19 +235,19 @@
       <div id="aiAssistStatus" style="font-size:0.82rem;color:var(--ink-soft);margin:-12px 0 18px;display:none;"></div>
       <form class="inline" id="txForm">
         <div>
-          <label for="txProduct">Product</label>
+          <label for="txProduct">품목 · Product</label>
           <select id="txProduct" required></select>
         </div>
         <div>
-          <label for="txType">Type</label>
+          <label for="txType">구분 · Type</label>
           <select id="txType" required>
-            <option value="buy">Bought (from supplier)</option>
-            <option value="use">Used (internal)</option>
-            <option value="sell">Sold (to customer)</option>
+            <option value="buy">매입 · Bought (from supplier)</option>
+            <option value="use">사용 · Used (internal)</option>
+            <option value="sell">판매 · Sold (to customer)</option>
           </select>
         </div>
         <div id="qtyWrap">
-          <label for="txQty">Quantity</label>
+          <label for="txQty">수량 · Quantity</label>
           <input id="txQty" type="number" min="1" step="1" required>
         </div>
         <div id="boxWrap" style="display:none;">
@@ -280,7 +281,7 @@
     </div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
-      <h2 class="section-title" style="margin-bottom:0;">Products</h2>
+      <h2 class="section-title" style="margin-bottom:0;">제품 · Products</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button id="restoreBackupBtn" class="secondary" type="button">↺ Restore last backup</button>
         <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
@@ -289,7 +290,7 @@
     <div id="productGroupsArea"></div>
 
     <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-      <span>Transaction history</span>
+      <span>거래 이력 · Transaction history</span>
       <button id="deleteAllBtn" class="secondary" type="button">Delete all history</button>
     </h2>
     <div class="history-search-row">
@@ -299,7 +300,7 @@
       <table>
         <thead>
           <tr>
-            <th>Date</th><th>Product</th><th>Type</th><th class="num">Qty</th><th>Entered by</th><th>Checked by</th><th></th>
+            <th>일자 · Date</th><th>품목 · Product</th><th>구분 · Type</th><th class="num">수량 · Qty</th><th>입력자 · Entered by</th><th>검토자 · Checked by</th><th></th>
           </tr>
         </thead>
         <tbody id="txBody">
@@ -380,9 +381,9 @@
 
   let state = { products: [], products2: [], products3: [], transactions: [] };
   const GROUPS = [
-    { key: 'products', label: 'Products' },
-    { key: 'products2', label: 'Products 2' },
-    { key: 'products3', label: 'Products 3' }
+    { key: 'products', label: '용기 · Container' },
+    { key: 'products2', label: '플라스틱 캡 · Plastic CAP' },
+    { key: 'products3', label: '알루미늄 캡 · Aluminum CAP' }
   ];
   let productSearchQuery = {}; // group key -> current search text
 
@@ -482,10 +483,10 @@
                   <span>${escapeHtml(p.name)}</span>
                   <button class="secondary" data-del-product="${escapeHtml(p.id)}" title="Delete this product" style="padding:3px 10px;font-size:0.72rem;">Delete</button>
                 </div>
-                <div class="stat-line"><span>Bought</span><b>${bought}</b></div>
-                <div class="stat-line"><span>Used</span><b>${used}</b></div>
-                <div class="stat-line"><span>Sold</span><b>${sold}</b></div>
-                <div class="stat-remaining"><span>Remaining stock</span><span class="${remaining < 0 ? 'neg' : ''}">${remaining}</span></div>
+                <div class="stat-line"><span>매입 · Bought</span><b>${bought}</b></div>
+                <div class="stat-line"><span>사용 · Used</span><b>${used}</b></div>
+                <div class="stat-line"><span>판매 · Sold</span><b>${sold}</b></div>
+                <div class="stat-remaining"><span>재고량 · Remaining stock</span><span class="${remaining < 0 ? 'neg' : ''}">${remaining}</span></div>
               </div>
             `;
           }).join('')}</div>`;
@@ -537,9 +538,9 @@
             <td><select data-edit-field="productId" style="width:130px;">${productOptions}</select></td>
             <td>
               <select data-edit-field="type" style="width:100px;">
-                <option value="buy" ${t.type === 'buy' ? 'selected' : ''}>Bought</option>
-                <option value="use" ${t.type === 'use' ? 'selected' : ''}>Used</option>
-                <option value="sell" ${t.type === 'sell' ? 'selected' : ''}>Sold</option>
+                <option value="buy" ${t.type === 'buy' ? 'selected' : ''}>매입 · Bought</option>
+                <option value="use" ${t.type === 'use' ? 'selected' : ''}>사용 · Used</option>
+                <option value="sell" ${t.type === 'sell' ? 'selected' : ''}>판매 · Sold</option>
               </select>
             </td>
             <td><input type="number" min="1" step="1" data-edit-field="quantity" value="${Number(t.quantity) || 0}" style="width:70px;"></td>
@@ -556,7 +557,7 @@
       <tr>
         <td>${escapeHtml(t.date || '')}</td>
         <td>${escapeHtml(productName(t.productId))}</td>
-        <td><span class="pill ${t.type}">${t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold'}</span></td>
+        <td><span class="pill ${t.type}">${t.type === 'buy' ? '매입 · Bought' : t.type === 'use' ? '사용 · Used' : '판매 · Sold'}</span></td>
         <td class="num">${Number(t.quantity) || 0}</td>
         <td>${escapeHtml(t.handledBy || '')}</td>
         <td>${escapeHtml(t.checkedBy || '')}</td>
@@ -818,12 +819,12 @@
       // ---- Summary sheet, with a Group column since there are multiple groups ----
       const summarySheet = wb.addWorksheet(sheetNameFor('Summary', usedNames));
       summarySheet.columns = [
-        { header: 'Group', key: 'group', width: 16 },
-        { header: 'Product', key: 'product', width: 24 },
-        { header: 'Bought', key: 'bought', width: 12 },
-        { header: 'Used', key: 'used', width: 12 },
-        { header: 'Sold', key: 'sold', width: 12 },
-        { header: 'Remaining', key: 'remaining', width: 14 }
+        { header: '구분 Group', key: 'group', width: 20 },
+        { header: '품목 Product', key: 'product', width: 24 },
+        { header: '매입 Bought', key: 'bought', width: 12 },
+        { header: '사용 Used', key: 'used', width: 12 },
+        { header: '판매 Sold', key: 'sold', width: 12 },
+        { header: '재고량 Remaining', key: 'remaining', width: 14 }
       ];
       styleHeaderRow(summarySheet.getRow(1));
       GROUPS.forEach(g => {
@@ -847,11 +848,11 @@
         sortedProducts.forEach(p => {
         const sheet = wb.addWorksheet(sheetNameFor(p.name, usedNames));
         sheet.columns = [
-          { header: 'Date', key: 'date', width: 14 },
-          { header: 'Type', key: 'type', width: 12 },
-          { header: 'Quantity', key: 'qty', width: 12 },
-          { header: 'Entered by', key: 'handledBy', width: 18 },
-          { header: 'Checked by', key: 'checkedBy', width: 18 }
+          { header: '일자 Date', key: 'date', width: 14 },
+          { header: '구분 Type', key: 'type', width: 14 },
+          { header: '수량 Quantity', key: 'qty', width: 12 },
+          { header: '입력자 Entered by', key: 'handledBy', width: 18 },
+          { header: '검토자 Checked by', key: 'checkedBy', width: 18 }
         ];
         styleHeaderRow(sheet.getRow(1));
 
@@ -863,7 +864,7 @@
         let bought = 0, used = 0, sold = 0;
         productTx.forEach(t => {
           const q = Number(t.quantity) || 0;
-          const typeLabel = t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold';
+          const typeLabel = t.type === 'buy' ? '매입 Bought' : t.type === 'use' ? '사용 Used' : '판매 Sold';
           const row = sheet.addRow({ date: t.date || '', type: typeLabel, qty: q, handledBy: t.handledBy || '', checkedBy: t.checkedBy || '' });
           row.eachCell(cell => {
             cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };

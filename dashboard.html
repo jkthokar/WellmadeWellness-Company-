@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Company Dashboard (Admin) — WellmadeWellness</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pine: #1E3327;
+    --pine-deep: #16261D;
+    --ivory: #EEF0E5;
+    --ivory-warm: #F5F6EF;
+    --ink: #23241F;
+    --ink-soft: #55574C;
+    --ochre: #C08A2E;
+    --rule: #D5D8C9;
+    --green: #3E7A4C;
+    --green-soft: #E6EFE4;
+    --red: #B0453A;
+    --red-soft: #F6E7E4;
+    --blue: #3E6A8A;
+    --blue-soft: #E6EDF2;
+    --purple: #6B4E8A;
+    --purple-soft: #EDE6F2;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    background: var(--ivory-warm);
+    line-height: 1.6;
+  }
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--ivory-warm);
+    border-bottom: 1px solid var(--rule);
+  }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
+  .wordmark { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; }
+  .wordmark span { color: var(--ochre); }
+  .nav-links { display: flex; gap: 24px; font-size: 0.92rem; flex-wrap: wrap; align-items: center; }
+  .nav-links a { color: var(--ink-soft); transition: color 0.2s ease; }
+  .nav-links a:hover, .nav-links a.active { color: var(--pine); }
+
+  header.page-head {
+    background: var(--pine);
+    color: var(--ivory);
+    padding: 56px 0 40px;
+  }
+  header.page-head h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); }
+  header.page-head p { color: #C9D2C4; margin-top: 10px; max-width: 65ch; }
+
+  main { padding: 48px 0 100px; }
+
+  .section-title { font-size: 1.25rem; margin-bottom: 16px; }
+  .status { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 24px; }
+
+  .card {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 26px 28px;
+    margin-bottom: 44px;
+    background: var(--ivory);
+  }
+  label { display: block; font-size: 0.78rem; color: var(--ink-soft); margin-bottom: 6px; }
+  input, select {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    background: transparent;
+    padding: 8px 2px;
+    font-family: inherit;
+    font-size: 0.92rem;
+    color: var(--ink);
+  }
+  input:focus, select:focus { outline: none; border-bottom: 2px solid var(--ochre); }
+
+  button {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 600;
+    background: var(--ochre); color: var(--pine-deep);
+    padding: 11px 22px; border-radius: 100px; font-size: 0.88rem;
+  }
+  button:hover { filter: brightness(1.05); }
+  button.secondary {
+    background: transparent; color: var(--ink-soft);
+    border: 1px solid var(--rule); padding: 6px 14px; border-radius: 100px; font-size: 0.78rem;
+  }
+  button.small { padding: 4px 12px; font-size: 0.72rem; }
+
+  .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 440px; border: 1px solid var(--rule); border-radius: 4px; }
+  .tbl-scroll table { margin: 0; }
+  .tbl-scroll thead th { position: sticky; top: 0; background: var(--ivory-warm); z-index: 1; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  th, td { text-align: left; padding: 10px 9px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th { color: var(--ink-soft); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  tbody tr:hover { background: var(--ivory); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--ink-soft); font-size: 0.88rem; padding: 14px 0; }
+
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+  .pill.thaw { background: var(--blue-soft); color: var(--blue); }
+  .pill.mix { background: #F3E9D8; color: var(--ochre); }
+  .pill.cure { background: var(--green-soft); color: var(--green); }
+  .pill.buy, .pill.in { background: var(--green-soft); color: var(--green); }
+  .pill.use, .pill.used { background: #F3E9D8; color: var(--ochre); }
+  .pill.sell { background: var(--blue-soft); color: var(--blue); }
+  .pill.warn { background: var(--red-soft); color: var(--red); }
+  .pill.reminder { background: #F3E9D8; color: var(--ochre); }
+  .pill.src-container { background: var(--blue-soft); color: var(--blue); }
+  .pill.src-label { background: var(--purple-soft); color: var(--purple); }
+  .pill.src-materials { background: #F3E9D8; color: var(--ochre); }
+  .pill.src-production { background: var(--green-soft); color: var(--green); }
+  tr.low-stock { background: var(--red-soft); }
+
+  .search-row { display: flex; gap: 10px; margin-bottom: 16px; max-width: 380px; }
+  .search-row input { border-color: var(--ochre); }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+  .stat-card { border: 1px solid var(--rule); border-radius: 4px; padding: 18px 20px; background: var(--ivory); }
+  .stat-card.alert { border-color: var(--red); background: var(--red-soft); }
+  .stat-card .pname { font-family: 'Fraunces', serif; font-size: 1rem; margin-bottom: 10px; color: var(--ink-soft); }
+  .stat-card .stat-num { font-size: 1.8rem; font-weight: 700; color: var(--pine); font-variant-numeric: tabular-nums; }
+  .stat-card.alert .stat-num { color: var(--red); }
+  .stat-card .stat-sub { font-size: 0.78rem; color: var(--ink-soft); margin-top: 2px; }
+
+  .alert-list { display: flex; flex-direction: column; gap: 8px; }
+  .alert-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 16px; border: 1px solid var(--red); background: var(--red-soft);
+    border-radius: 4px; font-size: 0.88rem; flex-wrap: wrap;
+  }
+  .alert-row.reminder-row { border-color: var(--ochre); background: #FAF3E6; }
+  .alert-row .a-name { font-weight: 600; }
+  .alert-row .a-msg { color: var(--ink-soft); font-size: 0.82rem; }
+  .no-alerts {
+    padding: 20px; text-align: center; color: var(--green); background: var(--green-soft);
+    border: 1px solid var(--green); border-radius: 4px; font-weight: 600; font-size: 0.9rem;
+  }
+
+  .trend-chart { display: flex; align-items: flex-end; gap: 10px; height: 160px; padding: 16px 8px 0; border: 1px solid var(--rule); border-radius: 4px; background: var(--ivory); margin-bottom: 8px; }
+  .trend-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
+  .trend-bar { width: 60%; background: var(--pine); border-radius: 3px 3px 0 0; min-height: 3px; transition: height 0.3s ease; }
+  .trend-val { font-size: 0.72rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .trend-day { font-size: 0.72rem; color: var(--ink-soft); margin-top: 4px; text-align: center; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
+
+  .collapsible-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+
+  footer {
+    background: var(--pine);
+    color: #9FB09A;
+    padding: 32px 0;
+    font-size: 0.85rem;
+  }
+  footer .wrap { display: flex; justify-content: space-between; }
+
+  #authGate {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--pine); color: var(--ivory);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Inter', sans-serif; font-size: 0.95rem;
+  }
+  #authGate.hidden { display: none; }
+  .logout-btn {
+    background: transparent; border: 1px solid var(--rule); color: var(--ink-soft);
+    padding: 6px 16px; border-radius: 100px; font-size: 0.8rem; cursor: pointer; font-family: inherit; font-weight: 600;
+  }
+  .logout-btn:hover { color: var(--pine); }
+
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+    .card { padding: 20px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="authGate">Checking access…</div>
+
+<nav>
+  <div class="wrap">
+    <a href="index.html" class="wordmark">Wellmade<span>Wellness</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="dashboard.html" class="active">Dashboard</a>
+      <a href="admin-inventory.html">Admin: Container</a>
+      <a href="admin-brands.html">Admin: Labelling</a>
+      <a href="admin-production.html">Admin: Production</a>
+      <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="wrap">
+    <h1>회사 현황판 <br>Company Dashboard</h1>
+    <p>One page, the whole company — container stock, label stock, 명란 production, and auxiliary materials, combined with every low-stock alert in one place.</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="status" id="status">Connecting to shared storage…</div>
+
+    <!-- ============ KPI summary ============ -->
+    <h2 class="section-title">전체 요약 · Overview</h2>
+    <div class="summary-grid" id="kpiCards" style="margin-bottom:44px;"></div>
+
+    <!-- ============ Alerts ============ -->
+    <h2 class="section-title">⚠️ 통합 알림 · All alerts</h2>
+    <div class="alert-list" id="alertList" style="margin-bottom:44px;">
+      <div class="empty">Loading…</div>
+    </div>
+
+    <!-- ============ 7-day trend ============ -->
+    <h2 class="section-title">최근 7일 생산량 · Production, last 7 days</h2>
+    <div class="trend-chart" id="trendChart"></div>
+    <p class="status" style="margin-bottom:44px;">해동 + 교반 + 수절 combined, by work date (작성일자).</p>
+
+    <!-- ============ Container stock ============ -->
+    <h2 class="section-title collapsible-head">
+      <span>📦 컨테이너 재고 현황 · Container stock</span>
+      <button type="button" class="secondary small" data-toggle="containerPanel">보기 · Show</button>
+    </h2>
+    <div id="containerPanel" style="display:none;margin-bottom:44px;">
+      <div class="search-row"><input type="text" id="containerSearch" placeholder="🔍 Search product name…" maxlength="60"></div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>품목 · Product</th><th>그룹 · Group</th><th class="num">매입 · Bought</th><th class="num">사용 · Used</th><th class="num">판매 · Sold</th><th class="num">현재고 · Current</th></tr></thead>
+          <tbody id="containerBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ Label stock ============ -->
+    <h2 class="section-title collapsible-head">
+      <span>🏷️ 라벨 재고 현황 · Label stock</span>
+      <button type="button" class="secondary small" data-toggle="labelPanel">보기 · Show</button>
+    </h2>
+    <div id="labelPanel" style="display:none;margin-bottom:44px;">
+      <div class="search-row"><input type="text" id="labelSearch" placeholder="🔍 Search brand or label…" maxlength="60"></div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>브랜드 · Brand</th><th>라벨 · Label</th><th class="num">매입 · Bought</th><th class="num">사용 · Used</th><th class="num">판매 · Sold</th><th class="num">현재고 · Current</th></tr></thead>
+          <tbody id="labelBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ Materials stock ============ -->
+    <h2 class="section-title collapsible-head">
+      <span>🧂 부재료 재고 현황 · Auxiliary materials</span>
+      <button type="button" class="secondary small" data-toggle="materialsPanel">보기 · Show</button>
+    </h2>
+    <div id="materialsPanel" style="display:none;margin-bottom:44px;">
+      <div class="search-row"><input type="text" id="materialsSearch" placeholder="🔍 Search item name…" maxlength="60"></div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>품목명 · Item</th><th class="num">전일재고 · Prev</th><th class="num">당일입고 · In</th><th class="num">사용량 · Used</th><th class="num">현재고 · Current</th><th>알림 · Notice</th></tr></thead>
+          <tbody id="materialsBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <p class="status" style="margin-top:10px;margin-bottom:0;">Shown as of the most recent logged transaction date.</p>
+    </div>
+
+    <!-- ============ Roe warehouse ============ -->
+    <h2 class="section-title collapsible-head">
+      <span>🧊 명란 재고 (냉동 · 냉장) · Roe warehouse</span>
+      <button type="button" class="secondary small" data-toggle="roePanel">보기 · Show</button>
+    </h2>
+    <div id="roePanel" style="display:none;margin-bottom:44px;">
+      <div class="search-row"><input type="text" id="roeSearch" placeholder="🔍 Search origin or grade…" maxlength="60"></div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>창고 · Warehouse</th><th>원산지 · Origin</th><th>등급 · Grade</th><th>작업일자 · Work date</th><th class="num">재고량 · Qty</th></tr></thead>
+          <tbody id="roeBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ Recent activity ============ -->
+    <h2 class="section-title collapsible-head">
+      <span>🕓 최근 활동 · Recent activity (all tools)</span>
+      <button type="button" class="secondary" id="exportBtn">⬇ Export full company report</button>
+    </h2>
+    <div class="search-row"><input type="text" id="activitySearch" placeholder="🔍 Search item, staff…" maxlength="60"></div>
+    <div class="tbl-scroll" style="max-height:520px;">
+      <table>
+        <thead><tr><th>일자 · Date</th><th>출처 · Source</th><th>품목 · Item</th><th>구분 · Type</th><th class="num">수량 · Qty</th><th>담당 · By</th><th>검토 · Checked by</th></tr></thead>
+        <tbody id="activityBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 WellmadeWellness</span>
+    <span>Sokcho, South Korea</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const statusEl = document.getElementById('status');
+
+  // ---------- Firebase ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdT2jqlbWGutlCDX8n2XVHKxLQnYiim-8",
+    authDomain: "wellmadewellness-589e8.firebaseapp.com",
+    projectId: "wellmadewellness-589e8",
+    storageBucket: "wellmadewellness-589e8.firebasestorage.app",
+    messagingSenderId: "571195991033",
+    appId: "1:571195991033:web:8427c140a9f6997b4f9328"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const firestoreDb = firebase.firestore();
+  const auth = firebase.auth();
+
+  const authGate = document.getElementById('authGate');
+  const logoutBtn = document.getElementById('logoutBtn');
+  auth.onAuthStateChanged((user) => {
+    if (!user) window.location.href = 'login.html?next=dashboard.html';
+    else authGate.classList.add('hidden');
+  });
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut().then(() => { window.location.href = 'login.html'; });
+  });
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+  }
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+  // ---------- Shared state from all three tools ----------
+  let inv = { products: [], products2: [], products3: [], transactions: [] };
+  let brd = { brands: [], labels: [], transactions: [] };
+  let prod = { stageLogs: [], frozenStock: [], fridgeStock: [], materials: [], materialLogs: [] };
+  const loaded = { inv: false, brd: false, prod: false };
+
+  function maybeRender() {
+    if (loaded.inv && loaded.brd && loaded.prod) {
+      statusEl.textContent = 'Connected — live data from Container, Labelling, and Production.';
+      renderAll();
+    }
+  }
+
+  firestoreDb.collection('wellmadewellness').doc('inventory').onSnapshot((doc) => {
+    if (doc.exists) {
+      inv = doc.data();
+      if (!Array.isArray(inv.products)) inv.products = [];
+      if (!Array.isArray(inv.products2)) inv.products2 = [];
+      if (!Array.isArray(inv.products3)) inv.products3 = [];
+      if (!Array.isArray(inv.transactions)) inv.transactions = [];
+    }
+    loaded.inv = true;
+    maybeRender();
+  }, () => { loaded.inv = true; maybeRender(); });
+
+  firestoreDb.collection('wellmadewellness').doc('brands').onSnapshot((doc) => {
+    if (doc.exists) {
+      brd = doc.data();
+      if (!Array.isArray(brd.brands)) brd.brands = [];
+      if (!Array.isArray(brd.labels)) brd.labels = [];
+      if (!Array.isArray(brd.transactions)) brd.transactions = [];
+    }
+    loaded.brd = true;
+    maybeRender();
+  }, () => { loaded.brd = true; maybeRender(); });
+
+  firestoreDb.collection('wellmadewellness').doc('production').onSnapshot((doc) => {
+    if (doc.exists) {
+      prod = doc.data();
+      if (!Array.isArray(prod.stageLogs)) prod.stageLogs = [];
+      if (!Array.isArray(prod.frozenStock)) prod.frozenStock = [];
+      if (!Array.isArray(prod.fridgeStock)) prod.fridgeStock = [];
+      if (!Array.isArray(prod.materials)) prod.materials = [];
+      if (!Array.isArray(prod.materialLogs)) prod.materialLogs = [];
+    }
+    loaded.prod = true;
+    maybeRender();
+  }, () => { loaded.prod = true; maybeRender(); });
+
+  // ---------- Materials constants (mirrors production.html) ----------
+  const MATERIAL_ORDER = ['혼다시', '천일염', '한주소금', '솔비톨', 'L-글루탐산나트륨', '아질산나트륨',
+    '소르브산칼륨', '글리신', '니코틴산아미드', 'DL-사과산나트륨', '젖산칼슘', '미림',
+    '트랜스글루타미나아제', '리보뉴클레오티드이나트륨', '아스코브산나트륨', '과일혼합추출물'];
+  const LOW_STOCK_THRESHOLDS = {
+    '혼다시': 10, '천일염': 5, '한주소금': 40, 'L-글루탐산나트륨': 30, '아질산나트륨': 5,
+    '소르브산칼륨': 5, '글리신': 5, '니코틴산아미드': 5, 'DL-사과산나트륨': 5, '젖산칼슘': 5,
+    '미림': 10, '트랜스글루타미나아제': 5, '리보뉴클레오티드이나트륨': 10, '아스코브산나트륨': 5, '과일혼합추출물': 5
+  };
+  const SCHEDULE_REMINDERS = { '솔비톨': '매주 월요일 구매 · Buy every Monday' };
+  const STAGE_LABEL = { thaw: '해동 · Thawing', mix: '교반 · Mixing', cure: '수절 · Curing' };
+  const GROUPS = [
+    { key: 'products', label: '용기 · Container' },
+    { key: 'products2', label: '플라스틱 캡 · Plastic CAP' },
+    { key: 'products3', label: '알루미늄 캡 · Aluminum CAP' }
+  ];
+
+  function orderedMaterials() {
+    return prod.materials.slice().sort((a, b) => {
+      let ia = MATERIAL_ORDER.indexOf(a.name); if (ia === -1) ia = Infinity;
+      let ib = MATERIAL_ORDER.indexOf(b.name); if (ib === -1) ib = Infinity;
+      return ia - ib;
+    });
+  }
+
+  function latestMaterialLogDate() {
+    let max = '';
+    prod.materialLogs.forEach(l => { if (l.date && l.date > max) max = l.date; });
+    return max || todayStr();
+  }
+
+  function computeMaterialSummary(asOfDate) {
+    const rows = {};
+    prod.materials.forEach(m => { rows[m.id] = { id: m.id, name: m.name, prevStock: 0, todayIn: 0, used: 0, currentStock: 0 }; });
+    const byMat = {};
+    prod.materialLogs.forEach(l => { (byMat[l.materialId] = byMat[l.materialId] || []).push(l); });
+    Object.keys(byMat).forEach(matId => {
+      if (!rows[matId]) return;
+      let balance = 0, todayIn = 0, todayUsed = 0;
+      byMat[matId].forEach(l => {
+        const qty = Number(l.quantity) || 0;
+        if (l.date < asOfDate) balance += l.type === 'in' ? qty : -qty;
+        else if (l.date === asOfDate) { if (l.type === 'in') todayIn += qty; else todayUsed += qty; }
+      });
+      rows[matId].prevStock = balance;
+      rows[matId].todayIn = todayIn;
+      rows[matId].used = todayUsed;
+      rows[matId].currentStock = balance + todayIn - todayUsed;
+    });
+    return rows;
+  }
+
+  // ---------- Container current stock ----------
+  function containerRows() {
+    const rows = [];
+    GROUPS.forEach(g => {
+      (inv[g.key] || []).forEach(p => {
+        let bought = 0, used = 0, sold = 0;
+        inv.transactions.filter(t => t.productId === p.id).forEach(t => {
+          const q = Number(t.quantity) || 0;
+          if (t.type === 'buy') bought += q; else if (t.type === 'use') used += q; else if (t.type === 'sell') sold += q;
+        });
+        rows.push({ name: p.name, group: g.label, bought, used, sold, current: bought - used - sold });
+      });
+    });
+    return rows;
+  }
+
+  // ---------- Label current stock ----------
+  function labelRows() {
+    const rows = [];
+    brd.labels.forEach(l => {
+      const brand = brd.brands.find(b => b.id === l.brandId);
+      let bought = 0, used = 0, sold = 0;
+      brd.transactions.filter(t => t.labelId === l.id).forEach(t => {
+        const q = Number(t.quantity) || 0;
+        if (t.type === 'buy') bought += q; else if (t.type === 'use') used += q; else if (t.type === 'sell') sold += q;
+      });
+      rows.push({ brand: brand ? brand.name : '(deleted brand)', label: l.name, bought, used, sold, current: bought - used - sold });
+    });
+    return rows;
+  }
+
+  // ---------- KPI cards ----------
+  function renderKpis() {
+    const containerTotal = containerRows().reduce((s, r) => s + r.current, 0);
+    const labelTotal = labelRows().reduce((s, r) => s + r.current, 0);
+    const roeTotal = prod.frozenStock.reduce((s, r) => s + (Number(r.qty) || 0), 0) + prod.fridgeStock.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+
+    const asOf = latestMaterialLogDate();
+    const matSummary = computeMaterialSummary(asOf);
+    const lowMaterials = Object.values(matSummary).filter(r => {
+      const th = LOW_STOCK_THRESHOLDS[r.name];
+      return th !== undefined && r.currentStock < th;
+    }).length;
+
+    const today = todayStr();
+    const todayLogs = prod.stageLogs.filter(s => s.date === today);
+    const todayTotal = todayLogs.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+
+    const cards = [
+      { label: '컨테이너 재고 · Container stock', value: containerTotal.toLocaleString(), sub: containerRows().length + ' products tracked' },
+      { label: '라벨 재고 · Label stock', value: labelTotal.toLocaleString(), sub: labelRows().length + ' labels tracked' },
+      { label: '명란 재고 · Roe stock (frozen+fridge)', value: roeTotal.toLocaleString(), sub: prod.frozenStock.length + ' frozen · ' + prod.fridgeStock.length + ' fridge rows' },
+      { label: '오늘 생산량 · Today\'s production', value: todayTotal.toLocaleString(), sub: todayLogs.length + ' entries today (' + today + ')' },
+      { label: '부재료 부족 품목 · Materials low', value: lowMaterials, sub: 'as of ' + asOf, alert: lowMaterials > 0 }
+    ];
+    document.getElementById('kpiCards').innerHTML = cards.map(c => `
+      <div class="stat-card${c.alert ? ' alert' : ''}">
+        <div class="pname">${escapeHtml(c.label)}</div>
+        <div class="stat-num">${c.value}</div>
+        <div class="stat-sub">${escapeHtml(c.sub)}</div>
+      </div>`).join('');
+  }
+
+  // ---------- Alerts ----------
+  function renderAlerts() {
+    const alerts = [];
+    const asOf = latestMaterialLogDate();
+    const matSummary = computeMaterialSummary(asOf);
+    orderedMaterials().forEach(m => {
+      const r = matSummary[m.id] || { currentStock: 0 };
+      const th = LOW_STOCK_THRESHOLDS[m.name];
+      if (th !== undefined && r.currentStock < th) {
+        alerts.push({ kind: 'low', name: m.name, msg: `부재료 · Materials — current stock ${r.currentStock} (threshold ${th}) — order from supplier` });
+      }
+      if (SCHEDULE_REMINDERS[m.name]) {
+        alerts.push({ kind: 'reminder', name: m.name, msg: `부재료 · Materials — ${SCHEDULE_REMINDERS[m.name]}` });
+      }
+    });
+    containerRows().forEach(r => {
+      if (r.current <= 0) alerts.push({ kind: 'low', name: r.name, msg: `컨테이너 · Container (${r.group}) — out of stock (${r.current})` });
+    });
+    labelRows().forEach(r => {
+      if (r.current <= 0) alerts.push({ kind: 'low', name: `${r.brand} — ${r.label}`, msg: `라벨 · Labelling — out of stock (${r.current})` });
+    });
+
+    const listEl = document.getElementById('alertList');
+    if (alerts.length === 0) {
+      listEl.innerHTML = '<div class="no-alerts">✓ No alerts — every tracked item is above its threshold.</div>';
+      return;
+    }
+    listEl.innerHTML = alerts.map(a => `
+      <div class="alert-row${a.kind === 'reminder' ? ' reminder-row' : ''}">
+        <span class="a-name">${a.kind === 'reminder' ? '🗓️' : '⚠️'} ${escapeHtml(a.name)}</span>
+        <span class="a-msg">${escapeHtml(a.msg)}</span>
+      </div>`).join('');
+  }
+
+  // ---------- 7-day trend ----------
+  function renderTrend() {
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d.toISOString().slice(0, 10));
+    }
+    const totals = days.map(d => prod.stageLogs.filter(s => s.date === d).reduce((s, r) => s + (Number(r.amount) || 0), 0));
+    const max = Math.max(...totals, 1);
+    document.getElementById('trendChart').innerHTML = days.map((d, i) => {
+      const h = Math.round((totals[i] / max) * 110) + 4;
+      const label = d.slice(5).replace('-', '/');
+      return `
+        <div class="trend-bar-wrap">
+          <span class="trend-val">${totals[i] || ''}</span>
+          <div class="trend-bar" style="height:${h}px;"></div>
+          <span class="trend-day">${label}</span>
+        </div>`;
+    }).join('');
+  }
+
+  // ---------- Container table ----------
+  const containerSearch = document.getElementById('containerSearch');
+  function renderContainerTable() {
+    const rows = containerRows();
+    const query = (containerSearch.value || '').trim().toLowerCase();
+    const filtered = query ? rows.filter(r => r.name.toLowerCase().includes(query)) : rows;
+    const body = document.getElementById('containerBody');
+    if (filtered.length === 0) { body.innerHTML = '<tr><td colspan="6" class="empty">No products found.</td></tr>'; return; }
+    body.innerHTML = filtered.sort((a, b) => a.name.localeCompare(b.name)).map(r => `
+      <tr class="${r.current <= 0 ? 'low-stock' : ''}">
+        <td>${escapeHtml(r.name)}</td>
+        <td>${escapeHtml(r.group)}</td>
+        <td class="num">${r.bought}</td>
+        <td class="num">${r.used}</td>
+        <td class="num">${r.sold}</td>
+        <td class="num">${r.current}</td>
+      </tr>`).join('');
+  }
+  containerSearch.addEventListener('input', renderContainerTable);
+
+  // ---------- Label table ----------
+  const labelSearch = document.getElementById('labelSearch');
+  function renderLabelTable() {
+    const rows = labelRows();
+    const query = (labelSearch.value || '').trim().toLowerCase();
+    const filtered = query ? rows.filter(r => r.label.toLowerCase().includes(query) || r.brand.toLowerCase().includes(query)) : rows;
+    const body = document.getElementById('labelBody');
+    if (filtered.length === 0) { body.innerHTML = '<tr><td colspan="6" class="empty">No labels found.</td></tr>'; return; }
+    body.innerHTML = filtered.sort((a, b) => a.brand.localeCompare(b.brand) || a.label.localeCompare(b.label)).map(r => `
+      <tr class="${r.current <= 0 ? 'low-stock' : ''}">
+        <td>${escapeHtml(r.brand)}</td>
+        <td>${escapeHtml(r.label)}</td>
+        <td class="num">${r.bought}</td>
+        <td class="num">${r.used}</td>
+        <td class="num">${r.sold}</td>
+        <td class="num">${r.current}</td>
+      </tr>`).join('');
+  }
+  labelSearch.addEventListener('input', renderLabelTable);
+
+  // ---------- Materials table ----------
+  const materialsSearch = document.getElementById('materialsSearch');
+  function renderMaterialsTable() {
+    const asOf = latestMaterialLogDate();
+    const summary = computeMaterialSummary(asOf);
+    const ordered = orderedMaterials();
+    const query = (materialsSearch.value || '').trim().toLowerCase();
+    const filtered = query ? ordered.filter(m => m.name.toLowerCase().includes(query)) : ordered;
+    const body = document.getElementById('materialsBody');
+    if (filtered.length === 0) { body.innerHTML = '<tr><td colspan="6" class="empty">No items found.</td></tr>'; return; }
+    body.innerHTML = filtered.map(m => {
+      const r = summary[m.id] || { prevStock: 0, todayIn: 0, used: 0, currentStock: 0 };
+      const reminder = SCHEDULE_REMINDERS[m.name];
+      const threshold = LOW_STOCK_THRESHOLDS[m.name];
+      const isLow = threshold !== undefined && r.currentStock < threshold;
+      let notice = '';
+      if (isLow) notice = `<span class="pill warn">⚠ 재고 부족 · Low</span>`;
+      else if (reminder) notice = `<span class="pill reminder">🗓 ${escapeHtml(reminder)}</span>`;
+      return `
+      <tr class="${isLow ? 'low-stock' : ''}">
+        <td>${escapeHtml(m.name)}</td>
+        <td class="num">${r.prevStock}</td>
+        <td class="num">${r.todayIn}</td>
+        <td class="num">${r.used}</td>
+        <td class="num">${r.currentStock}</td>
+        <td>${notice}</td>
+      </tr>`;
+    }).join('');
+  }
+  materialsSearch.addEventListener('input', renderMaterialsTable);
+
+  // ---------- Roe warehouse table ----------
+  const roeSearch = document.getElementById('roeSearch');
+  function renderRoeTable() {
+    const rows = [
+      ...prod.frozenStock.map(r => ({ warehouse: '냉동 · Frozen', origin: r.origin, grade: r.grade, workDate: r.workDate, qty: r.qty })),
+      ...prod.fridgeStock.map(r => ({ warehouse: '냉장 · Fridge', origin: r.origin, grade: r.grade, workDate: r.workDate, qty: r.qty }))
+    ];
+    const query = (roeSearch.value || '').trim().toLowerCase();
+    const filtered = query ? rows.filter(r => (r.origin || '').toLowerCase().includes(query) || (r.grade || '').toLowerCase().includes(query)) : rows;
+    const body = document.getElementById('roeBody');
+    if (filtered.length === 0) { body.innerHTML = '<tr><td colspan="5" class="empty">No stock rows found.</td></tr>'; return; }
+    body.innerHTML = filtered.map(r => `
+      <tr>
+        <td>${escapeHtml(r.warehouse)}</td>
+        <td>${escapeHtml(r.origin || '')}</td>
+        <td>${escapeHtml(r.grade || '')}</td>
+        <td>${escapeHtml(r.workDate || '')}</td>
+        <td class="num">${r.qty}</td>
+      </tr>`).join('');
+  }
+  roeSearch.addEventListener('input', renderRoeTable);
+
+  // ---------- Recent activity (combined) ----------
+  function combinedActivity() {
+    const rows = [];
+    inv.transactions.forEach(t => {
+      let name = '(deleted product)';
+      for (const g of GROUPS) { const p = inv[g.key].find(p => p.id === t.productId); if (p) { name = p.name; break; } }
+      rows.push({ date: t.date, createdAt: t.createdAt || 0, source: '컨테이너 · Container', srcClass: 'src-container', item: name, type: t.type, typeLabel: t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold', qty: t.quantity, by: t.handledBy || '', checkedBy: t.checkedBy || '' });
+    });
+    brd.transactions.forEach(t => {
+      const l = brd.labels.find(l => l.id === t.labelId);
+      const b = l ? brd.brands.find(b => b.id === l.brandId) : null;
+      const name = l ? `${b ? b.name : '?'} — ${l.name}` : '(deleted label)';
+      rows.push({ date: t.date, createdAt: t.createdAt || 0, source: '라벨 · Labelling', srcClass: 'src-label', item: name, type: t.type, typeLabel: t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold', qty: t.quantity, by: t.handledBy || '', checkedBy: t.checkedBy || '' });
+    });
+    prod.materialLogs.forEach(l => {
+      const m = prod.materials.find(m => m.id === l.materialId);
+      rows.push({ date: l.date, createdAt: l.createdAt || 0, source: '부재료 · Materials', srcClass: 'src-materials', item: m ? m.name : '(deleted item)', type: l.type, typeLabel: l.type === 'in' ? 'In' : 'Used', qty: l.quantity, by: l.handledBy || '', checkedBy: l.checkedBy || '' });
+    });
+    prod.stageLogs.forEach(s => {
+      rows.push({ date: s.date, createdAt: s.createdAt || 0, source: '생산 · Production', srcClass: 'src-production', item: `${STAGE_LABEL[s.stage] || s.stage} — ${s.origin || ''} ${s.grade || ''}`.trim(), type: s.stage, typeLabel: STAGE_LABEL[s.stage] || s.stage, qty: s.amount, by: s.worker || '', checkedBy: s.checkedBy || '' });
+    });
+    return rows.sort((a, b) => {
+      if (a.date !== b.date) return (a.date || '') < (b.date || '') ? 1 : -1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+  }
+
+  const activitySearch = document.getElementById('activitySearch');
+  function renderActivity() {
+    const rows = combinedActivity();
+    const query = (activitySearch.value || '').trim().toLowerCase();
+    const filtered = query ? rows.filter(r => r.item.toLowerCase().includes(query) || r.by.toLowerCase().includes(query) || r.checkedBy.toLowerCase().includes(query)) : rows;
+    const body = document.getElementById('activityBody');
+    const top = filtered.slice(0, 60);
+    if (top.length === 0) { body.innerHTML = '<tr><td colspan="7" class="empty">No activity found.</td></tr>'; return; }
+    body.innerHTML = top.map(r => `
+      <tr>
+        <td>${escapeHtml(r.date || '')}</td>
+        <td><span class="pill ${r.srcClass}">${escapeHtml(r.source)}</span></td>
+        <td>${escapeHtml(r.item)}</td>
+        <td><span class="pill ${r.type}">${escapeHtml(r.typeLabel)}</span></td>
+        <td class="num">${r.qty}</td>
+        <td>${escapeHtml(r.by)}</td>
+        <td>${escapeHtml(r.checkedBy)}</td>
+      </tr>`).join('');
+  }
+  activitySearch.addEventListener('input', renderActivity);
+
+  // ---------- Collapsible panels ----------
+  document.querySelectorAll('[data-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel = document.getElementById(btn.getAttribute('data-toggle'));
+      if (!panel) return;
+      const showing = panel.style.display !== 'none';
+      panel.style.display = showing ? 'none' : '';
+      btn.textContent = showing ? '보기 · Show' : '숨기기 · Hide';
+    });
+  });
+
+  // ---------- Excel export ----------
+  function styleHeaderRow(row) {
+    row.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3327' } };
+      cell.alignment = { vertical: 'middle' };
+    });
+  }
+
+  document.getElementById('exportBtn').addEventListener('click', async () => {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'WellmadeWellness';
+    wb.created = new Date();
+
+    // Overview sheet
+    const ov = wb.addWorksheet('Overview');
+    ov.columns = [{ header: 'Metric', key: 'k', width: 40 }, { header: 'Value', key: 'v', width: 20 }];
+    styleHeaderRow(ov.getRow(1));
+    const containerTotal = containerRows().reduce((s, r) => s + r.current, 0);
+    const labelTotal = labelRows().reduce((s, r) => s + r.current, 0);
+    const roeTotal = prod.frozenStock.reduce((s, r) => s + (Number(r.qty) || 0), 0) + prod.fridgeStock.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+    const asOf = latestMaterialLogDate();
+    const matSummary = computeMaterialSummary(asOf);
+    const lowMaterials = Object.values(matSummary).filter(r => { const th = LOW_STOCK_THRESHOLDS[r.name]; return th !== undefined && r.currentStock < th; }).length;
+    const today = todayStr();
+    const todayTotal = prod.stageLogs.filter(s => s.date === today).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    [
+      ['Report generated', new Date().toLocaleString()],
+      ['Total container stock', containerTotal],
+      ['Total label stock', labelTotal],
+      ['Total roe stock (frozen+fridge)', roeTotal],
+      ["Today's production total", todayTotal],
+      ['Materials below threshold', lowMaterials],
+      ['Materials as-of date', asOf]
+    ].forEach(r => ov.addRow(r));
+
+    // Container sheet
+    const cSheet = wb.addWorksheet('Container Stock');
+    cSheet.columns = [
+      { header: '품목 Product', key: 'name', width: 26 }, { header: '그룹 Group', key: 'group', width: 14 },
+      { header: '매입 Bought', key: 'bought', width: 12 }, { header: '사용 Used', key: 'used', width: 12 },
+      { header: '판매 Sold', key: 'sold', width: 12 }, { header: '현재고 Current', key: 'current', width: 14 }
+    ];
+    styleHeaderRow(cSheet.getRow(1));
+    containerRows().sort((a, b) => a.name.localeCompare(b.name)).forEach(r => {
+      const row = cSheet.addRow(r);
+      if (r.current <= 0) row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF6E7E4' } }; });
+    });
+
+    // Labels sheet
+    const lSheet = wb.addWorksheet('Label Stock');
+    lSheet.columns = [
+      { header: '브랜드 Brand', key: 'brand', width: 22 }, { header: '라벨 Label', key: 'label', width: 22 },
+      { header: '매입 Bought', key: 'bought', width: 12 }, { header: '사용 Used', key: 'used', width: 12 },
+      { header: '판매 Sold', key: 'sold', width: 12 }, { header: '현재고 Current', key: 'current', width: 14 }
+    ];
+    styleHeaderRow(lSheet.getRow(1));
+    labelRows().sort((a, b) => a.brand.localeCompare(b.brand) || a.label.localeCompare(b.label)).forEach(r => {
+      const row = lSheet.addRow(r);
+      if (r.current <= 0) row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF6E7E4' } }; });
+    });
+
+    // Materials sheet
+    const mSheet = wb.addWorksheet('Materials Status');
+    mSheet.columns = [
+      { header: '품목명 Item', key: 'name', width: 22 }, { header: '전일재고 Prev', key: 'prev', width: 12 },
+      { header: '당일입고 In', key: 'in', width: 12 }, { header: '사용량 Used', key: 'used', width: 12 },
+      { header: '현재고 Current', key: 'current', width: 14 }, { header: '알림 Notice', key: 'notice', width: 30 }
+    ];
+    styleHeaderRow(mSheet.getRow(1));
+    orderedMaterials().forEach(m => {
+      const r = matSummary[m.id] || { prevStock: 0, todayIn: 0, used: 0, currentStock: 0 };
+      const th = LOW_STOCK_THRESHOLDS[m.name];
+      const isLow = th !== undefined && r.currentStock < th;
+      const notice = isLow ? 'Low — order from supplier' : (SCHEDULE_REMINDERS[m.name] || '');
+      const row = mSheet.addRow({ name: m.name, prev: r.prevStock, in: r.todayIn, used: r.used, current: r.currentStock, notice });
+      if (isLow) row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF6E7E4' } }; });
+    });
+
+    // Roe warehouse sheet
+    const rSheet = wb.addWorksheet('Roe Warehouse');
+    rSheet.columns = [
+      { header: '창고 Warehouse', key: 'warehouse', width: 16 }, { header: '원산지 Origin', key: 'origin', width: 16 },
+      { header: '등급 Grade', key: 'grade', width: 12 }, { header: '작업일자 Work date', key: 'workDate', width: 16 },
+      { header: '재고량 Qty', key: 'qty', width: 12 }
+    ];
+    styleHeaderRow(rSheet.getRow(1));
+    [
+      ...prod.frozenStock.map(r => ({ warehouse: 'Frozen', origin: r.origin, grade: r.grade, workDate: r.workDate, qty: r.qty })),
+      ...prod.fridgeStock.map(r => ({ warehouse: 'Fridge', origin: r.origin, grade: r.grade, workDate: r.workDate, qty: r.qty }))
+    ].forEach(r => rSheet.addRow(r));
+
+    // Recent activity sheet (full combined log, not just top 60)
+    const aSheet = wb.addWorksheet('Recent Activity');
+    aSheet.columns = [
+      { header: '일자 Date', key: 'date', width: 14 }, { header: '출처 Source', key: 'source', width: 20 },
+      { header: '품목 Item', key: 'item', width: 30 }, { header: '구분 Type', key: 'typeLabel', width: 14 },
+      { header: '수량 Qty', key: 'qty', width: 12 }, { header: '담당 By', key: 'by', width: 18 },
+      { header: '검토 Checked by', key: 'checkedBy', width: 18 }
+    ];
+    styleHeaderRow(aSheet.getRow(1));
+    combinedActivity().forEach(r => aSheet.addRow(r));
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `WellmadeWellness_Company_Report_${todayStr()}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  function renderAll() {
+    renderKpis();
+    renderAlerts();
+    renderTrend();
+    renderContainerTable();
+    renderLabelTable();
+    renderMaterialsTable();
+    renderRoeTable();
+    renderActivity();
+  }
+})();
+</script>
+</body>
+</html>

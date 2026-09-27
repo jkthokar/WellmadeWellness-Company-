@@ -110,14 +110,14 @@
   <div class="wrap">
     <div class="status" id="status">Connecting to shared storage…</div>
 
-    <h2 class="section-title">Products</h2>
+    <h2 class="section-title">제품 · Products</h2>
     <div class="search-row">
       <input id="productSearch" type="text" placeholder="🔍 Search products…" maxlength="60">
     </div>
     <div id="productGroupsArea"></div>
 
     <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:44px;">
-      <span>Transaction history</span>
+      <span>거래 이력 · Transaction history</span>
       <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
     </h2>
     <div class="search-row">
@@ -126,7 +126,7 @@
     <div class="tbl-scroll">
       <table>
         <thead>
-          <tr><th>Date</th><th>Product</th><th>Type</th><th class="num">Qty</th><th>Entered by</th><th>Checked by</th></tr>
+          <tr><th>일자 · Date</th><th>품목 · Product</th><th>구분 · Type</th><th class="num">수량 · Qty</th><th>입력자 · Entered by</th><th>검토자 · Checked by</th></tr>
         </thead>
         <tbody id="txBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
       </table>
@@ -163,9 +163,9 @@
   const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('inventory');
 
   const GROUPS = [
-    { key: 'products', label: 'Products' },
-    { key: 'products2', label: 'Products 2' },
-    { key: 'products3', label: 'Products 3' }
+    { key: 'products', label: '용기 · Container' },
+    { key: 'products2', label: '플라스틱 캡 · Plastic CAP' },
+    { key: 'products3', label: '알루미늄 캡 · Aluminum CAP' }
   ];
   let state = { products: [], products2: [], products3: [], transactions: [] };
   let productSearchQuery = {};
@@ -225,10 +225,10 @@
             return `
               <div class="stat-card">
                 <div class="pname">${escapeHtml(p.name)}</div>
-                <div class="stat-line"><span>Bought</span><b>${bought}</b></div>
-                <div class="stat-line"><span>Used</span><b>${used}</b></div>
-                <div class="stat-line"><span>Sold</span><b>${sold}</b></div>
-                <div class="stat-remaining"><span>Remaining stock</span><span class="${remaining < 0 ? 'neg' : ''}">${remaining}</span></div>
+                <div class="stat-line"><span>매입 · Bought</span><b>${bought}</b></div>
+                <div class="stat-line"><span>사용 · Used</span><b>${used}</b></div>
+                <div class="stat-line"><span>판매 · Sold</span><b>${sold}</b></div>
+                <div class="stat-remaining"><span>재고량 · Remaining stock</span><span class="${remaining < 0 ? 'neg' : ''}">${remaining}</span></div>
               </div>
             `;
           }).join('')}</div>`;
@@ -267,7 +267,7 @@
       <tr>
         <td>${escapeHtml(t.date || '')}</td>
         <td>${escapeHtml(productName(t.productId))}</td>
-        <td><span class="pill ${t.type}">${t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold'}</span></td>
+        <td><span class="pill ${t.type}">${t.type === 'buy' ? '매입 · Bought' : t.type === 'use' ? '사용 · Used' : '판매 · Sold'}</span></td>
         <td class="num">${Number(t.quantity) || 0}</td>
         <td>${escapeHtml(t.handledBy || '')}</td>
         <td>${escapeHtml(t.checkedBy || '')}</td>
@@ -314,9 +314,9 @@
 
       const summarySheet = wb.addWorksheet(sheetNameFor('Summary', usedNames));
       summarySheet.columns = [
-        { header: 'Group', key: 'group', width: 16 }, { header: 'Product', key: 'product', width: 24 },
-        { header: 'Bought', key: 'bought', width: 12 }, { header: 'Used', key: 'used', width: 12 },
-        { header: 'Sold', key: 'sold', width: 12 }, { header: 'Remaining', key: 'remaining', width: 14 }
+        { header: '구분 Group', key: 'group', width: 20 }, { header: '품목 Product', key: 'product', width: 24 },
+        { header: '매입 Bought', key: 'bought', width: 12 }, { header: '사용 Used', key: 'used', width: 12 },
+        { header: '판매 Sold', key: 'sold', width: 12 }, { header: '재고량 Remaining', key: 'remaining', width: 14 }
       ];
       styleHeaderRow(summarySheet.getRow(1));
       GROUPS.forEach(g => {
@@ -335,16 +335,16 @@
         state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
           const sheet = wb.addWorksheet(sheetNameFor(p.name, usedNames));
           sheet.columns = [
-            { header: 'Date', key: 'date', width: 14 }, { header: 'Type', key: 'type', width: 12 },
-            { header: 'Quantity', key: 'qty', width: 12 }, { header: 'Entered by', key: 'handledBy', width: 18 },
-            { header: 'Checked by', key: 'checkedBy', width: 18 }
+            { header: '일자 Date', key: 'date', width: 14 }, { header: '구분 Type', key: 'type', width: 14 },
+            { header: '수량 Quantity', key: 'qty', width: 12 }, { header: '입력자 Entered by', key: 'handledBy', width: 18 },
+            { header: '검토자 Checked by', key: 'checkedBy', width: 18 }
           ];
           styleHeaderRow(sheet.getRow(1));
           const productTx = state.transactions.filter(t => t.productId === p.id).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
           let bought = 0, used = 0, sold = 0;
           productTx.forEach(t => {
             const q = Number(t.quantity) || 0;
-            const typeLabel = t.type === 'buy' ? 'Bought' : t.type === 'use' ? 'Used' : 'Sold';
+            const typeLabel = t.type === 'buy' ? '매입 Bought' : t.type === 'use' ? '사용 Used' : '판매 Sold';
             const row = sheet.addRow({ date: t.date || '', type: typeLabel, qty: q, handledBy: t.handledBy || '', checkedBy: t.checkedBy || '' });
             row.eachCell(cell => { cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }; });
             if (t.type === 'buy') { bought += q; row.eachCell(cell => { cell.fill = BUY_FILL; cell.font = BUY_FONT; }); }

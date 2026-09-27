@@ -45,6 +45,8 @@
   .stat-line b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
   .stat-remaining { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--rule); font-weight: 600; display: flex; justify-content: space-between; font-size: 0.95rem; color: var(--pine); }
   .stat-remaining span.neg { color: var(--red); }
+  .label-card.low-stock { border-color: var(--red); background: var(--red-soft); }
+  .low-stock-notice { display: inline-block; margin-top: 10px; font-size: 0.78rem; font-weight: 600; color: var(--red); }
   .search-row { display: flex; gap: 10px; margin-bottom: 18px; max-width: 520px; flex-wrap: wrap; }
   .search-row input { border-color: var(--ochre); flex: 1 1 220px; }
   button {
@@ -174,6 +176,9 @@
   function brandName(id) { const b = state.brands.find(b => b.id === id); return b ? b.name : '(deleted brand)'; }
   function labelName(id) { const l = state.labels.find(l => l.id === id); return l ? l.name : '(deleted label)'; }
   function labelBrandId(id) { const l = state.labels.find(l => l.id === id); return l ? l.brandId : null; }
+  // Low-stock warning: every label of every brand, same threshold.
+  const LOW_STOCK_THRESHOLD = 1000;
+
   function labelTotals(labelId) {
     let bought = 0, used = 0, sold = 0;
     state.transactions.forEach(t => {
@@ -202,13 +207,15 @@
         ? `<div class="empty">No labels match "${escapeHtml(brandSearchQuery.get(b.id) || '')}".</div>`
         : `<div class="label-grid">${labelsForBrand.map(l => {
             const t = labelTotals(l.id);
+            const isLow = t.remaining < LOW_STOCK_THRESHOLD;
             return `
-              <div class="label-card">
+              <div class="label-card${isLow ? ' low-stock' : ''}">
                 <div class="lname">${escapeHtml(l.name)}</div>
                 <div class="stat-line"><span>매입 · Bought</span><b>${t.bought}</b></div>
                 <div class="stat-line"><span>사용 · Used</span><b>${t.used}</b></div>
                 <div class="stat-line"><span>판매 · Sold</span><b>${t.sold}</b></div>
                 <div class="stat-remaining"><span>재고량 · Remaining</span><span class="${t.remaining < 0 ? 'neg' : ''}">${t.remaining}</span></div>
+                ${isLow ? `<div class="low-stock-notice">⚠ 재고 부족 · Low (below ${LOW_STOCK_THRESHOLD}) — order from supplier</div>` : ''}
               </div>`;
           }).join('')}</div>`;
 

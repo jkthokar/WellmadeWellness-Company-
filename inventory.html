@@ -46,6 +46,8 @@
     color: var(--pine);
   }
   .stat-remaining span.neg { color: var(--red); }
+  .stat-card.low-stock { border-color: var(--red); background: var(--red-soft); }
+  .low-stock-notice { display: inline-block; margin-top: 10px; font-size: 0.78rem; font-weight: 600; color: var(--red); }
   .product-group-card { border: 1px solid var(--rule); border-radius: 4px; background: var(--ivory); padding: 22px 24px; margin-bottom: 28px; }
   .product-group-card h3 { font-family: 'Fraunces', serif; font-size: 1.15rem; margin-bottom: 14px; }
   .search-row { display: flex; gap: 10px; margin-bottom: 16px; max-width: 340px; }
@@ -170,6 +172,14 @@
   let state = { products: [], products2: [], products3: [], transactions: [] };
   let productSearchQuery = {};
 
+  // Low-stock warning: applies to every product in every group (default 3000),
+  // except these two products which use a lower threshold (1000).
+  const LOW_STOCK_DEFAULT = 3000;
+  const LOW_STOCK_EXCEPTIONS = { '100150': 1000, '100135': 1000 };
+  function lowStockThreshold(productName) {
+    return LOW_STOCK_EXCEPTIONS[productName] !== undefined ? LOW_STOCK_EXCEPTIONS[productName] : LOW_STOCK_DEFAULT;
+  }
+
   STATE_DOC.onSnapshot((doc) => {
     if (doc.exists) {
       state = doc.data();
@@ -222,13 +232,16 @@
               else if (t.type === 'sell') sold += q;
             });
             const remaining = bought - used - sold;
+            const threshold = lowStockThreshold(p.name);
+            const isLow = remaining < threshold;
             return `
-              <div class="stat-card">
+              <div class="stat-card${isLow ? ' low-stock' : ''}">
                 <div class="pname">${escapeHtml(p.name)}</div>
                 <div class="stat-line"><span>매입 · Bought</span><b>${bought}</b></div>
                 <div class="stat-line"><span>사용 · Used</span><b>${used}</b></div>
                 <div class="stat-line"><span>판매 · Sold</span><b>${sold}</b></div>
                 <div class="stat-remaining"><span>재고량 · Remaining stock</span><span class="${remaining < 0 ? 'neg' : ''}">${remaining}</span></div>
+                ${isLow ? `<div class="low-stock-notice">⚠ 재고 부족 · Low (below ${threshold}) — order from supplier</div>` : ''}
               </div>
             `;
           }).join('')}</div>`;

@@ -106,6 +106,8 @@
     color: var(--pine);
   }
   .stat-remaining span.neg { color: var(--red); }
+  .label-card.low-stock { border-color: var(--red); background: var(--red-soft); }
+  .low-stock-notice { display: inline-block; margin-top: 10px; font-size: 0.78rem; font-weight: 600; color: var(--red); }
 
   .add-brand { display: flex; gap: 10px; margin-bottom: 40px; max-width: 480px; }
   .add-brand input { flex: 1; }
@@ -441,6 +443,9 @@
     return l ? l.brandId : null;
   }
 
+  // Low-stock warning: every label of every brand, same threshold.
+  const LOW_STOCK_THRESHOLD = 1000;
+
   function labelTotals(labelId) {
     let bought = 0, used = 0, sold = 0;
     state.transactions.forEach(t => {
@@ -505,8 +510,9 @@
         ? `<div class="empty">No labels match "${escapeHtml(brandSearchQuery.get(b.id) || '')}".</div>`
         : `<div class="label-grid">${labelsForBrand.map(l => {
             const t = labelTotals(l.id);
+            const isLow = t.remaining < LOW_STOCK_THRESHOLD;
             return `
-              <div class="label-card">
+              <div class="label-card${isLow ? ' low-stock' : ''}">
                 <div class="lname">
                   <span>${escapeHtml(l.name)}</span>
                   <span style="display:flex;gap:6px;">
@@ -518,6 +524,7 @@
                 <div class="stat-line"><span>사용 · Used</span><b>${t.used}</b></div>
                 <div class="stat-line"><span>판매 · Sold</span><b>${t.sold}</b></div>
                 <div class="stat-remaining"><span>재고량 · Remaining</span><span class="${t.remaining < 0 ? 'neg' : ''}">${t.remaining}</span></div>
+                ${isLow ? `<div class="low-stock-notice">⚠ 재고 부족 · Low (below ${LOW_STOCK_THRESHOLD}) — order from supplier</div>` : ''}
               </div>
             `;
           }).join('')}</div>`;

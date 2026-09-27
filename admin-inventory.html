@@ -93,6 +93,9 @@
     color: var(--pine);
   }
   .stat-remaining span.neg { color: var(--red); }
+  .stat-card.low-stock { border-color: var(--red); background: var(--red-soft); }
+  .pill.warn { background: var(--red-soft); color: var(--red); }
+  .low-stock-notice { display: inline-block; margin-top: 10px; font-size: 0.78rem; font-weight: 600; color: var(--red); }
 
   /* add product */
   .add-product { display: flex; gap: 10px; margin-bottom: 16px; max-width: 720px; flex-wrap: wrap; }
@@ -387,6 +390,14 @@
   ];
   let productSearchQuery = {}; // group key -> current search text
 
+  // Low-stock warning: applies to every product in every group (default 3000),
+  // except these two products which use a lower threshold (1000).
+  const LOW_STOCK_DEFAULT = 3000;
+  const LOW_STOCK_EXCEPTIONS = { '100150': 1000, '100135': 1000 };
+  function lowStockThreshold(productName) {
+    return LOW_STOCK_EXCEPTIONS[productName] !== undefined ? LOW_STOCK_EXCEPTIONS[productName] : LOW_STOCK_DEFAULT;
+  }
+
   function saveBackup(reason) {
     // Snapshot the state as it is RIGHT NOW, before a destructive change is applied.
     BACKUP_DOC.set({ state: JSON.parse(JSON.stringify(state)), savedAt: Date.now(), reason: reason || '' })
@@ -477,8 +488,10 @@
               else if (t.type === 'sell') sold += q;
             });
             const remaining = bought - used - sold;
+            const threshold = lowStockThreshold(p.name);
+            const isLow = remaining < threshold;
             return `
-              <div class="stat-card">
+              <div class="stat-card${isLow ? ' low-stock' : ''}">
                 <div class="pname" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
                   <span>${escapeHtml(p.name)}</span>
                   <button class="secondary" data-del-product="${escapeHtml(p.id)}" title="Delete this product" style="padding:3px 10px;font-size:0.72rem;">Delete</button>
@@ -487,6 +500,7 @@
                 <div class="stat-line"><span>사용 · Used</span><b>${used}</b></div>
                 <div class="stat-line"><span>판매 · Sold</span><b>${sold}</b></div>
                 <div class="stat-remaining"><span>재고량 · Remaining stock</span><span class="${remaining < 0 ? 'neg' : ''}">${remaining}</span></div>
+                ${isLow ? `<div class="low-stock-notice">⚠ 재고 부족 · Low (below ${threshold}) — order from supplier</div>` : ''}
               </div>
             `;
           }).join('')}</div>`;

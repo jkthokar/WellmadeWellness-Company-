@@ -413,6 +413,14 @@
     { key: 'products3', label: '알루미늄 캡 · Aluminum CAP' }
   ];
 
+  // Same low-stock thresholds as admin-inventory.html / admin-brands.html.
+  const CONTAINER_LOW_DEFAULT = 3000;
+  const CONTAINER_LOW_EXCEPTIONS = { '100150': 1000, '100135': 1000 };
+  function containerLowThreshold(productName) {
+    return CONTAINER_LOW_EXCEPTIONS[productName] !== undefined ? CONTAINER_LOW_EXCEPTIONS[productName] : CONTAINER_LOW_DEFAULT;
+  }
+  const LABEL_LOW_THRESHOLD = 1000;
+
   function orderedMaterials() {
     return prod.materials.slice().sort((a, b) => {
       let ia = MATERIAL_ORDER.indexOf(a.name); if (ia === -1) ia = Infinity;
@@ -527,10 +535,11 @@
       }
     });
     containerRows().forEach(r => {
-      if (r.current <= 0) alerts.push({ kind: 'low', name: r.name, msg: `컨테이너 · Container (${r.group}) — out of stock (${r.current})` });
+      const th = containerLowThreshold(r.name);
+      if (r.current < th) alerts.push({ kind: 'low', name: r.name, msg: `컨테이너 · Container (${r.group}) — current stock ${r.current} (threshold ${th}) — order from supplier` });
     });
     labelRows().forEach(r => {
-      if (r.current <= 0) alerts.push({ kind: 'low', name: `${r.brand} — ${r.label}`, msg: `라벨 · Labelling — out of stock (${r.current})` });
+      if (r.current < LABEL_LOW_THRESHOLD) alerts.push({ kind: 'low', name: `${r.brand} — ${r.label}`, msg: `라벨 · Labelling — current stock ${r.current} (threshold ${LABEL_LOW_THRESHOLD}) — order from supplier` });
     });
 
     const listEl = document.getElementById('alertList');
@@ -576,7 +585,7 @@
     const body = document.getElementById('containerBody');
     if (filtered.length === 0) { body.innerHTML = '<tr><td colspan="6" class="empty">No products found.</td></tr>'; return; }
     body.innerHTML = filtered.sort((a, b) => a.name.localeCompare(b.name)).map(r => `
-      <tr class="${r.current <= 0 ? 'low-stock' : ''}">
+      <tr class="${r.current < containerLowThreshold(r.name) ? 'low-stock' : ''}">
         <td>${escapeHtml(r.name)}</td>
         <td>${escapeHtml(r.group)}</td>
         <td class="num">${r.bought}</td>
@@ -596,7 +605,7 @@
     const body = document.getElementById('labelBody');
     if (filtered.length === 0) { body.innerHTML = '<tr><td colspan="6" class="empty">No labels found.</td></tr>'; return; }
     body.innerHTML = filtered.sort((a, b) => a.brand.localeCompare(b.brand) || a.label.localeCompare(b.label)).map(r => `
-      <tr class="${r.current <= 0 ? 'low-stock' : ''}">
+      <tr class="${r.current < LABEL_LOW_THRESHOLD ? 'low-stock' : ''}">
         <td>${escapeHtml(r.brand)}</td>
         <td>${escapeHtml(r.label)}</td>
         <td class="num">${r.bought}</td>
@@ -765,7 +774,7 @@
     styleHeaderRow(cSheet.getRow(1));
     containerRows().sort((a, b) => a.name.localeCompare(b.name)).forEach(r => {
       const row = cSheet.addRow(r);
-      if (r.current <= 0) row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF6E7E4' } }; });
+      if (r.current < containerLowThreshold(r.name)) row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF6E7E4' } }; });
     });
 
     // Labels sheet
@@ -778,7 +787,7 @@
     styleHeaderRow(lSheet.getRow(1));
     labelRows().sort((a, b) => a.brand.localeCompare(b.brand) || a.label.localeCompare(b.label)).forEach(r => {
       const row = lSheet.addRow(r);
-      if (r.current <= 0) row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF6E7E4' } }; });
+      if (r.current < LABEL_LOW_THRESHOLD) row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF6E7E4' } }; });
     });
 
     // Materials sheet

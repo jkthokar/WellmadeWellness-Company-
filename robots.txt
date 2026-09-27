@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /login.html
+Disallow: /dashboard.html
+Disallow: /admin-inventory.html
+Disallow: /admin-brands.html
+Disallow: /admin-production.html
+
+Sitemap: https://jkthokar.github.io/WellmadeWellness-Company-/sitemap.xml

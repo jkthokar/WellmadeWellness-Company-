@@ -61,6 +61,7 @@
     background: var(--ochre); color: var(--pine-deep); padding: 11px 22px; border-radius: 100px; font-size: 0.88rem;
   }
   button.secondary { background: transparent; color: var(--ink-soft); border: 1px solid var(--rule); padding: 6px 14px; border-radius: 100px; font-size: 0.78rem; }
+  button.small { padding: 4px 12px; font-size: 0.72rem; }
   button:hover { filter: brightness(1.05); }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   footer { background: var(--pine); color: #9FB09A; padding: 32px 0; font-size: 0.85rem; }
@@ -101,7 +102,11 @@
     </h2>
 
     <h3 style="font-size:1.05rem;margin-bottom:10px;">해동 이력 · Thawing history</h3>
-    <div class="search-row"><input type="text" id="thawSearch" placeholder="🔍 Search origin or grade…" maxlength="60"></div>
+    <div class="search-row" style="max-width:480px;">
+      <input type="text" id="thawSearch" placeholder="🔍 Search origin or grade…" maxlength="60">
+      <input type="date" id="thawDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
+      <button type="button" class="secondary small" data-clear-date="thawDateSearch">Clear</button>
+    </div>
     <div class="tbl-scroll" style="margin-bottom:36px;">
       <table>
         <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th></tr></thead>
@@ -110,7 +115,11 @@
     </div>
 
     <h3 style="font-size:1.05rem;margin-bottom:10px;">교반 이력 · Mixing history</h3>
-    <div class="search-row"><input type="text" id="mixSearch" placeholder="🔍 Search origin or grade…" maxlength="60"></div>
+    <div class="search-row" style="max-width:480px;">
+      <input type="text" id="mixSearch" placeholder="🔍 Search origin or grade…" maxlength="60">
+      <input type="date" id="mixDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
+      <button type="button" class="secondary small" data-clear-date="mixDateSearch">Clear</button>
+    </div>
     <div class="tbl-scroll" style="margin-bottom:36px;">
       <table>
         <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th></tr></thead>
@@ -119,7 +128,11 @@
     </div>
 
     <h3 style="font-size:1.05rem;margin-bottom:10px;">수절 이력 · Curing history</h3>
-    <div class="search-row"><input type="text" id="cureSearch" placeholder="🔍 Search origin or grade…" maxlength="60"></div>
+    <div class="search-row" style="max-width:480px;">
+      <input type="text" id="cureSearch" placeholder="🔍 Search origin or grade…" maxlength="60">
+      <input type="date" id="cureDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
+      <button type="button" class="secondary small" data-clear-date="cureDateSearch">Clear</button>
+    </div>
     <div class="tbl-scroll" style="margin-bottom:36px;">
       <table>
         <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>교반일자 · Mix date</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th></tr></thead>
@@ -134,8 +147,8 @@
         <div class="search-row"><input type="text" id="frozenSearch" placeholder="🔍 Search…" maxlength="60"></div>
         <div class="tbl-scroll" style="max-height:360px;">
           <table>
-            <thead><tr><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">재고량 · Qty</th></tr></thead>
-            <tbody id="frozenBody"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
+            <thead><tr><th>원산지 · Origin</th><th>등급 · Grade</th><th>작업일자 · Work date</th><th class="num">재고량 · Qty</th></tr></thead>
+            <tbody id="frozenBody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -144,8 +157,8 @@
         <div class="search-row"><input type="text" id="fridgeSearch" placeholder="🔍 Search…" maxlength="60"></div>
         <div class="tbl-scroll" style="max-height:360px;">
           <table>
-            <thead><tr><th>원산지 · Origin</th><th>등급 · Grade</th><th>교반일자 · Mix date</th><th class="num">재고량 · Qty</th></tr></thead>
-            <tbody id="fridgeBody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+            <thead><tr><th>원산지 · Origin</th><th>등급 · Grade</th><th>교반일자 · Mix date</th><th>작업일자 · Work date</th><th class="num">재고량 · Qty</th></tr></thead>
+            <tbody id="fridgeBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -228,24 +241,35 @@
   const STAGE_LABEL = { thaw: '해동 · Thawing', mix: '교반 · Mixing', cure: '수절 · Curing' };
 
   const STAGE_TABLES = {
-    thaw: { body: document.getElementById('thawBody'), search: document.getElementById('thawSearch'), cols: 7 },
-    mix: { body: document.getElementById('mixBody'), search: document.getElementById('mixSearch'), cols: 7 },
-    cure: { body: document.getElementById('cureBody'), search: document.getElementById('cureSearch'), cols: 8 }
+    thaw: { body: document.getElementById('thawBody'), search: document.getElementById('thawSearch'), dateSearch: document.getElementById('thawDateSearch'), cols: 7 },
+    mix: { body: document.getElementById('mixBody'), search: document.getElementById('mixSearch'), dateSearch: document.getElementById('mixDateSearch'), cols: 7 },
+    cure: { body: document.getElementById('cureBody'), search: document.getElementById('cureSearch'), dateSearch: document.getElementById('cureDateSearch'), cols: 8 }
   };
 
+  document.querySelectorAll('[data-clear-date]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.getAttribute('data-clear-date'));
+      if (!input) return;
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+    });
+  });
+
   function renderStageTable(stage) {
-    const { body, search, cols } = STAGE_TABLES[stage];
+    const { body, search, dateSearch, cols } = STAGE_TABLES[stage];
     const rows = state.stageLogs.filter(s => s.stage === stage);
     if (rows.length === 0) {
       body.innerHTML = `<tr><td colspan="${cols}" class="empty">No entries logged yet.</td></tr>`;
       return;
     }
     const query = (search.value || '').trim().toLowerCase();
-    const filtered = query
-      ? rows.filter(s => (s.origin || '').toLowerCase().includes(query) || (s.grade || '').toLowerCase().includes(query))
-      : rows;
+    const dateFilter = dateSearch.value || '';
+    let filtered = rows;
+    if (query) filtered = filtered.filter(s => (s.origin || '').toLowerCase().includes(query) || (s.grade || '').toLowerCase().includes(query));
+    if (dateFilter) filtered = filtered.filter(s => s.date === dateFilter);
     if (filtered.length === 0) {
-      body.innerHTML = `<tr><td colspan="${cols}" class="empty">No entries match "${escapeHtml(search.value)}".</td></tr>`;
+      const what = query && dateFilter ? `"${escapeHtml(search.value)}" on ${escapeHtml(dateFilter)}` : query ? `"${escapeHtml(search.value)}"` : escapeHtml(dateFilter);
+      body.innerHTML = `<tr><td colspan="${cols}" class="empty">No entries match ${what}.</td></tr>`;
       return;
     }
     const sorted = filtered.slice().sort((a, b) => {
@@ -267,27 +291,29 @@
 
   Object.keys(STAGE_TABLES).forEach(stage => {
     STAGE_TABLES[stage].search.addEventListener('input', () => renderStageTable(stage));
+    STAGE_TABLES[stage].dateSearch.addEventListener('input', () => renderStageTable(stage));
+    STAGE_TABLES[stage].dateSearch.addEventListener('change', () => renderStageTable(stage));
   });
 
   const frozenBody = document.getElementById('frozenBody');
   const frozenSearch = document.getElementById('frozenSearch');
   function renderFrozen() {
-    if (state.frozenStock.length === 0) { frozenBody.innerHTML = '<tr><td colspan="3" class="empty">No stock rows yet.</td></tr>'; return; }
+    if (state.frozenStock.length === 0) { frozenBody.innerHTML = '<tr><td colspan="4" class="empty">No stock rows yet.</td></tr>'; return; }
     const query = (frozenSearch.value || '').trim().toLowerCase();
     const filtered = query ? state.frozenStock.filter(r => r.origin.toLowerCase().includes(query) || r.grade.toLowerCase().includes(query)) : state.frozenStock;
-    if (filtered.length === 0) { frozenBody.innerHTML = `<tr><td colspan="3" class="empty">No rows match "${escapeHtml(frozenSearch.value)}".</td></tr>`; return; }
-    frozenBody.innerHTML = filtered.map(r => `<tr><td>${escapeHtml(r.origin)}</td><td>${escapeHtml(r.grade)}</td><td class="num">${r.qty}</td></tr>`).join('');
+    if (filtered.length === 0) { frozenBody.innerHTML = `<tr><td colspan="4" class="empty">No rows match "${escapeHtml(frozenSearch.value)}".</td></tr>`; return; }
+    frozenBody.innerHTML = filtered.map(r => `<tr><td>${escapeHtml(r.origin)}</td><td>${escapeHtml(r.grade)}</td><td>${escapeHtml(r.workDate || '')}</td><td class="num">${r.qty}</td></tr>`).join('');
   }
   frozenSearch.addEventListener('input', renderFrozen);
 
   const fridgeBody = document.getElementById('fridgeBody');
   const fridgeSearch = document.getElementById('fridgeSearch');
   function renderFridge() {
-    if (state.fridgeStock.length === 0) { fridgeBody.innerHTML = '<tr><td colspan="4" class="empty">No stock rows yet.</td></tr>'; return; }
+    if (state.fridgeStock.length === 0) { fridgeBody.innerHTML = '<tr><td colspan="5" class="empty">No stock rows yet.</td></tr>'; return; }
     const query = (fridgeSearch.value || '').trim().toLowerCase();
     const filtered = query ? state.fridgeStock.filter(r => r.origin.toLowerCase().includes(query) || r.grade.toLowerCase().includes(query)) : state.fridgeStock;
-    if (filtered.length === 0) { fridgeBody.innerHTML = `<tr><td colspan="4" class="empty">No rows match "${escapeHtml(fridgeSearch.value)}".</td></tr>`; return; }
-    fridgeBody.innerHTML = filtered.map(r => `<tr><td>${escapeHtml(r.origin)}</td><td>${escapeHtml(r.grade)}</td><td>${escapeHtml(r.mixDate || '')}</td><td class="num">${r.qty}</td></tr>`).join('');
+    if (filtered.length === 0) { fridgeBody.innerHTML = `<tr><td colspan="5" class="empty">No rows match "${escapeHtml(fridgeSearch.value)}".</td></tr>`; return; }
+    fridgeBody.innerHTML = filtered.map(r => `<tr><td>${escapeHtml(r.origin)}</td><td>${escapeHtml(r.grade)}</td><td>${escapeHtml(r.mixDate || '')}</td><td>${escapeHtml(r.workDate || '')}</td><td class="num">${r.qty}</td></tr>`).join('');
   }
   fridgeSearch.addEventListener('input', renderFridge);
 
@@ -448,12 +474,12 @@
       });
 
       const frozenSheet = wb.addWorksheet('Frozen Warehouse');
-      frozenSheet.columns = [{ header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 }, { header: '재고량 · Qty', key: 'qty', width: 12 }];
+      frozenSheet.columns = [{ header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 }, { header: '작업일자 · Work date', key: 'workDate', width: 16 }, { header: '재고량 · Qty', key: 'qty', width: 12 }];
       styleHeaderRow(frozenSheet.getRow(1));
       state.frozenStock.forEach(r => frozenSheet.addRow(r));
 
       const fridgeSheet = wb.addWorksheet('Fridge Warehouse');
-      fridgeSheet.columns = [{ header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 }, { header: '교반일자 · Mix date', key: 'mixDate', width: 14 }, { header: '재고량 · Qty', key: 'qty', width: 12 }];
+      fridgeSheet.columns = [{ header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 }, { header: '교반일자 · Mix date', key: 'mixDate', width: 14 }, { header: '작업일자 · Work date', key: 'workDate', width: 16 }, { header: '재고량 · Qty', key: 'qty', width: 12 }];
       styleHeaderRow(fridgeSheet.getRow(1));
       state.fridgeStock.forEach(r => fridgeSheet.addRow(r));
 

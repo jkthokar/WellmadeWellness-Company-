@@ -196,7 +196,7 @@
       <span>일일 작업 대시보드 · Today's dashboard</span>
       <div style="display:flex;align-items:center;gap:10px;">
         <label for="dashDate" style="margin-bottom:0;font-size:0.8rem;color:var(--ink-soft);">날짜 · Date</label>
-        <input type="date" id="dashDate" style="width:auto;border-bottom:1px solid var(--ink);padding:6px 4px;">
+        <input type="date" id="dashDate" min="2020-01-01" max="2035-12-31" style="width:auto;border-bottom:1px solid var(--ink);padding:6px 4px;">
       </div>
     </h2>
     <div class="summary-grid" id="dashCards" style="margin-bottom:20px;">
@@ -234,7 +234,7 @@
         </div>
         <div id="mixDateWrap" style="display:none;">
           <label for="stageMixDate">교반일자 · Mix date</label>
-          <input id="stageMixDate" type="date">
+          <input id="stageMixDate" type="date" min="2020-01-01" max="2035-12-31">
         </div>
         <div>
           <label for="stageWorker">작업자 · Worker</label>
@@ -246,7 +246,7 @@
         </div>
         <div>
           <label for="stageDate">작성일자 · Date</label>
-          <input id="stageDate" type="date" required>
+          <input id="stageDate" type="date" min="2020-01-01" max="2035-12-31" required>
         </div>
         <div>
           <label for="stageCheckedBy">검토자 · Checked by (manager)</label>
@@ -268,8 +268,10 @@
     </h2>
 
     <h3 style="font-size:1.05rem;margin-bottom:10px;">해동 이력 · Thawing history</h3>
-    <div class="search-row">
+    <div class="search-row" style="max-width:480px;">
       <input type="text" id="thawSearch" placeholder="🔍 Search origin or grade…" maxlength="60">
+      <input type="date" id="thawDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
+      <button type="button" class="secondary small" data-clear-date="thawDateSearch">Clear</button>
     </div>
     <div class="tbl-scroll" style="margin-bottom:36px;">
       <table>
@@ -279,8 +281,10 @@
     </div>
 
     <h3 style="font-size:1.05rem;margin-bottom:10px;">교반 이력 · Mixing history</h3>
-    <div class="search-row">
+    <div class="search-row" style="max-width:480px;">
       <input type="text" id="mixSearch" placeholder="🔍 Search origin or grade…" maxlength="60">
+      <input type="date" id="mixDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
+      <button type="button" class="secondary small" data-clear-date="mixDateSearch">Clear</button>
     </div>
     <div class="tbl-scroll" style="margin-bottom:36px;">
       <table>
@@ -290,8 +294,10 @@
     </div>
 
     <h3 style="font-size:1.05rem;margin-bottom:10px;">수절 이력 · Curing history</h3>
-    <div class="search-row">
+    <div class="search-row" style="max-width:480px;">
       <input type="text" id="cureSearch" placeholder="🔍 Search origin or grade…" maxlength="60">
+      <input type="date" id="cureDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
+      <button type="button" class="secondary small" data-clear-date="cureDateSearch">Clear</button>
     </div>
     <div class="tbl-scroll" style="margin-bottom:36px;">
       <table>
@@ -316,6 +322,10 @@
               <input id="frozenGrade" type="text" maxlength="40" placeholder="KIREMO">
             </div>
             <div>
+              <label for="frozenWorkDate">작업일자 · Work date</label>
+              <input id="frozenWorkDate" type="date" min="2020-01-01" max="2035-12-31">
+            </div>
+            <div>
               <label for="frozenQty">재고량 · Qty</label>
               <input id="frozenQty" type="number" step="0.01" required>
             </div>
@@ -327,8 +337,8 @@
         </div>
         <div class="tbl-scroll" style="max-height:360px;">
           <table>
-            <thead><tr><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">재고량 · Qty</th><th></th></tr></thead>
-            <tbody id="frozenBody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+            <thead><tr><th>원산지 · Origin</th><th>등급 · Grade</th><th>작업일자 · Work date</th><th class="num">재고량 · Qty</th><th></th></tr></thead>
+            <tbody id="frozenBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -346,7 +356,11 @@
             </div>
             <div>
               <label for="fridgeMixDate">교반일자 · Mix date</label>
-              <input id="fridgeMixDate" type="date">
+              <input id="fridgeMixDate" type="date" min="2020-01-01" max="2035-12-31">
+            </div>
+            <div>
+              <label for="fridgeWorkDate">작업일자 · Work date</label>
+              <input id="fridgeWorkDate" type="date" min="2020-01-01" max="2035-12-31">
             </div>
             <div>
               <label for="fridgeQty">재고량 · Qty</label>
@@ -360,8 +374,8 @@
         </div>
         <div class="tbl-scroll" style="max-height:360px;">
           <table>
-            <thead><tr><th>원산지 · Origin</th><th>등급 · Grade</th><th>교반일자 · Mix date</th><th class="num">재고량 · Qty</th><th></th></tr></thead>
-            <tbody id="fridgeBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+            <thead><tr><th>원산지 · Origin</th><th>등급 · Grade</th><th>교반일자 · Mix date</th><th>작업일자 · Work date</th><th class="num">재고량 · Qty</th><th></th></tr></thead>
+            <tbody id="fridgeBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -401,7 +415,7 @@
         </div>
         <div>
           <label for="materialLogDate">일자 · Date</label>
-          <input id="materialLogDate" type="date" required>
+          <input id="materialLogDate" type="date" min="2020-01-01" max="2035-12-31" required>
         </div>
         <div>
           <label for="materialLogBy">입력자 · Entered by</label>
@@ -419,7 +433,7 @@
       <span>재고 현황 · Current stock status</span>
       <div style="display:flex;align-items:center;gap:10px;">
         <label for="matDate" style="margin-bottom:0;font-size:0.8rem;color:var(--ink-soft);">기준일 · As of</label>
-        <input type="date" id="matDate" style="width:auto;border-bottom:1px solid var(--ink);padding:6px 4px;">
+        <input type="date" id="matDate" min="2020-01-01" max="2035-12-31" style="width:auto;border-bottom:1px solid var(--ink);padding:6px 4px;">
       </div>
     </h2>
     <div class="search-row">
@@ -531,6 +545,13 @@
     d.textContent = str == null ? '' : String(str);
     return d.innerHTML;
   }
+  // Guards against the browser's date picker occasionally letting a typed year run past
+  // 4 digits (e.g. "202666-01-01"). Only accepts a real YYYY-MM-DD with a 4-digit year
+  // in a sane range.
+  function isValidDate(str) {
+    if (!str) return true; // empty/optional date fields are fine
+    return /^\d{4}-\d{2}-\d{2}$/.test(str) && Number(str.slice(0, 4)) >= 2000 && Number(str.slice(0, 4)) <= 2099;
+  }
   const STAGE_LABEL = { thaw: '해동 · Thawing', mix: '교반 · Mixing', cure: '수절 · Curing' };
 
   // ---------- Stage work log ----------
@@ -550,9 +571,9 @@
   const exportBtn = document.getElementById('exportBtn');
 
   const STAGE_TABLES = {
-    thaw: { body: document.getElementById('thawBody'), search: document.getElementById('thawSearch'), cols: 8 },
-    mix: { body: document.getElementById('mixBody'), search: document.getElementById('mixSearch'), cols: 8 },
-    cure: { body: document.getElementById('cureBody'), search: document.getElementById('cureSearch'), cols: 9 }
+    thaw: { body: document.getElementById('thawBody'), search: document.getElementById('thawSearch'), dateSearch: document.getElementById('thawDateSearch'), cols: 8 },
+    mix: { body: document.getElementById('mixBody'), search: document.getElementById('mixSearch'), dateSearch: document.getElementById('mixDateSearch'), cols: 8 },
+    cure: { body: document.getElementById('cureBody'), search: document.getElementById('cureSearch'), dateSearch: document.getElementById('cureDateSearch'), cols: 9 }
   };
 
   stageDate.value = new Date().toISOString().slice(0, 10);
@@ -611,21 +632,32 @@
   stageSelect.addEventListener('change', updateMixDateVisibility);
   updateMixDateVisibility();
 
+  document.querySelectorAll('[data-clear-date]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.getAttribute('data-clear-date'));
+      if (!input) return;
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+    });
+  });
+
   let editingStageId = null;
 
   function renderStageTable(stage) {
-    const { body, search, cols } = STAGE_TABLES[stage];
+    const { body, search, dateSearch, cols } = STAGE_TABLES[stage];
     const rows = state.stageLogs.filter(s => s.stage === stage);
     if (rows.length === 0) {
       body.innerHTML = `<tr><td colspan="${cols}" class="empty">No entries logged yet.</td></tr>`;
       return;
     }
     const query = (search.value || '').trim().toLowerCase();
-    const filtered = query
-      ? rows.filter(s => (s.origin || '').toLowerCase().includes(query) || (s.grade || '').toLowerCase().includes(query) || s.id === editingStageId)
-      : rows;
+    const dateFilter = dateSearch.value || '';
+    let filtered = rows;
+    if (query) filtered = filtered.filter(s => (s.origin || '').toLowerCase().includes(query) || (s.grade || '').toLowerCase().includes(query) || s.id === editingStageId);
+    if (dateFilter) filtered = filtered.filter(s => s.date === dateFilter || s.id === editingStageId);
     if (filtered.length === 0) {
-      body.innerHTML = `<tr><td colspan="${cols}" class="empty">No entries match "${escapeHtml(search.value)}".</td></tr>`;
+      const what = query && dateFilter ? `"${escapeHtml(search.value)}" on ${escapeHtml(dateFilter)}` : query ? `"${escapeHtml(search.value)}"` : escapeHtml(dateFilter);
+      body.innerHTML = `<tr><td colspan="${cols}" class="empty">No entries match ${what}.</td></tr>`;
       return;
     }
     const sorted = filtered.slice().sort((a, b) => {
@@ -635,13 +667,13 @@
     body.innerHTML = sorted.map(s => {
       const mixDateCell = stage === 'cure'
         ? (s.id === editingStageId
-            ? `<td><input type="date" data-ef="mixDate" value="${escapeHtml(s.mixDate || '')}" style="width:120px;"></td>`
+            ? `<td><input type="date" data-ef="mixDate" value="${escapeHtml(s.mixDate || '')}" min="2020-01-01" max="2035-12-31" style="width:120px;"></td>`
             : `<td>${escapeHtml(s.mixDate || '')}</td>`)
         : '';
       if (s.id === editingStageId) {
         return `
         <tr data-row="${escapeHtml(s.id)}">
-          <td><input type="date" data-ef="date" value="${escapeHtml(s.date || '')}" style="width:120px;"></td>
+          <td><input type="date" data-ef="date" value="${escapeHtml(s.date || '')}" min="2020-01-01" max="2035-12-31" style="width:120px;"></td>
           <td><input type="text" data-ef="origin" value="${escapeHtml(s.origin || '')}" style="width:90px;"></td>
           <td><input type="text" data-ef="grade" value="${escapeHtml(s.grade || '')}" style="width:80px;"></td>
           <td><input type="number" step="0.01" data-ef="amount" value="${s.amount || 0}" style="width:80px;"></td>
@@ -683,6 +715,7 @@
     e.preventDefault();
     const amount = parseFloat(stageAmount.value);
     if (!amount || amount <= 0) { statusEl.textContent = 'Enter a valid amount.'; return; }
+    if (!isValidDate(stageDate.value) || !isValidDate(stageMixDate.value)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
     state.stageLogs.push({
       id: 'sl' + Date.now(),
       stage: stageSelect.value,
@@ -703,8 +736,10 @@
   });
 
   Object.keys(STAGE_TABLES).forEach(stage => {
-    const { body, search } = STAGE_TABLES[stage];
+    const { body, search, dateSearch } = STAGE_TABLES[stage];
     search.addEventListener('input', () => renderStageTable(stage));
+    dateSearch.addEventListener('input', () => renderStageTable(stage));
+    dateSearch.addEventListener('change', () => renderStageTable(stage));
 
     body.addEventListener('click', (e) => {
       const editBtn = e.target.closest('[data-edit]');
@@ -726,12 +761,15 @@
         const row = saveBtn.closest('tr');
         const s = state.stageLogs.find(s => s.id === id);
         if (!s) return;
-        s.date = row.querySelector('[data-ef="date"]').value;
+        const newDate = row.querySelector('[data-ef="date"]').value;
+        const mixDateInput = row.querySelector('[data-ef="mixDate"]');
+        const newMixDate = mixDateInput ? mixDateInput.value : '';
+        if (!isValidDate(newDate) || !isValidDate(newMixDate)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
+        s.date = newDate;
         s.origin = row.querySelector('[data-ef="origin"]').value.trim();
         s.grade = row.querySelector('[data-ef="grade"]').value.trim();
         s.amount = parseFloat(row.querySelector('[data-ef="amount"]').value) || 0;
-        const mixDateInput = row.querySelector('[data-ef="mixDate"]');
-        if (mixDateInput) s.mixDate = mixDateInput.value;
+        if (mixDateInput) s.mixDate = newMixDate;
         s.worker = row.querySelector('[data-ef="worker"]').value.trim();
         s.checkedBy = row.querySelector('[data-ef="checkedBy"]').value.trim();
         s.workTime = row.querySelector('[data-ef="workTime"]').value.trim();
@@ -777,6 +815,7 @@
   const frozenForm = document.getElementById('frozenForm');
   const frozenOrigin = document.getElementById('frozenOrigin');
   const frozenGrade = document.getElementById('frozenGrade');
+  const frozenWorkDate = document.getElementById('frozenWorkDate');
   const frozenQty = document.getElementById('frozenQty');
   const frozenBody = document.getElementById('frozenBody');
   const frozenSearch = document.getElementById('frozenSearch');
@@ -784,7 +823,7 @@
 
   function renderFrozen() {
     if (state.frozenStock.length === 0) {
-      frozenBody.innerHTML = '<tr><td colspan="4" class="empty">No stock rows yet.</td></tr>';
+      frozenBody.innerHTML = '<tr><td colspan="5" class="empty">No stock rows yet.</td></tr>';
       return;
     }
     const query = (frozenSearch.value || '').trim().toLowerCase();
@@ -792,7 +831,7 @@
       ? state.frozenStock.filter(r => r.origin.toLowerCase().includes(query) || r.grade.toLowerCase().includes(query) || r.id === editingFrozenId)
       : state.frozenStock;
     if (filtered.length === 0) {
-      frozenBody.innerHTML = `<tr><td colspan="4" class="empty">No rows match "${escapeHtml(frozenSearch.value)}".</td></tr>`;
+      frozenBody.innerHTML = `<tr><td colspan="5" class="empty">No rows match "${escapeHtml(frozenSearch.value)}".</td></tr>`;
       return;
     }
     frozenBody.innerHTML = filtered.map(r => {
@@ -801,6 +840,7 @@
         <tr>
           <td><input type="text" data-ff="origin" value="${escapeHtml(r.origin)}" style="width:90px;"></td>
           <td><input type="text" data-ff="grade" value="${escapeHtml(r.grade)}" style="width:90px;"></td>
+          <td><input type="date" data-ff="workDate" value="${escapeHtml(r.workDate || '')}" min="2020-01-01" max="2035-12-31" style="width:130px;"></td>
           <td><input type="number" step="0.01" data-ff="qty" value="${r.qty}" style="width:80px;"></td>
           <td style="white-space:nowrap;">
             <button data-save-frozen="${escapeHtml(r.id)}" style="padding:6px 12px;font-size:0.78rem;">Save</button>
@@ -812,6 +852,7 @@
       <tr>
         <td>${escapeHtml(r.origin)}</td>
         <td>${escapeHtml(r.grade)}</td>
+        <td>${escapeHtml(r.workDate || '')}</td>
         <td class="num">${r.qty}</td>
         <td style="white-space:nowrap;">
           <button class="secondary small" data-edit-frozen="${escapeHtml(r.id)}">Edit</button>
@@ -823,13 +864,14 @@
 
   frozenForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const origin = frozenOrigin.value.trim(), grade = frozenGrade.value.trim();
+    const origin = frozenOrigin.value.trim(), grade = frozenGrade.value.trim(), workDate = frozenWorkDate.value;
     const qty = parseFloat(frozenQty.value);
     if (!origin || !grade || isNaN(qty)) return;
-    const existing = state.frozenStock.find(r => r.origin === origin && r.grade === grade);
+    if (!isValidDate(workDate)) { statusEl.textContent = 'That work date looks wrong — please re-pick it (year should be 4 digits).'; return; }
+    const existing = state.frozenStock.find(r => r.origin === origin && r.grade === grade && (r.workDate || '') === workDate);
     if (existing) existing.qty = qty;
-    else state.frozenStock.push({ id: 'fz' + Date.now(), origin, grade, qty });
-    frozenOrigin.value = ''; frozenGrade.value = ''; frozenQty.value = '';
+    else state.frozenStock.push({ id: 'fz' + Date.now(), origin, grade, workDate, qty });
+    frozenOrigin.value = ''; frozenGrade.value = ''; frozenWorkDate.value = ''; frozenQty.value = '';
     saveState(); renderAll();
   });
 
@@ -846,8 +888,11 @@
       const row = saveBtn.closest('tr');
       const r = state.frozenStock.find(r => r.id === id);
       if (!r) return;
+      const newWorkDate = row.querySelector('[data-ff="workDate"]').value;
+      if (!isValidDate(newWorkDate)) { statusEl.textContent = 'That work date looks wrong — please re-pick it (year should be 4 digits).'; return; }
       r.origin = row.querySelector('[data-ff="origin"]').value.trim();
       r.grade = row.querySelector('[data-ff="grade"]').value.trim();
+      r.workDate = newWorkDate;
       r.qty = parseFloat(row.querySelector('[data-ff="qty"]').value) || 0;
       editingFrozenId = null;
       saveState(); renderAll();
@@ -867,6 +912,7 @@
   const fridgeOrigin = document.getElementById('fridgeOrigin');
   const fridgeGrade = document.getElementById('fridgeGrade');
   const fridgeMixDate = document.getElementById('fridgeMixDate');
+  const fridgeWorkDate = document.getElementById('fridgeWorkDate');
   const fridgeQty = document.getElementById('fridgeQty');
   const fridgeBody = document.getElementById('fridgeBody');
   const fridgeSearch = document.getElementById('fridgeSearch');
@@ -874,7 +920,7 @@
 
   function renderFridge() {
     if (state.fridgeStock.length === 0) {
-      fridgeBody.innerHTML = '<tr><td colspan="5" class="empty">No stock rows yet.</td></tr>';
+      fridgeBody.innerHTML = '<tr><td colspan="6" class="empty">No stock rows yet.</td></tr>';
       return;
     }
     const query = (fridgeSearch.value || '').trim().toLowerCase();
@@ -882,7 +928,7 @@
       ? state.fridgeStock.filter(r => r.origin.toLowerCase().includes(query) || r.grade.toLowerCase().includes(query) || r.id === editingFridgeId)
       : state.fridgeStock;
     if (filtered.length === 0) {
-      fridgeBody.innerHTML = `<tr><td colspan="5" class="empty">No rows match "${escapeHtml(fridgeSearch.value)}".</td></tr>`;
+      fridgeBody.innerHTML = `<tr><td colspan="6" class="empty">No rows match "${escapeHtml(fridgeSearch.value)}".</td></tr>`;
       return;
     }
     fridgeBody.innerHTML = filtered.map(r => {
@@ -891,7 +937,8 @@
         <tr>
           <td><input type="text" data-fr="origin" value="${escapeHtml(r.origin)}" style="width:90px;"></td>
           <td><input type="text" data-fr="grade" value="${escapeHtml(r.grade)}" style="width:80px;"></td>
-          <td><input type="date" data-fr="mixDate" value="${escapeHtml(r.mixDate || '')}" style="width:120px;"></td>
+          <td><input type="date" data-fr="mixDate" value="${escapeHtml(r.mixDate || '')}" min="2020-01-01" max="2035-12-31" style="width:120px;"></td>
+          <td><input type="date" data-fr="workDate" value="${escapeHtml(r.workDate || '')}" min="2020-01-01" max="2035-12-31" style="width:120px;"></td>
           <td><input type="number" step="0.01" data-fr="qty" value="${r.qty}" style="width:80px;"></td>
           <td style="white-space:nowrap;">
             <button data-save-fridge="${escapeHtml(r.id)}" style="padding:6px 12px;font-size:0.78rem;">Save</button>
@@ -904,6 +951,7 @@
         <td>${escapeHtml(r.origin)}</td>
         <td>${escapeHtml(r.grade)}</td>
         <td>${escapeHtml(r.mixDate || '')}</td>
+        <td>${escapeHtml(r.workDate || '')}</td>
         <td class="num">${r.qty}</td>
         <td style="white-space:nowrap;">
           <button class="secondary small" data-edit-fridge="${escapeHtml(r.id)}">Edit</button>
@@ -915,13 +963,14 @@
 
   fridgeForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const origin = fridgeOrigin.value.trim(), grade = fridgeGrade.value.trim(), mixDate = fridgeMixDate.value;
+    const origin = fridgeOrigin.value.trim(), grade = fridgeGrade.value.trim(), mixDate = fridgeMixDate.value, workDate = fridgeWorkDate.value;
     const qty = parseFloat(fridgeQty.value);
     if (!origin || !grade || isNaN(qty)) return;
-    const existing = state.fridgeStock.find(r => r.origin === origin && r.grade === grade && r.mixDate === mixDate);
+    if (!isValidDate(mixDate) || !isValidDate(workDate)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
+    const existing = state.fridgeStock.find(r => r.origin === origin && r.grade === grade && r.mixDate === mixDate && (r.workDate || '') === workDate);
     if (existing) existing.qty = qty;
-    else state.fridgeStock.push({ id: 'fr' + Date.now(), origin, grade, mixDate, qty });
-    fridgeOrigin.value = ''; fridgeGrade.value = ''; fridgeMixDate.value = ''; fridgeQty.value = '';
+    else state.fridgeStock.push({ id: 'fr' + Date.now(), origin, grade, mixDate, workDate, qty });
+    fridgeOrigin.value = ''; fridgeGrade.value = ''; fridgeMixDate.value = ''; fridgeWorkDate.value = ''; fridgeQty.value = '';
     saveState(); renderAll();
   });
 
@@ -938,9 +987,13 @@
       const row = saveBtn.closest('tr');
       const r = state.fridgeStock.find(r => r.id === id);
       if (!r) return;
+      const newMixDate = row.querySelector('[data-fr="mixDate"]').value;
+      const newWorkDate = row.querySelector('[data-fr="workDate"]').value;
+      if (!isValidDate(newMixDate) || !isValidDate(newWorkDate)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
       r.origin = row.querySelector('[data-fr="origin"]').value.trim();
       r.grade = row.querySelector('[data-fr="grade"]').value.trim();
-      r.mixDate = row.querySelector('[data-fr="mixDate"]').value;
+      r.mixDate = newMixDate;
+      r.workDate = newWorkDate;
       r.qty = parseFloat(row.querySelector('[data-fr="qty"]').value) || 0;
       editingFridgeId = null;
       saveState(); renderAll();
@@ -1114,7 +1167,7 @@
       if (l.id === editingMaterialLogId) {
         return `
         <tr>
-          <td><input type="date" data-ml="date" value="${escapeHtml(l.date || '')}" style="width:120px;"></td>
+          <td><input type="date" data-ml="date" value="${escapeHtml(l.date || '')}" min="2020-01-01" max="2035-12-31" style="width:120px;"></td>
           <td>
             <select data-ml="materialId" style="width:120px;">
               ${orderedMaterials().map(m => `<option value="${escapeHtml(m.id)}" ${m.id === l.materialId ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
@@ -1170,6 +1223,7 @@
     const quantity = parseFloat(materialLogQty.value);
     if (!materialId) { statusEl.textContent = 'Add an item first, then log a transaction against it.'; return; }
     if (!quantity || quantity <= 0) { statusEl.textContent = 'Enter a valid quantity.'; return; }
+    if (!isValidDate(materialLogDate.value)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
     state.materialLogs.push({
       id: 'ml' + Date.now(),
       materialId,
@@ -1197,7 +1251,9 @@
       const row = saveBtn.closest('tr');
       const l = state.materialLogs.find(l => l.id === id);
       if (!l) return;
-      l.date = row.querySelector('[data-ml="date"]').value;
+      const newDate = row.querySelector('[data-ml="date"]').value;
+      if (!isValidDate(newDate)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
+      l.date = newDate;
       l.materialId = row.querySelector('[data-ml="materialId"]').value;
       l.type = row.querySelector('[data-ml="type"]').value;
       l.quantity = parseFloat(row.querySelector('[data-ml="quantity"]').value) || 0;
@@ -1260,12 +1316,12 @@
       });
 
       const frozenSheet = wb.addWorksheet('Frozen Warehouse');
-      frozenSheet.columns = [{ header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 }, { header: '재고량 · Qty', key: 'qty', width: 12 }];
+      frozenSheet.columns = [{ header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 }, { header: '작업일자 · Work date', key: 'workDate', width: 16 }, { header: '재고량 · Qty', key: 'qty', width: 12 }];
       styleHeaderRow(frozenSheet.getRow(1));
       state.frozenStock.forEach(r => frozenSheet.addRow(r));
 
       const fridgeSheet = wb.addWorksheet('Fridge Warehouse');
-      fridgeSheet.columns = [{ header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 }, { header: '교반일자 · Mix date', key: 'mixDate', width: 14 }, { header: '재고량 · Qty', key: 'qty', width: 12 }];
+      fridgeSheet.columns = [{ header: '원산지 · Origin', key: 'origin', width: 14 }, { header: '등급 · Grade', key: 'grade', width: 14 }, { header: '교반일자 · Mix date', key: 'mixDate', width: 14 }, { header: '작업일자 · Work date', key: 'workDate', width: 16 }, { header: '재고량 · Qty', key: 'qty', width: 12 }];
       styleHeaderRow(fridgeSheet.getRow(1));
       state.fridgeStock.forEach(r => fridgeSheet.addRow(r));
 

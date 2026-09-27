@@ -258,7 +258,7 @@
         </div>
         <div>
           <label for="txDate">Date</label>
-          <input id="txDate" type="date" required>
+          <input id="txDate" type="date" min="2020-01-01" max="2035-12-31" required>
         </div>
         <div>
           <label for="txNote">Note (optional)</label>
@@ -418,6 +418,13 @@
     const d = document.createElement('div');
     d.textContent = str == null ? '' : String(str);
     return d.innerHTML;
+  }
+  // Guards against the browser's date picker occasionally letting a typed year run past
+  // 4 digits (e.g. "202666-01-01"). Only accepts a real YYYY-MM-DD with a 4-digit year
+  // in a sane range.
+  function isValidDate(str) {
+    if (!str) return true;
+    return /^\d{4}-\d{2}-\d{2}$/.test(str) && Number(str.slice(0, 4)) >= 2000 && Number(str.slice(0, 4)) <= 2099;
   }
 
   function brandName(id) {
@@ -596,7 +603,7 @@
 
         return `
           <tr data-edit-row="${escapeHtml(t.id)}">
-            <td><input type="date" data-edit-field="date" value="${escapeHtml(t.date || '')}" style="width:130px;"></td>
+            <td><input type="date" data-edit-field="date" value="${escapeHtml(t.date || '')}" min="2020-01-01" max="2035-12-31" style="width:130px;"></td>
             <td>
               <select data-edit-field="brandId" style="width:120px;">${brandOptions}</select>
             </td>
@@ -780,6 +787,7 @@
     const checkedBy = txCheckedByInput.value.trim();
     if (!labelId) { statusEl.textContent = 'Add a label for this brand first.'; return; }
     if (!quantity || quantity <= 0) { statusEl.textContent = 'Enter a valid quantity.'; return; }
+    if (!isValidDate(date)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
 
     state.transactions.push({
       id: 't' + Date.now(), labelId, type, quantity, date, note, handledBy, checkedBy, createdAt: Date.now()
@@ -826,7 +834,9 @@
         statusEl.textContent = 'Enter a valid quantity before saving.';
         return;
       }
-      t.date = row.querySelector('[data-edit-field="date"]').value || t.date;
+      const newDate = row.querySelector('[data-edit-field="date"]').value;
+      if (newDate && !isValidDate(newDate)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
+      t.date = newDate || t.date;
       t.labelId = row.querySelector('[data-edit-field="labelId"]').value;
       t.type = row.querySelector('[data-edit-field="type"]').value;
       t.quantity = newQty;

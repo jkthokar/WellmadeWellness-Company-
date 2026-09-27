@@ -308,7 +308,7 @@
 
     <!-- ============ Roe stock status ============ -->
     <h2 class="section-title">명란 재고현황 · Roe stock status</h2>
-    <div class="two-col">
+    <div style="display:flex;flex-direction:column;gap:36px;">
       <div>
         <h3 style="font-size:1.05rem;margin-bottom:12px;">냉동창고 · Frozen warehouse</h3>
         <div class="card" style="margin-bottom:20px;">
@@ -334,6 +334,8 @@
         </div>
         <div class="search-row">
           <input type="text" id="frozenSearch" placeholder="🔍 Search…" maxlength="60">
+          <input type="date" id="frozenDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
+          <button type="button" class="secondary small" data-clear-date="frozenDateSearch">Clear</button>
         </div>
         <div class="tbl-scroll" style="max-height:360px;">
           <table>
@@ -371,6 +373,8 @@
         </div>
         <div class="search-row">
           <input type="text" id="fridgeSearch" placeholder="🔍 Search…" maxlength="60">
+          <input type="date" id="fridgeDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
+          <button type="button" class="secondary small" data-clear-date="fridgeDateSearch">Clear</button>
         </div>
         <div class="tbl-scroll" style="max-height:360px;">
           <table>
@@ -448,17 +452,22 @@
       </table>
     </div>
 
-    <h3 style="font-size:1.05rem;margin-bottom:10px;">입출고 이력 · Transaction history</h3>
-    <div class="search-row">
-      <input type="text" id="materialSearch" placeholder="🔍 Search item name…" maxlength="60">
-    </div>
-    <div class="tbl-scroll" style="margin-bottom:20px;">
-      <table>
-        <thead>
-          <tr><th>일자 · Date</th><th>품목명 · Item</th><th>구분 · Type</th><th class="num">수량 · Qty</th><th class="num">전일재고 · Prev</th><th class="num">현재고 · Current</th><th>입력자 · Entered by</th><th>검토자 · Checked by</th><th></th></tr>
-        </thead>
-        <tbody id="materialsBody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
-      </table>
+    <h3 style="font-size:1.05rem;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span>입출고 이력 · Transaction history</span>
+      <button type="button" id="toggleMaterialHistory" class="secondary small">보기 · Show</button>
+    </h3>
+    <div id="materialHistoryPanel" style="display:none;">
+      <div class="search-row">
+        <input type="text" id="materialSearch" placeholder="🔍 Search item name…" maxlength="60">
+      </div>
+      <div class="tbl-scroll" style="margin-bottom:20px;">
+        <table>
+          <thead>
+            <tr><th>일자 · Date</th><th>품목명 · Item</th><th>구분 · Type</th><th class="num">수량 · Qty</th><th class="num">전일재고 · Prev</th><th class="num">현재고 · Current</th><th>입력자 · Entered by</th><th>검토자 · Checked by</th><th></th></tr>
+          </thead>
+          <tbody id="materialsBody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </main>
@@ -819,6 +828,7 @@
   const frozenQty = document.getElementById('frozenQty');
   const frozenBody = document.getElementById('frozenBody');
   const frozenSearch = document.getElementById('frozenSearch');
+  const frozenDateSearch = document.getElementById('frozenDateSearch');
   let editingFrozenId = null;
 
   function renderFrozen() {
@@ -827,11 +837,13 @@
       return;
     }
     const query = (frozenSearch.value || '').trim().toLowerCase();
-    const filtered = query
-      ? state.frozenStock.filter(r => r.origin.toLowerCase().includes(query) || r.grade.toLowerCase().includes(query) || r.id === editingFrozenId)
-      : state.frozenStock;
+    const dateFilter = frozenDateSearch.value || '';
+    let filtered = state.frozenStock;
+    if (query) filtered = filtered.filter(r => r.origin.toLowerCase().includes(query) || r.grade.toLowerCase().includes(query) || r.id === editingFrozenId);
+    if (dateFilter) filtered = filtered.filter(r => (r.workDate || '') === dateFilter || r.id === editingFrozenId);
     if (filtered.length === 0) {
-      frozenBody.innerHTML = `<tr><td colspan="5" class="empty">No rows match "${escapeHtml(frozenSearch.value)}".</td></tr>`;
+      const what = query && dateFilter ? `"${escapeHtml(frozenSearch.value)}" on ${escapeHtml(dateFilter)}` : query ? `"${escapeHtml(frozenSearch.value)}"` : escapeHtml(dateFilter);
+      frozenBody.innerHTML = `<tr><td colspan="5" class="empty">No rows match ${what}.</td></tr>`;
       return;
     }
     frozenBody.innerHTML = filtered.map(r => {
@@ -876,6 +888,8 @@
   });
 
   frozenSearch.addEventListener('input', renderFrozen);
+  frozenDateSearch.addEventListener('input', renderFrozen);
+  frozenDateSearch.addEventListener('change', renderFrozen);
 
   frozenBody.addEventListener('click', (e) => {
     const editBtn = e.target.closest('[data-edit-frozen]');
@@ -916,6 +930,7 @@
   const fridgeQty = document.getElementById('fridgeQty');
   const fridgeBody = document.getElementById('fridgeBody');
   const fridgeSearch = document.getElementById('fridgeSearch');
+  const fridgeDateSearch = document.getElementById('fridgeDateSearch');
   let editingFridgeId = null;
 
   function renderFridge() {
@@ -924,11 +939,13 @@
       return;
     }
     const query = (fridgeSearch.value || '').trim().toLowerCase();
-    const filtered = query
-      ? state.fridgeStock.filter(r => r.origin.toLowerCase().includes(query) || r.grade.toLowerCase().includes(query) || r.id === editingFridgeId)
-      : state.fridgeStock;
+    const dateFilter = fridgeDateSearch.value || '';
+    let filtered = state.fridgeStock;
+    if (query) filtered = filtered.filter(r => r.origin.toLowerCase().includes(query) || r.grade.toLowerCase().includes(query) || r.id === editingFridgeId);
+    if (dateFilter) filtered = filtered.filter(r => (r.workDate || '') === dateFilter || (r.mixDate || '') === dateFilter || r.id === editingFridgeId);
     if (filtered.length === 0) {
-      fridgeBody.innerHTML = `<tr><td colspan="6" class="empty">No rows match "${escapeHtml(fridgeSearch.value)}".</td></tr>`;
+      const what = query && dateFilter ? `"${escapeHtml(fridgeSearch.value)}" on ${escapeHtml(dateFilter)}` : query ? `"${escapeHtml(fridgeSearch.value)}"` : escapeHtml(dateFilter);
+      fridgeBody.innerHTML = `<tr><td colspan="6" class="empty">No rows match ${what}.</td></tr>`;
       return;
     }
     fridgeBody.innerHTML = filtered.map(r => {
@@ -975,6 +992,8 @@
   });
 
   fridgeSearch.addEventListener('input', renderFridge);
+  fridgeDateSearch.addEventListener('input', renderFridge);
+  fridgeDateSearch.addEventListener('change', renderFridge);
 
   fridgeBody.addEventListener('click', (e) => {
     const editBtn = e.target.closest('[data-edit-fridge]');
@@ -1239,6 +1258,14 @@
   });
 
   materialSearch.addEventListener('input', renderMaterials);
+
+  const toggleMaterialHistory = document.getElementById('toggleMaterialHistory');
+  const materialHistoryPanel = document.getElementById('materialHistoryPanel');
+  toggleMaterialHistory.addEventListener('click', () => {
+    const showing = materialHistoryPanel.style.display !== 'none';
+    materialHistoryPanel.style.display = showing ? 'none' : '';
+    toggleMaterialHistory.textContent = showing ? '보기 · Show' : '숨기기 · Hide';
+  });
 
   materialsBody.addEventListener('click', (e) => {
     const editBtn = e.target.closest('[data-edit-mat]');

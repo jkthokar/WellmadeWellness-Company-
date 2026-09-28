@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sobun / Portioning (Admin) — WellmadeWellness</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pine: #1E3327;
+    --pine-deep: #16261D;
+    --ivory: #EEF0E5;
+    --ivory-warm: #F5F6EF;
+    --ink: #23241F;
+    --ink-soft: #55574C;
+    --ochre: #C08A2E;
+    --rule: #D5D8C9;
+    --green: #3E7A4C;
+    --green-soft: #E6EFE4;
+    --red: #B0453A;
+    --red-soft: #F6E7E4;
+    --blue: #3E6A8A;
+    --blue-soft: #E6EDF2;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    background: var(--ivory-warm);
+    line-height: 1.6;
+  }
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--ivory-warm);
+    border-bottom: 1px solid var(--rule);
+  }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; flex-wrap: wrap; gap: 12px; padding-top: 10px; padding-bottom: 10px; }
+  .wordmark { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; white-space: nowrap; }
+  .wordmark span { color: var(--ochre); }
+  .nav-links { display: flex; gap: 22px; font-size: 0.9rem; flex-wrap: wrap; align-items: center; }
+  .nav-links a { color: var(--ink-soft); transition: color 0.2s ease; white-space: nowrap; }
+  .nav-links a:hover, .nav-links a.active { color: var(--pine); }
+
+  header.page-head {
+    background: var(--pine);
+    color: var(--ivory);
+    padding: 56px 0 40px;
+  }
+  header.page-head h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); }
+  header.page-head p { color: #C9D2C4; margin-top: 10px; max-width: 70ch; }
+
+  main { padding: 40px 0 100px; }
+
+  .section-title { font-size: 1.25rem; margin-bottom: 16px; }
+  .status { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 16px; }
+
+  .card {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 26px 28px;
+    margin-bottom: 26px;
+    background: var(--ivory);
+  }
+  .card h2 { font-size: 1.05rem; margin-bottom: 16px; }
+  form.inline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px,1fr));
+    gap: 16px;
+    align-items: end;
+  }
+  label { display: block; font-size: 0.78rem; color: var(--ink-soft); margin-bottom: 6px; }
+  input, select {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    background: transparent;
+    padding: 8px 2px;
+    font-family: inherit;
+    font-size: 0.92rem;
+    color: var(--ink);
+  }
+  input:focus, select:focus { outline: none; border-bottom: 2px solid var(--ochre); }
+
+  button {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 600;
+    background: var(--ochre); color: var(--pine-deep);
+    padding: 11px 22px; border-radius: 100px; font-size: 0.88rem;
+  }
+  button:hover { filter: brightness(1.05); }
+  button.secondary {
+    background: transparent; color: var(--ink-soft);
+    border: 1px solid var(--rule); padding: 6px 14px; border-radius: 100px; font-size: 0.78rem;
+  }
+  button.small { padding: 4px 12px; font-size: 0.72rem; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .chip-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .chip {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid var(--rule); border-radius: 100px; padding: 5px 6px 5px 14px;
+    font-size: 0.82rem; background: var(--ivory-warm);
+  }
+  .chip button { padding: 3px 10px; font-size: 0.68rem; }
+
+  .versions-panel {
+    border: 1px solid var(--rule); border-radius: 4px; background: var(--ivory-warm);
+    margin-bottom: 22px; padding: 4px 0;
+  }
+  .versions-panel .v-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 16px; border-bottom: 1px solid var(--rule); flex-wrap: wrap;
+  }
+  .versions-panel .v-row:last-child { border-bottom: none; }
+  .versions-panel .v-meta { font-size: 0.82rem; color: var(--ink-soft); }
+  .versions-panel .v-meta strong { color: var(--ink); }
+  .versions-panel .v-empty { padding: 14px 16px; font-size: 0.85rem; color: var(--ink-soft); }
+
+  .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 520px; border: 1px solid var(--rule); border-radius: 4px; }
+  .tbl-scroll table { margin: 0; }
+  .tbl-scroll thead th { position: sticky; top: 0; background: var(--ivory-warm); z-index: 2; }
+  .tbl-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+  .tbl-scroll::-webkit-scrollbar-track { background: var(--ivory-warm); }
+  .tbl-scroll::-webkit-scrollbar-thumb { background: var(--ochre); border-radius: 6px; }
+  .tbl-scroll { scrollbar-width: thin; scrollbar-color: var(--ochre) var(--ivory-warm); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th { color: var(--ink-soft); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  tbody tr:hover { background: var(--ivory); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--ink-soft); font-size: 0.88rem; padding: 14px 0; }
+
+  /* ---------- Daily grid ---------- */
+  .grid-table th, .grid-table td { text-align: center; }
+  .grid-table th:first-child, .grid-table td:first-child {
+    text-align: left; position: sticky; left: 0; background: var(--ivory-warm); z-index: 3;
+    min-width: 150px; max-width: 220px; white-space: normal;
+  }
+  .grid-table tbody td:first-child { background: var(--ivory); }
+  .grid-table input[type="number"] {
+    width: 64px; text-align: center; border: 1px solid var(--rule); border-radius: 3px;
+    padding: 6px 4px; background: var(--ivory-warm);
+  }
+  .grid-table input[type="number"]:focus { border-color: var(--ochre); background: #fff; }
+  .grid-table tfoot td, .grid-table tfoot th { font-weight: 700; background: var(--ivory-warm); position: sticky; bottom: 0; }
+  .grid-table .col-total { color: var(--ochre); }
+  .grid-toolbar { display: flex; gap: 16px; flex-wrap: wrap; align-items: end; margin-bottom: 18px; }
+  .grid-toolbar > div { min-width: 160px; }
+  .grid-summary { display: flex; gap: 24px; flex-wrap: wrap; margin: 14px 0 18px; font-size: 0.85rem; color: var(--ink-soft); }
+  .grid-summary strong { color: var(--ink); font-size: 1rem; }
+
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+  .pill.ok { background: var(--green-soft); color: var(--green); }
+  .pill.warn { background: var(--red-soft); color: var(--red); }
+
+  .search-row { display: flex; gap: 10px; margin-bottom: 14px; max-width: 340px; }
+  .search-row input { border-color: var(--ochre); }
+
+  /* ---------- AI upload ---------- */
+  .ai-card p { font-size: 0.88rem; color: var(--ink-soft); margin-bottom: 14px; }
+  #aiFileStatus { font-size: 0.85rem; color: var(--ink-soft); margin: 10px 0; }
+  #aiUnmatched { font-size: 0.85rem; color: var(--red); margin-top: 10px; display: none; }
+
+  footer {
+    background: var(--pine);
+    color: #9FB09A;
+    padding: 32px 0;
+    font-size: 0.85rem;
+  }
+  footer .wrap { display: flex; justify-content: space-between; }
+
+  #authGate {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--pine); color: var(--ivory);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Inter', sans-serif; font-size: 0.95rem;
+  }
+  #authGate.hidden { display: none; }
+  .logout-btn {
+    background: transparent; border: 1px solid var(--rule); color: var(--ink-soft);
+    padding: 6px 16px; border-radius: 100px; font-size: 0.8rem; cursor: pointer; font-family: inherit; font-weight: 600;
+  }
+  .logout-btn:hover { color: var(--pine); }
+
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+    .card { padding: 20px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="authGate">Checking access…</div>
+
+<nav>
+  <div class="wrap">
+    <a href="index.html" class="wordmark">Wellmade<span>Wellness</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="admin-inventory.html">Admin: Container</a>
+      <a href="admin-brands.html">Admin: Labelling</a>
+      <a href="admin-production.html">Admin: Production</a>
+      <a href="admin-jeotgal.html">Admin: Jeotgal</a>
+      <a href="admin-sobun.html" class="active">Admin: Sobun</a>
+      <a href="sobun.html">View public site ↗</a>
+      <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="wrap">
+    <h1>소분(포장) 일지 관리 <br>Portioning / Packing Log</h1>
+    <p>Daily container-packing record — product × package size (150g, 160g, 400g… 1kg, 10kg), replacing the hand-written 소분일지 sheet. Type today's counts directly into the grid, or photograph a completed paper sheet and let AI fill the grid for you to review before saving. This page is standalone — it doesn't affect Container, Labelling, Production, or Jeotgal data.</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="status" id="status">Connecting to shared storage…</div>
+    <div style="display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap;">
+      <button id="versionsBtn" class="secondary" type="button">↺ Version history</button>
+      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+    </div>
+    <div id="versionsPanel" class="versions-panel" style="display:none;"></div>
+
+    <!-- ============ Product catalog ============ -->
+    <div class="card">
+      <h2>품목 관리 · Products</h2>
+      <form id="itemForm" class="inline">
+        <div>
+          <label for="itemNameInput">품목명 추가 · Add product</label>
+          <input id="itemNameInput" type="text" maxlength="60" placeholder="e.g. 오징어채">
+        </div>
+        <div><button type="submit">Add product</button></div>
+      </form>
+      <div class="chip-list" id="itemsList"></div>
+    </div>
+
+    <!-- ============ Package size catalog ============ -->
+    <div class="card">
+      <h2>규격(용기) 관리 · Package sizes</h2>
+      <form id="sizeForm" class="inline">
+        <div>
+          <label for="sizeGramsInput">용량(g) · Size in grams</label>
+          <input id="sizeGramsInput" type="number" min="1" step="1" placeholder="e.g. 150">
+        </div>
+        <div>
+          <label for="sizeLabelInput">표시명 (선택) · Label (optional)</label>
+          <input id="sizeLabelInput" type="text" maxlength="20" placeholder="auto, e.g. 150g">
+        </div>
+        <div><button type="submit">Add size</button></div>
+      </form>
+      <div class="chip-list" id="sizesList"></div>
+    </div>
+
+    <!-- ============ AI photo / Excel upload ============ -->
+    <div class="card ai-card">
+      <h2>📤 사진/엑셀 업로드로 자동 입력 · Upload a photo or Excel to auto-fill the grid</h2>
+      <p>Photograph the completed paper 소분일지 sheet (or upload a filled Excel), and AI will fill in the grid below for you to review and correct before saving — nothing is saved automatically.</p>
+      <input type="file" id="aiFileInput" accept="image/*,.xlsx,.xls">
+      <button id="aiExtractBtn" type="button" disabled style="margin-top:10px;">✨ Read into grid</button>
+      <div id="aiFileStatus"></div>
+      <div id="aiUnmatched"></div>
+    </div>
+
+    <!-- ============ Daily entry grid ============ -->
+    <h2 class="section-title">일일 소분 기록 · Daily portioning grid</h2>
+    <div class="grid-toolbar">
+      <div>
+        <label for="gridDate">일자 · Date</label>
+        <input type="date" id="gridDate" min="2020-01-01" max="2035-12-31">
+      </div>
+      <div>
+        <label for="gridHandledBy">담당 · Packed by</label>
+        <input type="text" id="gridHandledBy" maxlength="60" placeholder="Staff name">
+      </div>
+      <div>
+        <label for="gridCheckedBy">검수 · Checked by</label>
+        <input type="text" id="gridCheckedBy" maxlength="60" placeholder="Checker name">
+      </div>
+      <div><button id="saveGridBtn" type="button">Save this day</button></div>
+      <div><button id="clearGridBtn" class="secondary" type="button">Clear all cells to 0</button></div>
+    </div>
+    <div class="grid-summary" id="gridSummary"></div>
+    <div class="tbl-scroll" style="margin-bottom:44px;">
+      <table class="grid-table" id="gridTable">
+        <thead><tr><th>품목 · Product</th></tr></thead>
+        <tbody id="gridBody"><tr><td class="empty">Loading…</td></tr></tbody>
+        <tfoot id="gridFoot"></tfoot>
+      </table>
+    </div>
+
+    <!-- ============ History ============ -->
+    <h2 class="section-title">일자별 기록 · History by day</h2>
+    <div class="search-row"><input type="text" id="historySearch" placeholder="🔍 Search by date (YYYY-MM-DD)…" maxlength="20"></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>일자 · Date</th><th class="num">총 개수 · Total units</th><th class="num">총 중량(kg) · Total weight</th><th>담당 · By</th><th>검수 · Checked</th><th></th></tr></thead>
+        <tbody id="historyBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 WellmadeWellness</span>
+    <span>Sokcho, South Korea</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const statusEl = document.getElementById('status');
+
+  // ===== FIREBASE CONFIG — same shared project as the rest of the site =====
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdT2jqlbWGutlCDX8n2XVHKxLQnYiim-8",
+    authDomain: "wellmadewellness-589e8.firebaseapp.com",
+    projectId: "wellmadewellness-589e8",
+    storageBucket: "wellmadewellness-589e8.firebasestorage.app",
+    messagingSenderId: "571195991033",
+    appId: "1:571195991033:web:8427c140a9f6997b4f9328"
+  };
+  // ============================================================================
+
+  firebase.initializeApp(firebaseConfig);
+  const firestoreDb = firebase.firestore();
+  const auth = firebase.auth();
+  const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('sobun');
+  const PAGE_KEY = 'sobun';
+  const PAGE_LABEL = '소분(포장) · Sobun';
+  const VERSIONS_COL = firestoreDb.collection('sobun_versions');
+  const ACTIVITY_COL = firestoreDb.collection('wellmadewellness_activity');
+  const MAX_VERSIONS = 10;
+
+  const authGate = document.getElementById('authGate');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const ADMIN_EMAIL = 'wellwell@admin.com';
+  auth.onAuthStateChanged((user) => {
+    if (!user) {
+      window.location.href = 'login.html?next=admin-sobun.html';
+    } else if ((user.email || '').toLowerCase() !== ADMIN_EMAIL) {
+      authGate.textContent = 'This account is not authorized for admin access. Redirecting…';
+      setTimeout(() => { window.location.href = 'index.html'; }, 1200);
+    } else {
+      authGate.classList.add('hidden');
+    }
+  });
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut().then(() => { window.location.href = 'login.html'; });
+  });
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+  }
+  function isValidDate(str) {
+    if (!str) return true;
+    return /^\d{4}-\d{2}-\d{2}$/.test(str) && Number(str.slice(0, 4)) >= 2000 && Number(str.slice(0, 4)) <= 2099;
+  }
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+  function fmtNum(n) {
+    const v = Number(n) || 0;
+    return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+  function sizeLabelFor(grams) {
+    const g = Number(grams) || 0;
+    if (g >= 1000 && g % 1000 === 0) return (g / 1000) + 'kg';
+    if (g >= 1000) return (g / 1000).toFixed(1).replace(/\.0$/, '') + 'kg';
+    return g + 'g';
+  }
+  function currentEmail() {
+    return (auth.currentUser && auth.currentUser.email) ? auth.currentUser.email : 'unknown';
+  }
+
+  // ---------- Default catalog (placeholders — edit these to match your real products) ----------
+  const DEFAULT_ITEMS = ['품목 A', '품목 B', '품목 C'];
+  const DEFAULT_SIZES_G = [150, 160, 400, 450, 500, 800, 900, 1000, 10000];
+
+  let state = { items: [], sizes: [], logs: [] };
+
+  function defaultState() {
+    return {
+      items: DEFAULT_ITEMS.map((name, i) => ({ id: 'it' + i, name })),
+      sizes: DEFAULT_SIZES_G.map((g, i) => ({ id: 'sz' + i, grams: g, label: sizeLabelFor(g) })),
+      logs: []
+    };
+  }
+  function ensureState() {
+    if (!Array.isArray(state.items)) state.items = [];
+    if (!Array.isArray(state.sizes)) state.sizes = [];
+    if (!Array.isArray(state.logs)) state.logs = [];
+  }
+
+  // ---------- Version history + activity log (same pattern as the rest of the site) ----------
+  function saveBackup(reason) {
+    VERSIONS_COL.add({
+      state: JSON.parse(JSON.stringify(state)),
+      savedAt: Date.now(),
+      reason: reason || '',
+      by: currentEmail()
+    }).then(() => {
+      VERSIONS_COL.orderBy('savedAt', 'desc').get().then((snap) => {
+        snap.docs.slice(MAX_VERSIONS).forEach((d) => d.ref.delete().catch(() => {}));
+      }).catch(() => {});
+    }).catch(() => {});
+  }
+  function logActivity(action, summary) {
+    ACTIVITY_COL.add({
+      page: PAGE_KEY, pageLabel: PAGE_LABEL, action, summary: summary || '',
+      at: Date.now(), by: currentEmail()
+    }).catch(() => {});
+  }
+  function saveState() {
+    STATE_DOC.set(state)
+      .then(() => { statusEl.textContent = 'Saved — synced live for everyone viewing this page.'; })
+      .catch((e) => { statusEl.textContent = 'Could not save: ' + (e && e.message ? e.message : 'error'); });
+  }
+
+  STATE_DOC.onSnapshot((doc) => {
+    if (doc.exists) {
+      state = doc.data();
+      ensureState();
+      if (state.items.length === 0 && state.sizes.length === 0 && state.logs.length === 0) {
+        state = defaultState();
+        STATE_DOC.set(state);
+      }
+    } else {
+      state = defaultState();
+      STATE_DOC.set(state);
+    }
+    renderAll();
+    statusEl.textContent = 'Connected — live data.';
+  }, (e) => {
+    statusEl.textContent = 'Could not connect to shared storage: ' + (e && e.message ? e.message : 'error');
+  });
+
+  // ---------- Version history panel ----------
+  const versionsBtn = document.getElementById('versionsBtn');
+  const versionsPanel = document.getElementById('versionsPanel');
+  function renderVersionsPanel(versions) {
+    if (!versions.length) {
+      versionsPanel.innerHTML = '<div class="v-empty">No saved versions yet — one is saved automatically before every delete or restore.</div>';
+      return;
+    }
+    versionsPanel.innerHTML = versions.map((v) => {
+      const when = v.savedAt ? new Date(v.savedAt).toLocaleString() : 'unknown time';
+      const reason = v.reason ? escapeHtml(v.reason) : 'saved point';
+      return `
+        <div class="v-row">
+          <div class="v-meta"><strong>${when}</strong> — ${reason}<br>by ${escapeHtml(v.by || 'unknown')}</div>
+          <button class="secondary" type="button" data-restore-version="${v.id}">Restore this version</button>
+        </div>
+      `;
+    }).join('');
+  }
+  versionsBtn.addEventListener('click', () => {
+    const opening = versionsPanel.style.display === 'none';
+    if (!opening) { versionsPanel.style.display = 'none'; return; }
+    versionsPanel.style.display = 'block';
+    versionsPanel.innerHTML = '<div class="v-empty">Loading…</div>';
+    VERSIONS_COL.orderBy('savedAt', 'desc').limit(MAX_VERSIONS).get().then((snap) => {
+      renderVersionsPanel(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }).catch((e) => {
+      versionsPanel.innerHTML = '<div class="v-empty">Could not load version history: ' + (e && e.message ? e.message : 'error') + '</div>';
+    });
+  });
+  versionsPanel.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-restore-version]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-restore-version');
+    VERSIONS_COL.doc(id).get().then((doc) => {
+      if (!doc.exists) { window.alert('That version is no longer available.'); return; }
+      const v = doc.data();
+      const when = v.savedAt ? new Date(v.savedAt).toLocaleString() : 'an earlier point';
+      const msg = `Restore data from ${when}${v.reason ? ' (' + v.reason + ')' : ''}?\n\nThis will overwrite everything currently on this page with that version. Your current data will itself be saved first, so you can restore forward again if needed.`;
+      if (!window.confirm(msg)) return;
+      saveBackup('before restoring a version from ' + when);
+      state = v.state || state;
+      ensureState();
+      saveState();
+      renderAll();
+      logActivity('restore', `Restored data from ${when}`);
+      versionsPanel.style.display = 'none';
+    }).catch((e) => {
+      window.alert('Could not load that version: ' + (e && e.message ? e.message : 'error'));
+    });
+  });
+
+  // ---------- Product catalog ----------
+  const itemForm = document.getElementById('itemForm');
+  const itemNameInput = document.getElementById('itemNameInput');
+  const itemsList = document.getElementById('itemsList');
+
+  function orderedItems() {
+    return state.items.slice().sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  }
+  function itemName(id) {
+    const it = state.items.find(i => i.id === id);
+    return it ? it.name : '(deleted item)';
+  }
+  function renderItems() {
+    if (state.items.length === 0) { itemsList.innerHTML = '<span class="empty">No products yet — add one above.</span>'; return; }
+    itemsList.innerHTML = orderedItems().map(it => `
+      <span class="chip">${escapeHtml(it.name)}
+        <button class="secondary small" type="button" data-rename-item="${it.id}">Rename</button>
+        <button class="secondary small" type="button" data-del-item="${it.id}">Delete</button>
+      </span>
+    `).join('');
+  }
+  itemForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = itemNameInput.value.trim();
+    if (!name) return;
+    state.items.push({ id: 'it' + Date.now() + Math.floor(Math.random() * 1000), name });
+    itemNameInput.value = '';
+    saveState();
+    renderAll();
+    logActivity('add', `Added product "${name}"`);
+  });
+  itemsList.addEventListener('click', (e) => {
+    const renameBtn = e.target.closest('[data-rename-item]');
+    if (renameBtn) {
+      const id = renameBtn.getAttribute('data-rename-item');
+      const it = state.items.find(i => i.id === id);
+      if (!it) return;
+      const oldName = it.name;
+      const newName = window.prompt('Rename product:', it.name);
+      if (newName === null) return;
+      const trimmed = newName.trim();
+      if (!trimmed) { statusEl.textContent = 'Product name cannot be empty.'; return; }
+      it.name = trimmed;
+      saveState();
+      renderAll();
+      logActivity('edit', `Renamed product "${oldName}" to "${trimmed}"`);
+      return;
+    }
+    const delBtn = e.target.closest('[data-del-item]');
+    if (delBtn) {
+      const id = delBtn.getAttribute('data-del-item');
+      const it = state.items.find(i => i.id === id);
+      const relatedCount = state.logs.filter(l => l.itemId === id).length;
+      const msg = relatedCount > 0
+        ? `Delete "${it ? it.name : 'this product'}" and its ${relatedCount} logged entr${relatedCount === 1 ? 'y' : 'ies'}? You can undo this with "Version history" right after.`
+        : `Delete "${it ? it.name : 'this product'}"?`;
+      if (!window.confirm(msg)) return;
+      saveBackup(`before deleting product "${it ? it.name : id}"`);
+      state.logs = state.logs.filter(l => l.itemId !== id);
+      state.items = state.items.filter(i => i.id !== id);
+      saveState();
+      renderAll();
+      logActivity('delete', `Deleted product "${it ? it.name : id}"${relatedCount ? ` and ${relatedCount} entr${relatedCount === 1 ? 'y' : 'ies'}` : ''}`);
+      return;
+    }
+  });
+
+  // ---------- Package size catalog ----------
+  const sizeForm = document.getElementById('sizeForm');
+  const sizeGramsInput = document.getElementById('sizeGramsInput');
+  const sizeLabelInput = document.getElementById('sizeLabelInput');
+  const sizesList = document.getElementById('sizesList');
+
+  function orderedSizes() {
+    return state.sizes.slice().sort((a, b) => (Number(a.grams) || 0) - (Number(b.grams) || 0));
+  }
+  function sizeLabel(id) {
+    const sz = state.sizes.find(s => s.id === id);
+    return sz ? (sz.label || sizeLabelFor(sz.grams)) : '(deleted size)';
+  }
+  function renderSizes() {
+    if (state.sizes.length === 0) { sizesList.innerHTML = '<span class="empty">No sizes yet — add one above.</span>'; return; }
+    sizesList.innerHTML = orderedSizes().map(sz => `
+      <span class="chip">${escapeHtml(sz.label || sizeLabelFor(sz.grams))}
+        <button class="secondary small" type="button" data-del-size="${sz.id}">Delete</button>
+      </span>
+    `).join('');
+  }
+  sizeForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const grams = parseFloat(sizeGramsInput.value);
+    if (!grams || grams <= 0) { statusEl.textContent = 'Enter a valid size in grams.'; return; }
+    const label = sizeLabelInput.value.trim() || sizeLabelFor(grams);
+    state.sizes.push({ id: 'sz' + Date.now() + Math.floor(Math.random() * 1000), grams, label });
+    sizeGramsInput.value = ''; sizeLabelInput.value = '';
+    saveState();
+    renderAll();
+    logActivity('add', `Added package size "${label}"`);
+  });
+  sizesList.addEventListener('click', (e) => {
+    const delBtn = e.target.closest('[data-del-size]');
+    if (!delBtn) return;
+    const id = delBtn.getAttribute('data-del-size');
+    const sz = state.sizes.find(s => s.id === id);
+    const relatedCount = state.logs.filter(l => l.sizeId === id).length;
+    const label = sz ? (sz.label || sizeLabelFor(sz.grams)) : id;
+    const msg = relatedCount > 0
+      ? `Delete size "${label}" and its ${relatedCount} logged entr${relatedCount === 1 ? 'y' : 'ies'}? You can undo this with "Version history" right after.`
+      : `Delete size "${label}"?`;
+    if (!window.confirm(msg)) return;
+    saveBackup(`before deleting size "${label}"`);
+    state.logs = state.logs.filter(l => l.sizeId !== id);
+    state.sizes = state.sizes.filter(s => s.id !== id);
+    saveState();
+    renderAll();
+    logActivity('delete', `Deleted package size "${label}"${relatedCount ? ` and ${relatedCount} entr${relatedCount === 1 ? 'y' : 'ies'}` : ''}`);
+  });
+
+  // ---------- Daily entry grid ----------
+  const gridDate = document.getElementById('gridDate');
+  const gridHandledBy = document.getElementById('gridHandledBy');
+  const gridCheckedBy = document.getElementById('gridCheckedBy');
+  const gridSummary = document.getElementById('gridSummary');
+  const gridTable = document.getElementById('gridTable');
+  const gridBody = document.getElementById('gridBody');
+  const gridFoot = document.getElementById('gridFoot');
+  const saveGridBtn = document.getElementById('saveGridBtn');
+  const clearGridBtn = document.getElementById('clearGridBtn');
+  gridDate.value = todayStr();
+
+  function cellValue(itemId, sizeId, date) {
+    const l = state.logs.find(l => l.itemId === itemId && l.sizeId === sizeId && l.date === date);
+    return l ? (Number(l.quantity) || 0) : '';
+  }
+
+  function renderGrid() {
+    const date = gridDate.value || todayStr();
+    const items = orderedItems();
+    const sizes = orderedSizes();
+
+    if (items.length === 0 || sizes.length === 0) {
+      gridTable.querySelector('thead').innerHTML = '<tr><th>품목 · Product</th></tr>';
+      gridBody.innerHTML = '<tr><td class="empty">Add at least one product and one package size above to start entering data.</td></tr>';
+      gridFoot.innerHTML = '';
+      gridSummary.innerHTML = '';
+      return;
+    }
+
+    gridTable.querySelector('thead').innerHTML = '<tr><th>품목 · Product</th>' +
+      sizes.map(sz => `<th>${escapeHtml(sz.label || sizeLabelFor(sz.grams))}</th>`).join('') +
+      '<th class="col-total">합계 · Total</th></tr>';
+
+    let grandUnits = 0, grandWeight = 0;
+    const colTotals = sizes.map(() => 0);
+
+    gridBody.innerHTML = items.map(it => {
+      let rowUnits = 0, rowWeight = 0;
+      const cells = sizes.map((sz, ci) => {
+        const v = cellValue(it.id, sz.id, date);
+        const n = Number(v) || 0;
+        rowUnits += n;
+        rowWeight += n * (Number(sz.grams) || 0);
+        colTotals[ci] += n;
+        return `<td><input type="number" min="0" step="1" value="${v}" data-cell-item="${it.id}" data-cell-size="${sz.id}"></td>`;
+      }).join('');
+      grandUnits += rowUnits; grandWeight += rowWeight;
+      return `<tr><td>${escapeHtml(it.name)}</td>${cells}<td class="num col-total">${fmtNum(rowUnits)}</td></tr>`;
+    }).join('');
+
+    gridFoot.innerHTML = '<tr><th>합계 · Total</th>' +
+      colTotals.map(t => `<td class="num">${fmtNum(t)}</td>`).join('') +
+      `<td class="num col-total">${fmtNum(grandUnits)}</td></tr>`;
+
+    gridSummary.innerHTML = `
+      <div>총 개수 · Total units<br><strong>${fmtNum(grandUnits)}</strong></div>
+      <div>총 중량 · Total weight<br><strong>${fmtNum(grandWeight / 1000)} kg</strong></div>
+    `;
+  }
+
+  function prefillHandledFields(date) {
+    const entry = state.logs.find(l => l.date === date);
+    gridHandledBy.value = entry ? (entry.handledBy || '') : '';
+    gridCheckedBy.value = entry ? (entry.checkedBy || '') : '';
+  }
+
+  gridDate.addEventListener('change', () => {
+    if (!isValidDate(gridDate.value)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
+    prefillHandledFields(gridDate.value);
+    renderGrid();
+  });
+
+  gridBody.addEventListener('change', (e) => {
+    // Live totals update as you type, before saving.
+    if (e.target.matches('[data-cell-item]')) renderGridTotalsOnly();
+  });
+  gridBody.addEventListener('input', (e) => {
+    if (e.target.matches('[data-cell-item]')) renderGridTotalsOnly();
+  });
+
+  function renderGridTotalsOnly() {
+    const sizes = orderedSizes();
+    let grandUnits = 0, grandWeight = 0;
+    const colTotals = sizes.map(() => 0);
+    gridBody.querySelectorAll('tr').forEach(tr => {
+      const inputs = tr.querySelectorAll('[data-cell-item]');
+      if (inputs.length === 0) return;
+      let rowUnits = 0;
+      inputs.forEach((inp, ci) => {
+        const n = Number(inp.value) || 0;
+        rowUnits += n;
+        const sz = sizes[ci];
+        colTotals[ci] += n;
+        grandWeight += n * (sz ? (Number(sz.grams) || 0) : 0);
+      });
+      grandUnits += rowUnits;
+      const totalCell = tr.querySelector('.col-total');
+      if (totalCell) totalCell.textContent = fmtNum(rowUnits);
+    });
+    const footCells = gridFoot.querySelectorAll('td');
+    footCells.forEach((td, i) => {
+      if (i < colTotals.length) td.textContent = fmtNum(colTotals[i]);
+      else td.textContent = fmtNum(grandUnits);
+    });
+    gridSummary.innerHTML = `
+      <div>총 개수 · Total units<br><strong>${fmtNum(grandUnits)}</strong></div>
+      <div>총 중량 · Total weight<br><strong>${fmtNum(grandWeight / 1000)} kg</strong></div>
+    `;
+  }
+
+  clearGridBtn.addEventListener('click', () => {
+    if (!window.confirm('Clear every cell in this grid to 0? This does not save until you click "Save this day".')) return;
+    gridBody.querySelectorAll('[data-cell-item]').forEach(inp => { inp.value = 0; });
+    renderGridTotalsOnly();
+  });
+
+  saveGridBtn.addEventListener('click', () => {
+    const date = gridDate.value;
+    if (!date || !isValidDate(date)) { statusEl.textContent = 'Pick a valid date before saving.'; return; }
+    const handledBy = gridHandledBy.value.trim();
+    const checkedBy = gridCheckedBy.value.trim();
+    saveBackup(`before saving the ${date} portioning grid`);
+
+    let added = 0, updated = 0, removed = 0;
+    gridBody.querySelectorAll('[data-cell-item]').forEach(inp => {
+      const itemId = inp.getAttribute('data-cell-item');
+      const sizeId = inp.getAttribute('data-cell-size');
+      const qty = Number(inp.value) || 0;
+      const existing = state.logs.find(l => l.itemId === itemId && l.sizeId === sizeId && l.date === date);
+      if (qty > 0) {
+        if (existing) {
+          existing.quantity = qty; existing.handledBy = handledBy; existing.checkedBy = checkedBy;
+          updated++;
+        } else {
+          state.logs.push({
+            id: 'sb' + Date.now() + Math.floor(Math.random() * 10000),
+            itemId, sizeId, date, quantity: qty, handledBy, checkedBy, createdAt: Date.now()
+          });
+          added++;
+        }
+      } else if (existing) {
+        state.logs = state.logs.filter(l => l !== existing);
+        removed++;
+      }
+    });
+
+    saveState();
+    renderAll();
+    logActivity('add', `Saved ${date} portioning grid: ${added} new, ${updated} updated, ${removed} cleared`);
+    statusEl.textContent = `Saved ${date} — ${added} new, ${updated} updated, ${removed} cleared.`;
+  });
+
+  // ---------- History by day ----------
+  const historyBody = document.getElementById('historyBody');
+  const historySearch = document.getElementById('historySearch');
+
+  function daySummaries() {
+    const byDate = {};
+    state.logs.forEach(l => {
+      if (!byDate[l.date]) byDate[l.date] = { date: l.date, units: 0, weight: 0, handledBy: l.handledBy, checkedBy: l.checkedBy };
+      const sz = state.sizes.find(s => s.id === l.sizeId);
+      const qty = Number(l.quantity) || 0;
+      byDate[l.date].units += qty;
+      byDate[l.date].weight += qty * (sz ? (Number(sz.grams) || 0) : 0);
+      if (l.handledBy) byDate[l.date].handledBy = l.handledBy;
+      if (l.checkedBy) byDate[l.date].checkedBy = l.checkedBy;
+    });
+    return Object.values(byDate).sort((a, b) => (a.date < b.date ? 1 : -1));
+  }
+
+  function renderHistory() {
+    const days = daySummaries();
+    const query = (historySearch.value || '').trim();
+    const filtered = query ? days.filter(d => d.date.includes(query)) : days;
+    if (filtered.length === 0) { historyBody.innerHTML = '<tr><td colspan="6" class="empty">No entries yet.</td></tr>'; return; }
+    historyBody.innerHTML = filtered.map(d => `
+      <tr>
+        <td>${escapeHtml(d.date)}</td>
+        <td class="num">${fmtNum(d.units)}</td>
+        <td class="num">${fmtNum(d.weight / 1000)}</td>
+        <td>${escapeHtml(d.handledBy || '')}</td>
+        <td>${escapeHtml(d.checkedBy || '')}</td>
+        <td style="white-space:nowrap;">
+          <button class="secondary small" type="button" data-load-day="${escapeHtml(d.date)}">Load to grid</button>
+          <button class="secondary small" type="button" data-del-day="${escapeHtml(d.date)}">Delete day</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+  historySearch.addEventListener('input', renderHistory);
+  historyBody.addEventListener('click', (e) => {
+    const loadBtn = e.target.closest('[data-load-day]');
+    if (loadBtn) {
+      const date = loadBtn.getAttribute('data-load-day');
+      gridDate.value = date;
+      prefillHandledFields(date);
+      renderGrid();
+      window.scrollTo({ top: document.getElementById('gridTable').getBoundingClientRect().top + window.scrollY - 100, behavior: 'smooth' });
+      return;
+    }
+    const delBtn = e.target.closest('[data-del-day]');
+    if (delBtn) {
+      const date = delBtn.getAttribute('data-del-day');
+      const count = state.logs.filter(l => l.date === date).length;
+      if (!window.confirm(`Delete all ${count} entries logged on ${date}? You can undo this with "Version history" right after.`)) return;
+      saveBackup(`before deleting all entries for ${date}`);
+      state.logs = state.logs.filter(l => l.date !== date);
+      saveState();
+      renderAll();
+      logActivity('delete', `Deleted all ${count} portioning entries for ${date}`);
+      return;
+    }
+  });
+
+  // ---------- Excel export ----------
+  const exportBtn = document.getElementById('exportBtn');
+  exportBtn.addEventListener('click', async () => {
+    if (typeof ExcelJS === 'undefined') { statusEl.textContent = 'Excel library failed to load — check your connection and try again.'; return; }
+    exportBtn.disabled = true;
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'WellmadeWellness Sobun';
+      wb.created = new Date();
+
+      const summarySheet = wb.addWorksheet('Daily summary');
+      summarySheet.columns = [
+        { header: '일자 Date', key: 'date', width: 14 },
+        { header: '총 개수 Total units', key: 'units', width: 16 },
+        { header: '총 중량(kg) Total weight', key: 'weight', width: 18 },
+        { header: '담당 By', key: 'by', width: 16 },
+        { header: '검수 Checked', key: 'checked', width: 16 }
+      ];
+      daySummaries().slice().sort((a, b) => (a.date < b.date ? -1 : 1)).forEach(d => {
+        summarySheet.addRow({ date: d.date, units: d.units, weight: +(d.weight / 1000).toFixed(2), by: d.handledBy || '', checked: d.checkedBy || '' });
+      });
+      summarySheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      summarySheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3327' } };
+
+      const logSheet = wb.addWorksheet('Full log');
+      logSheet.columns = [
+        { header: '일자 Date', key: 'date', width: 14 },
+        { header: '품목 Product', key: 'item', width: 22 },
+        { header: '규격 Size', key: 'size', width: 12 },
+        { header: '개수 Quantity', key: 'qty', width: 12 },
+        { header: '담당 By', key: 'by', width: 16 },
+        { header: '검수 Checked', key: 'checked', width: 16 }
+      ];
+      state.logs.slice().sort((a, b) => (a.date < b.date ? -1 : 1)).forEach(l => {
+        logSheet.addRow({ date: l.date, item: itemName(l.itemId), size: sizeLabel(l.sizeId), qty: l.quantity, by: l.handledBy || '', checked: l.checkedBy || '' });
+      });
+      logSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      logSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3327' } };
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: 'application/octet-stream' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `WellmadeWellness_Sobun_${todayStr()}.xlsx`;
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) {
+      statusEl.textContent = 'Export failed: ' + (e && e.message ? e.message : 'error');
+    } finally {
+      exportBtn.disabled = false;
+    }
+  });
+
+  // ---------- Render everything ----------
+  function renderAll() {
+    renderItems();
+    renderSizes();
+    prefillHandledFields(gridDate.value || todayStr());
+    renderGrid();
+    renderHistory();
+  }
+
+  // Bridge for the AI-extraction module script below.
+  window.__sobun = {
+    getState: () => state,
+    saveState, saveBackup, logActivity,
+    renderAll, renderGridTotalsOnly, escapeHtml, isValidDate, sizeLabelFor,
+    getGridDate: () => gridDate.value || todayStr()
+  };
+})();
+</script>
+
+<!-- ============ AI photo/Excel extraction (Firebase AI Logic / Gemini) ============ -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
+  import { getAI, getGenerativeModel, GoogleAIBackend } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-ai.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdT2jqlbWGutlCDX8n2XVHKxLQnYiim-8",
+    authDomain: "wellmadewellness-589e8.firebaseapp.com",
+    projectId: "wellmadewellness-589e8",
+    storageBucket: "wellmadewellness-589e8.firebasestorage.app",
+    messagingSenderId: "571195991033",
+    appId: "1:571195991033:web:8427c140a9f6997b4f9328"
+  };
+  const app = initializeApp(firebaseConfig, 'assist-app-sobun');
+  const ai = getAI(app, { backend: new GoogleAIBackend() });
+
+  const responseSchema = {
+    type: "object",
+    properties: {
+      date: { type: "string", description: "YYYY-MM-DD if visible on the sheet, else empty string" },
+      handledBy: { type: "string" },
+      checkedBy: { type: "string" },
+      entries: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            productName: { type: "string" },
+            sizeGrams: { type: "number", description: "package size in grams, e.g. 150, 500, 1000, 10000" },
+            count: { type: "number" }
+          },
+          required: ["productName", "sizeGrams", "count"]
+        }
+      }
+    },
+    required: ["entries"]
+  };
+  const model = getGenerativeModel(ai, { model: 'gemini-2.5-flash', generationConfig: { responseMimeType: 'application/json', responseSchema } });
+
+  const fileInput = document.getElementById('aiFileInput');
+  const extractBtn = document.getElementById('aiExtractBtn');
+  const fileStatus = document.getElementById('aiFileStatus');
+  const unmatchedBox = document.getElementById('aiUnmatched');
+
+  fileInput.addEventListener('change', () => {
+    extractBtn.disabled = !fileInput.files.length;
+    fileStatus.textContent = '';
+    unmatchedBox.style.display = 'none';
+  });
+
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function dumpExcelAsText(file) {
+    const buf = await file.arrayBuffer();
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf);
+    let out = '';
+    wb.eachSheet((ws) => {
+      out += `--- Sheet: ${ws.name} ---\n`;
+      ws.eachRow({ includeEmpty: false }, (row, rowNum) => {
+        const cells = [];
+        row.eachCell({ includeEmpty: false }, (cell, colNum) => {
+          cells.push(`${cell.address}=${cell.value}`);
+        });
+        out += `Row ${rowNum}: ${cells.join(' | ')}\n`;
+      });
+    });
+    return out;
+  }
+
+  extractBtn.addEventListener('click', async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    extractBtn.disabled = true;
+    fileStatus.textContent = 'Reading file with AI — this can take a few seconds…';
+    unmatchedBox.style.display = 'none';
+    try {
+      const st = window.__sobun.getState();
+      const itemNames = st.items.map(i => i.name).join(', ');
+      const sizeGramsList = st.sizes.map(s => (s.label || window.__sobun.sizeLabelFor(s.grams)) + ' = ' + s.grams + 'g').join(', ');
+      const promptText = `This is a Korean seafood factory's daily 소분일지 (portioning/packing log): a grid with product names down the left and package sizes (in grams) across the top, with a hand-written count in each cell where that product/size combination was packed that day.
+
+Read every filled cell and return one entry per (product, size) pair that has a nonzero count. For each entry give: productName (the product's Korean name, transcribed as written), sizeGrams (the package size for that column, in grams — the column headers are weights like 150g, 160g, 400g, 500g, 800g, 1kg=1000g, 10kg=10000g), and count (the number written in that cell).
+
+Known products already in the system (match to these names when the handwriting is close, otherwise use the name as written): ${itemNames || '(none yet)'}.
+Known package sizes already in the system (grams): ${sizeGramsList || '(none yet)'}.
+
+Also extract, if visible: the date (a date is often written near the bottom, format as YYYY-MM-DD if you can determine the year — if only month/day is visible, still return your best guess), 담당/handled-by name, and 검수/checked-by name. Leave any of these as an empty string if not visible. Skip empty cells entirely — do not invent a zero-count entry.`;
+
+      const parts = [{ text: promptText }];
+      if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+        const dump = await dumpExcelAsText(file);
+        parts.push({ text: '\n\nSpreadsheet contents:\n' + dump });
+      } else {
+        const base64 = await readFileAsBase64(file);
+        parts.push({ inlineData: { mimeType: file.type || 'image/jpeg', data: base64 } });
+      }
+
+      const result = await model.generateContent(parts);
+      const text = result.response.text();
+      const parsed = JSON.parse(text);
+      applyExtraction(parsed);
+    } catch (e) {
+      fileStatus.textContent = 'Could not read that file: ' + (e && e.message ? e.message : 'error') + '. You can still enter the numbers directly in the grid below.';
+    } finally {
+      extractBtn.disabled = false;
+    }
+  });
+
+  function applyExtraction(parsed) {
+    const st = window.__sobun.getState();
+    const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
+    const gridDateInput = document.getElementById('gridDate');
+
+    if (parsed.date && window.__sobun.isValidDate(parsed.date)) {
+      if (window.confirm(`AI read the date as ${parsed.date}. Use this date for the grid? (Cancel keeps the currently selected date.)`)) {
+        gridDateInput.value = parsed.date;
+        gridDateInput.dispatchEvent(new Event('change'));
+      }
+    }
+    if (parsed.handledBy) document.getElementById('gridHandledBy').value = parsed.handledBy;
+    if (parsed.checkedBy) document.getElementById('gridCheckedBy').value = parsed.checkedBy;
+
+    let filled = 0;
+    const unmatchedProducts = new Set();
+    const unmatchedSizes = new Set();
+
+    entries.forEach((e) => {
+      const nameLower = String(e.productName || '').trim().toLowerCase();
+      if (!nameLower) return;
+      let item = st.items.find(i => i.name.toLowerCase() === nameLower);
+      if (!item) item = st.items.find(i => i.name.toLowerCase().includes(nameLower) || nameLower.includes(i.name.toLowerCase()));
+      if (!item) { unmatchedProducts.add(e.productName); return; }
+
+      const grams = Number(e.sizeGrams);
+      let size = st.sizes.find(s => Number(s.grams) === grams);
+      if (!size) {
+        // allow a small tolerance in case AI reads e.g. 1000 vs 1kg-labelled 999
+        size = st.sizes.find(s => Math.abs(Number(s.grams) - grams) <= 2);
+      }
+      if (!size) { unmatchedSizes.add(grams + 'g'); return; }
+
+      const input = document.querySelector(`[data-cell-item="${item.id}"][data-cell-size="${size.id}"]`);
+      if (input) {
+        input.value = Number(e.count) || 0;
+        filled++;
+      }
+    });
+
+    window.__sobun.renderGridTotalsOnly();
+
+    const msgs = [];
+    msgs.push(`Filled ${filled} cell${filled === 1 ? '' : 's'} from the file — review the grid below, then click "Save this day".`);
+    if (unmatchedProducts.size) msgs.push(`Unrecognized product name(s): ${Array.from(unmatchedProducts).join(', ')} — add them under 품목 관리 first, then re-upload or enter those rows by hand.`);
+    if (unmatchedSizes.size) msgs.push(`Unrecognized package size(s): ${Array.from(unmatchedSizes).join(', ')} — add them under 규격 관리 first, then re-upload or enter those columns by hand.`);
+    document.getElementById('aiFileStatus').textContent = msgs[0];
+    if (msgs.length > 1) {
+      unmatchedBox.style.display = 'block';
+      unmatchedBox.textContent = msgs.slice(1).join(' ');
+    }
+  }
+</script>
+
+</body>
+</html>

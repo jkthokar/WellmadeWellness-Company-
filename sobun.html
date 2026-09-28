@@ -266,6 +266,10 @@
     const it = state.items.find(i => i.id === id);
     return it ? it.name : '(deleted item)';
   }
+  function itemBrandOf(id) {
+    const it = state.items.find(i => i.id === id);
+    return it && it.brand ? it.brand : '';
+  }
   function sizeOf(id) { return state.sizes.find(s => s.id === id) || null; }
   function sizeLabelOf(id) {
     const sz = sizeOf(id);
@@ -308,7 +312,8 @@
         return `<td>${n ? fmtNum(n) : ''}</td>`;
       }).join('');
       grandUnits += rowUnits;
-      return `<tr><td>${escapeHtml(it.name)}</td>${cells}<td class="num col-total">${fmtNum(rowUnits)}</td><td class="num col-total-kg">${fmtNum(rowWeight / 1000)}</td></tr>`;
+      const brandTag = it.brand ? `<br><span style="font-size:0.72rem;color:var(--ink-soft);font-weight:400;">${escapeHtml(it.brand)}</span>` : '';
+      return `<tr><td>${escapeHtml(it.name)}${brandTag}</td>${cells}<td class="num col-total">${fmtNum(rowUnits)}</td><td class="num col-total-kg">${fmtNum(rowWeight / 1000)}</td></tr>`;
     }).join('');
 
     gridFoot.innerHTML = '<tr><th>합계 · Total</th>' +
@@ -415,6 +420,7 @@
       lSheet.columns = [
         { header: '일자 Date', key: 'date', width: 14 },
         { header: '품목 Product', key: 'item', width: 22 },
+        { header: '브랜드 Brand', key: 'brand', width: 16 },
         { header: '규격 Size', key: 'size', width: 12 },
         { header: '수량 Qty', key: 'qty', width: 12 },
         { header: '담당자 Handled by', key: 'handledBy', width: 16 },
@@ -422,7 +428,7 @@
       ];
       styleHeaderRow(lSheet.getRow(1));
       state.logs.slice().sort((a, b) => (a.date || '').localeCompare(b.date || '')).forEach(l => {
-        const row = lSheet.addRow({ date: l.date || '', item: itemNameOf(l.itemId), size: sizeLabelOf(l.sizeId), qty: Number(l.quantity) || 0, handledBy: l.handledBy || '', checkedBy: l.checkedBy || '' });
+        const row = lSheet.addRow({ date: l.date || '', item: itemNameOf(l.itemId), brand: itemBrandOf(l.itemId), size: sizeLabelOf(l.sizeId), qty: Number(l.quantity) || 0, handledBy: l.handledBy || '', checkedBy: l.checkedBy || '' });
         row.eachCell(cell => { cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }; });
       });
 

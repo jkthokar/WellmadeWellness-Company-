@@ -243,6 +243,11 @@
           <label for="itemNameInput">품목명 추가 · Add product</label>
           <input id="itemNameInput" type="text" maxlength="60" placeholder="e.g. 오징어채">
         </div>
+        <div>
+          <label for="itemBrandInput">브랜드 (선택) · Brand (optional)</label>
+          <input id="itemBrandInput" type="text" maxlength="40" list="brandOptions" placeholder="e.g. 고성태젓갈">
+          <datalist id="brandOptions"></datalist>
+        </div>
         <div><button type="submit">Add product</button></div>
       </form>
       <div class="chip-list" id="itemsList"></div>
@@ -392,20 +397,46 @@
   // ---------- Default catalog (placeholders — edit these to match your real products) ----------
   const DEFAULT_ITEMS = ['품목 A', '품목 B', '품목 C'];
   const DEFAULT_SIZES_G = [150, 160, 400, 450, 500, 800, 900, 1000, 10000];
+  // Known brand names (from the Labelling/브랜드 list) offered when adding a product.
+  // Brand is optional — some products don't have one. New brands typed here are
+  // remembered in state.brands so they show up as options next time too.
+  const SEED_BRANDS = ['고성태젓갈', '명태잡는날', '소담해', '소문난', '속초해품', '웰웰', '입술', '진심'];
 
-  let state = { items: [], sizes: [], logs: [] };
+  let state = { items: [], sizes: [], logs: [], brands: [] };
 
   function defaultState() {
     return {
-      items: DEFAULT_ITEMS.map((name, i) => ({ id: 'it' + i, name })),
+      items: DEFAULT_ITEMS.map((name, i) => ({ id: 'it' + i, name, brand: '' })),
       sizes: DEFAULT_SIZES_G.map((g, i) => ({ id: 'sz' + i, grams: g, label: sizeLabelFor(g) })),
-      logs: []
+      logs: [],
+      brands: []
     };
   }
   function ensureState() {
     if (!Array.isArray(state.items)) state.items = [];
     if (!Array.isArray(state.sizes)) state.sizes = [];
     if (!Array.isArray(state.logs)) state.logs = [];
+    if (!Array.isArray(state.brands)) state.brands = [];
+    state.items.forEach(it => { if (typeof it.brand !== 'string') it.brand = ''; });
+  }
+  function allBrandNames() {
+    const set = new Set(SEED_BRANDS);
+    state.brands.forEach(b => set.add(b));
+    state.items.forEach(it => { if (it.brand) set.add(it.brand); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'ko'));
+  }
+  function registerBrand(name) {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return '';
+    if (!SEED_BRANDS.includes(trimmed) && !state.brands.includes(trimmed)) {
+      state.brands.push(trimmed);
+    }
+    return trimmed;
+  }
+  function renderBrandOptions() {
+    const dl = document.getElementById('brandOptions');
+    if (!dl) return;
+    dl.innerHTML = allBrandNames().map(b => `<option value="${escapeHtml(b)}"></option>`).join('');
   }
 
   // ---------- Version history + activity log (same pattern as the rest of the site) ----------
@@ -506,6 +537,7 @@
   // ---------- Product catalog ----------
   const itemForm = document.getElementById('itemForm');
   const itemNameInput = document.getElementById('itemNameInput');
+  const itemBrandInput = document.getElementById('itemBrandInput');
   const itemsList = document.getElementById('itemsList');
 
   function orderedItems() {
@@ -515,11 +547,17 @@
     const it = state.items.find(i => i.id === id);
     return it ? it.name : '(deleted item)';
   }
+  function itemBrand(id) {
+    const it = state.items.find(i => i.id === id);
+    return it && it.brand ? it.brand : '';
+  }
   function renderItems() {
+    renderBrandOptions();
     if (state.items.length === 0) { itemsList.innerHTML = '<span class="empty">No products yet — add one above.</span>'; return; }
     itemsList.innerHTML = orderedItems().map(it => `
-      <span class="chip">${escapeHtml(it.name)}
+      <span class="chip">${escapeHtml(it.name)}${it.brand ? ` <span style="color:var(--ink-soft);font-weight:400;">· ${escapeHtml(it.brand)}</span>` : ''}
         <button class="secondary small" type="button" data-rename-item="${it.id}">Rename</button>
+        <button class="secondary small" type="button" data-brand-item="${it.id}">Brand</button>
         <button class="secondary small" type="button" data-del-item="${it.id}">Delete</button>
       </span>
     `).join('');
@@ -528,11 +566,13 @@
     e.preventDefault();
     const name = itemNameInput.value.trim();
     if (!name) return;
-    state.items.push({ id: 'it' + Date.now() + Math.floor(Math.random() * 1000), name });
+    const brand = registerBrand(itemBrandInput.value);
+    state.items.push({ id: 'it' + Date.now() + Math.floor(Math.random() * 1000), name, brand });
     itemNameInput.value = '';
+    itemBrandInput.value = '';
     saveState();
     renderAll();
-    logActivity('add', `Added product "${name}"`);
+    logActivity('add', `Added product "${name}"${brand ? ` (brand: ${brand})` : ''}`);
   });
   itemsList.addEventListener('click', (e) => {
     const renameBtn = e.target.closest('[data-rename-item]');
@@ -549,6 +589,21 @@
       saveState();
       renderAll();
       logActivity('edit', `Renamed product "${oldName}" to "${trimmed}"`);
+      return;
+    }
+    const brandBtn = e.target.closest('[data-brand-item]');
+    if (brandBtn) {
+      const id = brandBtn.getAttribute('data-brand-item');
+      const it = state.items.find(i => i.id === id);
+      if (!it) return;
+      const known = allBrandNames().join(', ');
+      const input = window.prompt(`Brand for "${it.name}"? Leave blank for no brand.\n\nKnown brands: ${known}`, it.brand || '');
+      if (input === null) return;
+      const trimmed = registerBrand(input);
+      it.brand = trimmed;
+      saveState();
+      renderAll();
+      logActivity('edit', `Set brand for "${it.name}" to "${trimmed || '(none)'}"`);
       return;
     }
     const delBtn = e.target.closest('[data-del-item]');
@@ -670,7 +725,8 @@
         return `<td><input type="number" min="0" step="1" value="${v}" data-cell-item="${it.id}" data-cell-size="${sz.id}"></td>`;
       }).join('');
       grandUnits += rowUnits; grandWeight += rowWeight;
-      return `<tr><td>${escapeHtml(it.name)}</td>${cells}<td class="num col-total">${fmtNum(rowUnits)}</td><td class="num col-total-kg">${fmtNum(rowWeight / 1000)}</td></tr>`;
+      const brandTag = it.brand ? `<br><span style="font-size:0.72rem;color:var(--ink-soft);font-weight:400;">${escapeHtml(it.brand)}</span>` : '';
+      return `<tr><td>${escapeHtml(it.name)}${brandTag}</td>${cells}<td class="num col-total">${fmtNum(rowUnits)}</td><td class="num col-total-kg">${fmtNum(rowWeight / 1000)}</td></tr>`;
     }).join('');
 
     gridFoot.innerHTML = '<tr><th>합계 · Total</th>' +
@@ -875,13 +931,14 @@
       const sheet = wb.addWorksheet(date);
       sheet.columns = [
         { header: '품목 Product', key: 'item', width: 22 },
+        { header: '브랜드 Brand', key: 'brand', width: 16 },
         { header: '규격 Size', key: 'size', width: 12 },
         { header: '개수 Quantity', key: 'qty', width: 12 },
         { header: '담당 By', key: 'by', width: 16 },
         { header: '검수 Checked', key: 'checked', width: 16 }
       ];
       dayLogs.slice().sort((a, b) => itemName(a.itemId).localeCompare(itemName(b.itemId))).forEach(l => {
-        sheet.addRow({ item: itemName(l.itemId), size: sizeLabel(l.sizeId), qty: l.quantity, by: l.handledBy || '', checked: l.checkedBy || '' });
+        sheet.addRow({ item: itemName(l.itemId), brand: itemBrand(l.itemId), size: sizeLabel(l.sizeId), qty: l.quantity, by: l.handledBy || '', checked: l.checkedBy || '' });
       });
       sheet.addRow({});
       const totalRow = sheet.addRow({ item: '합계 · Total', qty: day.units });
@@ -945,13 +1002,14 @@
       logSheet.columns = [
         { header: '일자 Date', key: 'date', width: 14 },
         { header: '품목 Product', key: 'item', width: 22 },
+        { header: '브랜드 Brand', key: 'brand', width: 16 },
         { header: '규격 Size', key: 'size', width: 12 },
         { header: '개수 Quantity', key: 'qty', width: 12 },
         { header: '담당 By', key: 'by', width: 16 },
         { header: '검수 Checked', key: 'checked', width: 16 }
       ];
       state.logs.slice().sort((a, b) => (a.date < b.date ? -1 : 1)).forEach(l => {
-        logSheet.addRow({ date: l.date, item: itemName(l.itemId), size: sizeLabel(l.sizeId), qty: l.quantity, by: l.handledBy || '', checked: l.checkedBy || '' });
+        logSheet.addRow({ date: l.date, item: itemName(l.itemId), brand: itemBrand(l.itemId), size: sizeLabel(l.sizeId), qty: l.quantity, by: l.handledBy || '', checked: l.checkedBy || '' });
       });
       logSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
       logSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3327' } };

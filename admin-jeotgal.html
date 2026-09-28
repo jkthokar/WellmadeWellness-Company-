@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jeotgal &amp; Sourcing (Admin) — WellmadeWellness</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pine: #1E3327;
+    --pine-deep: #16261D;
+    --ivory: #EEF0E5;
+    --ivory-warm: #F5F6EF;
+    --ink: #23241F;
+    --ink-soft: #55574C;
+    --ochre: #C08A2E;
+    --rule: #D5D8C9;
+    --green: #3E7A4C;
+    --green-soft: #E6EFE4;
+    --red: #B0453A;
+    --red-soft: #F6E7E4;
+    --blue: #3E6A8A;
+    --blue-soft: #E6EDF2;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    background: var(--ivory-warm);
+    line-height: 1.6;
+  }
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--ivory-warm);
+    border-bottom: 1px solid var(--rule);
+  }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
+  .wordmark { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; }
+  .wordmark span { color: var(--ochre); }
+  .nav-links { display: flex; gap: 24px; font-size: 0.9rem; flex-wrap: wrap; align-items: center; }
+  .nav-links a { color: var(--ink-soft); transition: color 0.2s ease; }
+  .nav-links a:hover, .nav-links a.active { color: var(--pine); }
+
+  header.page-head {
+    background: var(--pine);
+    color: var(--ivory);
+    padding: 56px 0 40px;
+  }
+  header.page-head h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); }
+  header.page-head p { color: #C9D2C4; margin-top: 10px; max-width: 66ch; }
+
+  main { padding: 40px 0 100px; }
+
+  .section-title { font-size: 1.25rem; margin-bottom: 16px; }
+  .status { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 16px; }
+
+  .quicknav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 36px; }
+  .quicknav a {
+    display: inline-block; padding: 6px 14px; border-radius: 100px; font-size: 0.8rem;
+    border: 1px solid var(--rule); color: var(--ink-soft); background: var(--ivory);
+  }
+  .quicknav a:hover { color: var(--pine); border-color: var(--ochre); }
+
+  .jt-section { padding-top: 8px; margin-bottom: 56px; border-top: 2px solid var(--rule); padding-top: 26px; }
+  .jt-section:first-of-type { border-top: none; padding-top: 0; }
+
+  .card {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 26px 28px;
+    margin-bottom: 20px;
+    background: var(--ivory);
+  }
+  form.inline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px,1fr));
+    gap: 16px;
+    align-items: end;
+  }
+  label { display: block; font-size: 0.78rem; color: var(--ink-soft); margin-bottom: 6px; }
+  input, select {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    background: transparent;
+    padding: 8px 2px;
+    font-family: inherit;
+    font-size: 0.92rem;
+    color: var(--ink);
+  }
+  input:focus, select:focus { outline: none; border-bottom: 2px solid var(--ochre); }
+
+  button {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 600;
+    background: var(--ochre); color: var(--pine-deep);
+    padding: 11px 22px; border-radius: 100px; font-size: 0.88rem;
+  }
+  button:hover { filter: brightness(1.05); }
+  button.secondary {
+    background: transparent; color: var(--ink-soft);
+    border: 1px solid var(--rule); padding: 6px 14px; border-radius: 100px; font-size: 0.78rem;
+  }
+  button.small { padding: 4px 12px; font-size: 0.72rem; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 420px; border: 1px solid var(--rule); border-radius: 4px; }
+  .tbl-scroll table { margin: 0; }
+  .tbl-scroll thead th { position: sticky; top: 0; background: var(--ivory-warm); z-index: 1; }
+  .tbl-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+  .tbl-scroll::-webkit-scrollbar-track { background: var(--ivory-warm); }
+  .tbl-scroll::-webkit-scrollbar-thumb { background: var(--ochre); border-radius: 6px; }
+  .tbl-scroll { scrollbar-width: thin; scrollbar-color: var(--ochre) var(--ivory-warm); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  th, td { text-align: left; padding: 10px 9px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th { color: var(--ink-soft); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  tbody tr:hover { background: var(--ivory); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--ink-soft); font-size: 0.88rem; padding: 14px 0; }
+
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+  .pill.in { background: var(--green-soft); color: var(--green); }
+  .pill.used { background: var(--red-soft); color: var(--red); }
+
+  .search-row { display: flex; gap: 10px; margin-bottom: 14px; max-width: 340px; }
+  .search-row input { border-color: var(--ochre); }
+
+  footer {
+    background: var(--pine);
+    color: #9FB09A;
+    padding: 32px 0;
+    font-size: 0.85rem;
+  }
+  footer .wrap { display: flex; justify-content: space-between; }
+
+  #authGate {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--pine); color: var(--ivory);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Inter', sans-serif; font-size: 0.95rem;
+  }
+  #authGate.hidden { display: none; }
+  .logout-btn {
+    background: transparent; border: 1px solid var(--rule); color: var(--ink-soft);
+    padding: 6px 16px; border-radius: 100px; font-size: 0.8rem; cursor: pointer; font-family: inherit; font-weight: 600;
+  }
+  .logout-btn:hover { color: var(--pine); }
+
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+    .card { padding: 20px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="authGate">Checking access…</div>
+
+<nav>
+  <div class="wrap">
+    <a href="index.html" class="wordmark">Wellmade<span>Wellness</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="admin-inventory.html">Admin: Container</a>
+      <a href="admin-brands.html">Admin: Labelling</a>
+      <a href="admin-production.html">Admin: Production</a>
+      <a href="admin-jeotgal.html" class="active">Admin: Jeotgal</a>
+      <a href="jeotgal.html">View public site ↗</a>
+      <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="wrap">
+    <h1>젓갈팀 재고 관리 <br>Jeotgal Team Inventory</h1>
+    <p>Raw material and semi-finished stock for the Jeotgal team, plus their own auxiliary materials list — tracked the same way as everywhere else on the site: 전일재고 (Prev) rolls forward automatically, today's entries add In/Used, and 현재고 (Current) is always computed, never typed by hand.</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="status" id="status">Connecting to shared storage…</div>
+    <div style="display:flex;gap:10px;margin-bottom:22px;">
+      <button id="restoreBackupBtn" class="secondary" type="button">↺ Restore last backup</button>
+      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+    </div>
+    <div class="quicknav">
+      <a href="#sec-jeotgalRaw">원물 · Raw material</a>
+      <a href="#sec-jeotgalSemi">반제품 · Semi-finished</a>
+      <a href="#sec-jeotgalMaterials">부재료 · Materials</a>
+    </div>
+
+    <div id="sectionsRoot"></div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 WellmadeWellness</span>
+    <span>Sokcho, South Korea</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const statusEl = document.getElementById('status');
+  const sectionsRoot = document.getElementById('sectionsRoot');
+  const exportBtn = document.getElementById('exportBtn');
+  const restoreBackupBtn = document.getElementById('restoreBackupBtn');
+
+  // ===== FIREBASE CONFIG =====
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdT2jqlbWGutlCDX8n2XVHKxLQnYiim-8",
+    authDomain: "wellmadewellness-589e8.firebaseapp.com",
+    projectId: "wellmadewellness-589e8",
+    storageBucket: "wellmadewellness-589e8.firebasestorage.app",
+    messagingSenderId: "571195991033",
+    appId: "1:571195991033:web:8427c140a9f6997b4f9328"
+  };
+  // ============================
+
+  firebase.initializeApp(firebaseConfig);
+  const firestoreDb = firebase.firestore();
+  const auth = firebase.auth();
+  const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('jeotgal');
+  const BACKUP_DOC = firestoreDb.collection('wellmadewellness').doc('jeotgal_backup');
+
+  const authGate = document.getElementById('authGate');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  auth.onAuthStateChanged((user) => {
+    if (!user) {
+      window.location.href = 'login.html?next=admin-jeotgal.html';
+    } else {
+      authGate.classList.add('hidden');
+    }
+  });
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut().then(() => { window.location.href = 'login.html'; });
+  });
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+  }
+  function isValidDate(str) {
+    if (!str) return true;
+    return /^\d{4}-\d{2}-\d{2}$/.test(str) && Number(str.slice(0, 4)) >= 2000 && Number(str.slice(0, 4)) <= 2099;
+  }
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+  function fmtNum(n) {
+    const v = Number(n) || 0;
+    return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+
+  // ---------- Section definitions (mirrors the paper forms exactly) ----------
+  const SECTIONS = [
+    {
+      key: 'jeotgalRaw',
+      title: '원물 재고 현황(kg) · Raw material stock — 젓갈팀',
+      inLabel: '당일입고 · In', usedLabel: '사용량 · Used', notes: false,
+      defaultItems: ['명태필렛','실속 오징어 A급','실속 오징어 B급','실속 오징어 몸통','낙지','창난','가자미식해','갈치속젓','청어알(젓갈)','어리굴젓','청어알(냉동)','염장낙지','빵통오징어','가리비(냉동)']
+    },
+    {
+      key: 'jeotgalSemi',
+      title: '반제품 재고 현황(kg) · Semi-finished stock — 젓갈팀',
+      inLabel: '원물투입 · Raw input', usedLabel: '생산제조 · Used in production', notes: false,
+      defaultItems: ['실속오징어','실속비빔오징어','양념명란(입술)','양념명란(진심, 속초해품, 고성태)','낙지','비빔낙지','명태회무침','청어알','가자미식해','갈치속젓','창난','실비양념명란','실비낙지젓','어리굴젓','명란비밥장','청양고추 명란비밥장','청양고추 멸치비밥장','미자언니네 청양비밥장','미자언니네 명란비밥장','명태회 행사용','낙지젓갈_프레시지','오징어젓갈_프레시지','청어알젓_프레시지','바른식 명태회','분란','젤믹스']
+    },
+    {
+      key: 'jeotgalMaterials',
+      title: '부재료 재고 현황 · Auxiliary materials — 젓갈팀',
+      inLabel: '당일입고 · In', usedLabel: '사용량 · Used', notes: false,
+      defaultItems: ['국내산 고춧가루(굵음)','국내산 고춧가루(고음)','청양 고춧가루(국내산)','중국산 고춧가루(굵음)','중국산 고춧가루(고음)','청양 고춧가루(중국산)','베트남 고춧가루(실비)','간마늘','커터마늘','간생강','물엿','미원','검은깨','미향','설탕','까나리액젓','멸치액젓','파프리카가루','식초','3배식초','사과식초','식용유','볶음참깨','호박씨','해바라기씨','맛술','조청','냉동 다진마늘','냉동 청양고추','냉동 대파','냉동 홍고추','유자착즙액','맛간장','참기름','배즙','청양고추(국내산)','새송이버섯(국내산)','홍고추(국내산)','풋고추(국내산)','미자언니 꽃게액젓','미자언니 맛육수','미자언니 만능조미액상','하이당물엿','대정물엿']
+    }
+  ];
+
+  function findCfg(key) { return SECTIONS.find(s => s.key === key); }
+
+  let state = {};
+  let sectionState = {}; // key -> { asOf, summarySearch, historySearch, editingLogId }
+  SECTIONS.forEach(s => {
+    sectionState[s.key] = { asOf: todayStr(), summarySearch: '', historySearch: '', editingLogId: null };
+  });
+
+  function defaultState() {
+    const s = {};
+    SECTIONS.forEach(cfg => {
+      s[cfg.key] = {
+        items: cfg.defaultItems.map((name, i) => ({ id: cfg.key + '_' + i, name, notes: '' })),
+        logs: []
+      };
+    });
+    return s;
+  }
+
+  function ensureState() {
+    SECTIONS.forEach(cfg => {
+      if (!state[cfg.key] || typeof state[cfg.key] !== 'object') state[cfg.key] = { items: [], logs: [] };
+      if (!Array.isArray(state[cfg.key].items)) state[cfg.key].items = [];
+      if (!Array.isArray(state[cfg.key].logs)) state[cfg.key].logs = [];
+    });
+  }
+
+  function saveBackup(reason) {
+    BACKUP_DOC.set({ state: JSON.parse(JSON.stringify(state)), savedAt: Date.now(), reason: reason || '' })
+      .catch(() => {});
+  }
+  function saveState() {
+    STATE_DOC.set(state)
+      .then(() => { statusEl.textContent = 'Saved — synced live for everyone viewing this page.'; })
+      .catch((e) => { statusEl.textContent = 'Could not save: ' + (e && e.message ? e.message : 'error'); });
+  }
+
+  STATE_DOC.onSnapshot((doc) => {
+    if (doc.exists) {
+      state = doc.data();
+      ensureState();
+    } else {
+      state = defaultState();
+      STATE_DOC.set(state);
+    }
+    renderAllSections();
+    statusEl.textContent = 'Connected — live data.';
+  }, (e) => {
+    statusEl.textContent = 'Could not connect to shared storage: ' + (e && e.message ? e.message : 'error');
+  });
+
+  // ---------- Build the static skeleton once ----------
+  function sectionTemplate(cfg) {
+    const colspan = cfg.notes ? 7 : 6;
+    return `
+      <div class="jt-section" id="sec-${cfg.key}">
+        <h2 class="section-title">${escapeHtml(cfg.title)}</h2>
+
+        <h3 style="font-size:1rem;margin-bottom:10px;">품목 관리 · Manage items</h3>
+        <div class="card">
+          <form class="inline" data-item-form="${cfg.key}">
+            <div>
+              <label>품목명 · Item name</label>
+              <input type="text" maxlength="80" data-item-input="${cfg.key}" placeholder="e.g. ${escapeHtml(cfg.defaultItems[0] || 'Item name')}">
+            </div>
+            <div><button type="submit">Add item</button></div>
+          </form>
+        </div>
+
+        <h3 style="font-size:1rem;margin-bottom:10px;">입출고 기록 · Log a transaction</h3>
+        <div class="card">
+          <form class="inline" data-log-form="${cfg.key}">
+            <div>
+              <label>품목 · Item</label>
+              <select data-log-item="${cfg.key}" required></select>
+            </div>
+            <div>
+              <label>구분 · Type</label>
+              <select data-log-type="${cfg.key}" required>
+                <option value="in">${escapeHtml(cfg.inLabel)}</option>
+                <option value="used">${escapeHtml(cfg.usedLabel)}</option>
+              </select>
+            </div>
+            <div>
+              <label>수량 · Quantity</label>
+              <input type="number" step="0.01" min="0" data-log-qty="${cfg.key}" required>
+            </div>
+            <div>
+              <label>일자 · Date</label>
+              <input type="date" min="2020-01-01" max="2035-12-31" data-log-date="${cfg.key}" required>
+            </div>
+            <div>
+              <label>입력자 · Entered by</label>
+              <input type="text" maxlength="60" data-log-by="${cfg.key}" placeholder="Staff name">
+            </div>
+            <div>
+              <label>검토자 · Checked by</label>
+              <input type="text" maxlength="60" data-log-checked="${cfg.key}" placeholder="Checker name">
+            </div>
+            <div><button type="submit">Log entry</button></div>
+          </form>
+        </div>
+
+        <h3 style="font-size:1rem;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <span>재고 현황 · Current stock status</span>
+          <span style="display:flex;align-items:center;gap:8px;font-weight:normal;">
+            <label style="margin-bottom:0;font-size:0.78rem;color:var(--ink-soft);">기준일 · As of</label>
+            <input type="date" data-as-of="${cfg.key}" min="2020-01-01" max="2035-12-31" style="width:auto;border-bottom:1px solid var(--ink);padding:6px 4px;">
+          </span>
+        </h3>
+        <div class="search-row"><input type="text" data-summary-search="${cfg.key}" placeholder="🔍 Search item name…" maxlength="80"></div>
+        <div class="tbl-scroll" style="margin-bottom:20px;">
+          <table>
+            <thead>
+              <tr>
+                <th>품목명 · Item</th>
+                <th class="num">전일재고 · Prev</th>
+                <th class="num">${escapeHtml(cfg.inLabel)}</th>
+                <th class="num">${escapeHtml(cfg.usedLabel)}</th>
+                <th class="num">현재고 · Current</th>
+                ${cfg.notes ? '<th>비고 · Notes</th>' : ''}
+                <th></th>
+              </tr>
+            </thead>
+            <tbody data-summary-body="${cfg.key}"><tr><td colspan="${colspan}" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+
+        <h3 style="font-size:0.95rem;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span>입출고 이력 · Transaction history</span>
+          <button type="button" class="secondary small" data-toggle-history="${cfg.key}">보기 · Show</button>
+        </h3>
+        <div data-history-panel="${cfg.key}" style="display:none;">
+          <div class="search-row"><input type="text" data-history-search="${cfg.key}" placeholder="🔍 Search item name…" maxlength="80"></div>
+          <div class="tbl-scroll">
+            <table>
+              <thead>
+                <tr><th>일자 · Date</th><th>품목명 · Item</th><th>구분 · Type</th><th class="num">수량 · Qty</th><th class="num">전일재고 · Prev</th><th class="num">현재고 · Current</th><th>입력자 · Entered by</th><th>검토자 · Checked by</th><th></th></tr>
+              </thead>
+              <tbody data-history-body="${cfg.key}"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  sectionsRoot.innerHTML = SECTIONS.map(sectionTemplate).join('');
+  sectionsRoot.querySelectorAll('[data-log-date]').forEach(inp => { inp.value = todayStr(); });
+  sectionsRoot.querySelectorAll('[data-as-of]').forEach(inp => { inp.value = todayStr(); });
+
+  // ---------- Compute + render ----------
+  function computeSummary(cfg, asOfDate) {
+    const sec = state[cfg.key];
+    const rows = {};
+    sec.items.forEach(it => { rows[it.id] = { id: it.id, name: it.name, notes: it.notes || '', prevStock: 0, todayIn: 0, used: 0, currentStock: 0 }; });
+    const byItem = {};
+    sec.logs.forEach(l => { (byItem[l.itemId] = byItem[l.itemId] || []).push(l); });
+    Object.keys(byItem).forEach(id => {
+      if (!rows[id]) return;
+      let balance = 0, todayIn = 0, todayUsed = 0;
+      byItem[id].forEach(l => {
+        const qty = Number(l.quantity) || 0;
+        if (l.date < asOfDate) balance += l.type === 'in' ? qty : -qty;
+        else if (l.date === asOfDate) { if (l.type === 'in') todayIn += qty; else todayUsed += qty; }
+      });
+      rows[id].prevStock = balance;
+      rows[id].todayIn = todayIn;
+      rows[id].used = todayUsed;
+      rows[id].currentStock = balance + todayIn - todayUsed;
+    });
+    return rows;
+  }
+
+  function computeLedger(cfg) {
+    const sec = state[cfg.key];
+    const sorted = sec.logs.slice().sort((a, b) => {
+      if (a.date !== b.date) return (a.date || '') < (b.date || '') ? -1 : 1;
+      return (a.createdAt || 0) - (b.createdAt || 0);
+    });
+    const running = {};
+    sorted.forEach(l => {
+      const prev = running[l.itemId] || 0;
+      const inQ = l.type === 'in' ? (Number(l.quantity) || 0) : 0;
+      const usedQ = l.type === 'used' ? (Number(l.quantity) || 0) : 0;
+      const cur = prev + inQ - usedQ;
+      running[l.itemId] = cur;
+      l._prev = prev;
+      l._current = cur;
+    });
+    return sorted;
+  }
+
+  function itemNameOf(cfg, id) {
+    const it = state[cfg.key].items.find(i => i.id === id);
+    return it ? it.name : '(deleted item)';
+  }
+
+  function populateItemSelect(cfg) {
+    const sel = sectionsRoot.querySelector(`[data-log-item="${cfg.key}"]`);
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = state[cfg.key].items.map(it => `<option value="${escapeHtml(it.id)}">${escapeHtml(it.name)}</option>`).join('');
+    if (state[cfg.key].items.some(it => it.id === prev)) sel.value = prev;
+  }
+
+  function renderSummary(cfg) {
+    const st = sectionState[cfg.key];
+    const asOf = st.asOf || todayStr();
+    const summary = computeSummary(cfg, asOf);
+    const items = state[cfg.key].items;
+    const colspan = cfg.notes ? 7 : 6;
+    const body = sectionsRoot.querySelector(`[data-summary-body="${cfg.key}"]`);
+    if (!body) return;
+    if (items.length === 0) { body.innerHTML = `<tr><td colspan="${colspan}" class="empty">No items yet.</td></tr>`; return; }
+    const query = (st.summarySearch || '').trim().toLowerCase();
+    const filtered = query ? items.filter(it => it.name.toLowerCase().includes(query)) : items;
+    if (filtered.length === 0) { body.innerHTML = `<tr><td colspan="${colspan}" class="empty">No items match "${escapeHtml(st.summarySearch)}".</td></tr>`; return; }
+    body.innerHTML = filtered.map(it => {
+      const r = summary[it.id] || { prevStock: 0, todayIn: 0, used: 0, currentStock: 0 };
+      const notesCell = cfg.notes
+        ? `<td><input type="text" maxlength="120" data-item-notes="${cfg.key}|${escapeHtml(it.id)}" value="${escapeHtml(it.notes || '')}" placeholder="비고…" style="width:150px;border:1px solid var(--rule);border-radius:3px;padding:5px 7px;font-size:0.82rem;"></td>`
+        : '';
+      return `
+      <tr>
+        <td>${escapeHtml(it.name)}</td>
+        <td class="num">${fmtNum(r.prevStock)}</td>
+        <td class="num">${fmtNum(r.todayIn)}</td>
+        <td class="num">${fmtNum(r.used)}</td>
+        <td class="num">${fmtNum(r.currentStock)}</td>
+        ${notesCell}
+        <td><button class="secondary small" data-del-item="${cfg.key}|${escapeHtml(it.id)}">Delete</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderHistory(cfg) {
+    const st = sectionState[cfg.key];
+    const body = sectionsRoot.querySelector(`[data-history-body="${cfg.key}"]`);
+    if (!body) return;
+    const ledger = computeLedger(cfg);
+    if (ledger.length === 0) { body.innerHTML = '<tr><td colspan="9" class="empty">No transactions logged yet.</td></tr>'; return; }
+    const query = (st.historySearch || '').trim().toLowerCase();
+    const filtered = query ? ledger.filter(l => itemNameOf(cfg, l.itemId).toLowerCase().includes(query) || l.id === st.editingLogId) : ledger;
+    if (filtered.length === 0) { body.innerHTML = `<tr><td colspan="9" class="empty">No transactions match "${escapeHtml(st.historySearch)}".</td></tr>`; return; }
+    const rows = filtered.slice().reverse();
+    body.innerHTML = rows.map(l => {
+      if (l.id === st.editingLogId) {
+        const opts = state[cfg.key].items.map(it => `<option value="${escapeHtml(it.id)}" ${it.id === l.itemId ? 'selected' : ''}>${escapeHtml(it.name)}</option>`).join('');
+        return `
+        <tr>
+          <td><input type="date" data-edit-log-field="${cfg.key}|${l.id}|date" value="${escapeHtml(l.date || '')}" min="2020-01-01" max="2035-12-31" style="width:120px;"></td>
+          <td><select data-edit-log-field="${cfg.key}|${l.id}|itemId" style="width:130px;">${opts}</select></td>
+          <td>
+            <select data-edit-log-field="${cfg.key}|${l.id}|type" style="width:120px;">
+              <option value="in" ${l.type === 'in' ? 'selected' : ''}>${escapeHtml(cfg.inLabel)}</option>
+              <option value="used" ${l.type === 'used' ? 'selected' : ''}>${escapeHtml(cfg.usedLabel)}</option>
+            </select>
+          </td>
+          <td><input type="number" step="0.01" min="0" data-edit-log-field="${cfg.key}|${l.id}|quantity" value="${l.quantity || 0}" style="width:80px;"></td>
+          <td class="num">${fmtNum(l._prev)}</td>
+          <td class="num">${fmtNum(l._current)}</td>
+          <td><input type="text" data-edit-log-field="${cfg.key}|${l.id}|handledBy" value="${escapeHtml(l.handledBy || '')}" style="width:90px;"></td>
+          <td><input type="text" data-edit-log-field="${cfg.key}|${l.id}|checkedBy" value="${escapeHtml(l.checkedBy || '')}" style="width:90px;"></td>
+          <td style="white-space:nowrap;">
+            <button data-save-log="${cfg.key}|${l.id}" style="padding:6px 12px;font-size:0.78rem;">Save</button>
+            <button class="secondary" data-cancel-log="${cfg.key}|${l.id}" style="padding:5px 10px;font-size:0.72rem;">Cancel</button>
+          </td>
+        </tr>`;
+      }
+      return `
+      <tr>
+        <td>${escapeHtml(l.date || '')}</td>
+        <td>${escapeHtml(itemNameOf(cfg, l.itemId))}</td>
+        <td><span class="pill ${l.type}">${l.type === 'in' ? escapeHtml(cfg.inLabel) : escapeHtml(cfg.usedLabel)}</span></td>
+        <td class="num">${fmtNum(l.quantity)}</td>
+        <td class="num">${fmtNum(l._prev)}</td>
+        <td class="num">${fmtNum(l._current)}</td>
+        <td>${escapeHtml(l.handledBy || '')}</td>
+        <td>${escapeHtml(l.checkedBy || '')}</td>
+        <td style="white-space:nowrap;">
+          <button class="secondary small" data-edit-log="${cfg.key}|${l.id}">Edit</button>
+          <button class="secondary small" data-del-log="${cfg.key}|${l.id}">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderSection(cfg) { populateItemSelect(cfg); renderSummary(cfg); renderHistory(cfg); }
+  function renderAllSections() { SECTIONS.forEach(renderSection); }
+
+  // ---------- Event delegation ----------
+  sectionsRoot.addEventListener('submit', (e) => {
+    const itemForm = e.target.closest('[data-item-form]');
+    if (itemForm) {
+      e.preventDefault();
+      const key = itemForm.getAttribute('data-item-form');
+      const cfg = findCfg(key);
+      const input = itemForm.querySelector(`[data-item-input="${key}"]`);
+      const name = input.value.trim();
+      if (!name) return;
+      state[key].items.push({ id: key + '_' + Date.now() + Math.floor(Math.random() * 1000), name, notes: '' });
+      input.value = '';
+      saveState();
+      renderSection(cfg);
+      return;
+    }
+    const logForm = e.target.closest('[data-log-form]');
+    if (logForm) {
+      e.preventDefault();
+      const key = logForm.getAttribute('data-log-form');
+      const cfg = findCfg(key);
+      const itemSel = logForm.querySelector(`[data-log-item="${key}"]`);
+      const typeSel = logForm.querySelector(`[data-log-type="${key}"]`);
+      const qtyInput = logForm.querySelector(`[data-log-qty="${key}"]`);
+      const dateInput = logForm.querySelector(`[data-log-date="${key}"]`);
+      const byInput = logForm.querySelector(`[data-log-by="${key}"]`);
+      const checkedInput = logForm.querySelector(`[data-log-checked="${key}"]`);
+      const itemId = itemSel.value;
+      const quantity = parseFloat(qtyInput.value);
+      if (!itemId) { statusEl.textContent = 'Add an item first, then log a transaction against it.'; return; }
+      if (!quantity || quantity <= 0) { statusEl.textContent = 'Enter a valid quantity.'; return; }
+      if (!isValidDate(dateInput.value)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
+      state[key].logs.push({
+        id: 'log' + Date.now() + Math.floor(Math.random() * 1000),
+        itemId, type: typeSel.value, quantity, date: dateInput.value,
+        handledBy: byInput.value.trim(), checkedBy: checkedInput.value.trim(), createdAt: Date.now()
+      });
+      qtyInput.value = ''; byInput.value = ''; checkedInput.value = '';
+      saveState();
+      renderSection(cfg);
+      return;
+    }
+  });
+
+  sectionsRoot.addEventListener('click', (e) => {
+    const toggleBtn = e.target.closest('[data-toggle-history]');
+    if (toggleBtn) {
+      const key = toggleBtn.getAttribute('data-toggle-history');
+      const panel = sectionsRoot.querySelector(`[data-history-panel="${key}"]`);
+      const showing = panel.style.display !== 'none';
+      panel.style.display = showing ? 'none' : '';
+      toggleBtn.textContent = showing ? '보기 · Show' : '숨기기 · Hide';
+      return;
+    }
+    const delItemBtn = e.target.closest('[data-del-item]');
+    if (delItemBtn) {
+      const [key, id] = delItemBtn.getAttribute('data-del-item').split('|');
+      const cfg = findCfg(key);
+      const it = state[key].items.find(i => i.id === id);
+      const relatedCount = state[key].logs.filter(l => l.itemId === id).length;
+      const msg = relatedCount > 0
+        ? `Delete "${it ? it.name : 'this item'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? You can undo this with "Restore last backup" right after.`
+        : `Delete "${it ? it.name : 'this item'}"? You can undo this with "Restore last backup" right after.`;
+      if (!window.confirm(msg)) return;
+      saveBackup(`before deleting item "${it ? it.name : id}" from ${cfg.title}`);
+      state[key].logs = state[key].logs.filter(l => l.itemId !== id);
+      state[key].items = state[key].items.filter(i => i.id !== id);
+      saveState();
+      renderSection(cfg);
+      return;
+    }
+    const editBtn = e.target.closest('[data-edit-log]');
+    if (editBtn) {
+      const [key, id] = editBtn.getAttribute('data-edit-log').split('|');
+      sectionState[key].editingLogId = id;
+      renderHistory(findCfg(key));
+      return;
+    }
+    const cancelBtn = e.target.closest('[data-cancel-log]');
+    if (cancelBtn) {
+      const key = cancelBtn.getAttribute('data-cancel-log').split('|')[0];
+      sectionState[key].editingLogId = null;
+      renderHistory(findCfg(key));
+      return;
+    }
+    const saveBtn = e.target.closest('[data-save-log]');
+    if (saveBtn) {
+      const [key, id] = saveBtn.getAttribute('data-save-log').split('|');
+      const row = saveBtn.closest('tr');
+      const l = state[key].logs.find(l => l.id === id);
+      if (!l) return;
+      const newDate = row.querySelector(`[data-edit-log-field="${key}|${id}|date"]`).value;
+      if (!isValidDate(newDate)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
+      const newQty = parseFloat(row.querySelector(`[data-edit-log-field="${key}|${id}|quantity"]`).value);
+      if (!newQty || newQty <= 0) { statusEl.textContent = 'Enter a valid quantity before saving.'; return; }
+      l.date = newDate;
+      l.itemId = row.querySelector(`[data-edit-log-field="${key}|${id}|itemId"]`).value;
+      l.type = row.querySelector(`[data-edit-log-field="${key}|${id}|type"]`).value;
+      l.quantity = newQty;
+      l.handledBy = row.querySelector(`[data-edit-log-field="${key}|${id}|handledBy"]`).value.trim();
+      l.checkedBy = row.querySelector(`[data-edit-log-field="${key}|${id}|checkedBy"]`).value.trim();
+      sectionState[key].editingLogId = null;
+      saveState();
+      renderSection(findCfg(key));
+      return;
+    }
+    const delBtn = e.target.closest('[data-del-log]');
+    if (delBtn) {
+      const [key, id] = delBtn.getAttribute('data-del-log').split('|');
+      if (!window.confirm('Delete this transaction? You can undo this with "Restore last backup" right after.')) return;
+      saveBackup('before deleting a transaction from ' + findCfg(key).title);
+      state[key].logs = state[key].logs.filter(l => l.id !== id);
+      saveState();
+      renderSection(findCfg(key));
+      return;
+    }
+  });
+
+  sectionsRoot.addEventListener('input', (e) => {
+    const search = e.target.closest('[data-summary-search]');
+    if (search) {
+      const key = search.getAttribute('data-summary-search');
+      sectionState[key].summarySearch = search.value;
+      const cursorPos = search.selectionStart;
+      renderSummary(findCfg(key));
+      const restored = sectionsRoot.querySelector(`[data-summary-search="${key}"]`);
+      if (restored) { restored.focus(); restored.setSelectionRange(cursorPos, cursorPos); }
+      return;
+    }
+    const hsearch = e.target.closest('[data-history-search]');
+    if (hsearch) {
+      const key = hsearch.getAttribute('data-history-search');
+      sectionState[key].historySearch = hsearch.value;
+      renderHistory(findCfg(key));
+      return;
+    }
+  });
+
+  sectionsRoot.addEventListener('change', (e) => {
+    const asOf = e.target.closest('[data-as-of]');
+    if (asOf) {
+      const key = asOf.getAttribute('data-as-of');
+      sectionState[key].asOf = asOf.value;
+      renderSummary(findCfg(key));
+      return;
+    }
+    const notesInput = e.target.closest('[data-item-notes]');
+    if (notesInput) {
+      const [key, id] = notesInput.getAttribute('data-item-notes').split('|');
+      const it = state[key].items.find(i => i.id === id);
+      if (it) { it.notes = notesInput.value; saveState(); }
+      return;
+    }
+  });
+
+  restoreBackupBtn.addEventListener('click', () => {
+    restoreBackupBtn.disabled = true;
+    BACKUP_DOC.get().then((doc) => {
+      restoreBackupBtn.disabled = false;
+      if (!doc.exists) {
+        window.alert('No backup found yet — a backup is saved automatically right before you delete something.');
+        return;
+      }
+      const backup = doc.data();
+      const when = backup.savedAt ? new Date(backup.savedAt).toLocaleString() : 'an earlier point';
+      const reason = backup.reason ? ` (${backup.reason})` : '';
+      const msg = `Restore data from ${when}${reason}?\n\nThis will overwrite everything on this page with that backup. Your current data will itself be backed up first, so you can restore forward again if needed.`;
+      if (!window.confirm(msg)) return;
+      saveBackup('before restoring a backup (undo the restore)');
+      state = backup.state || state;
+      ensureState();
+      saveState();
+      renderAllSections();
+    }).catch((e) => {
+      restoreBackupBtn.disabled = false;
+      window.alert('Could not load backup: ' + (e && e.message ? e.message : 'error'));
+    });
+  });
+
+  // ---------- Excel export: one Summary + one Log sheet per section ----------
+  function sheetNameFor(name, used) {
+    let base = String(name || 'Sheet').replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 28) || 'Sheet';
+    let candidate = base;
+    let n = 2;
+    while (used.has(candidate.toLowerCase())) {
+      candidate = (base + ' ' + n).slice(0, 31);
+      n++;
+    }
+    used.add(candidate.toLowerCase());
+    return candidate;
+  }
+  const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3327' } };
+  const HEADER_FONT = { color: { argb: 'FFFFFFFF' }, bold: true };
+  const THIN_BORDER = { style: 'thin', color: { argb: 'FFD5D8C9' } };
+  function styleHeaderRow(row) {
+    row.eachCell(cell => {
+      cell.fill = HEADER_FILL;
+      cell.font = HEADER_FONT;
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+    });
+  }
+
+  exportBtn.addEventListener('click', async () => {
+    if (typeof ExcelJS === 'undefined') {
+      statusEl.textContent = 'Excel library failed to load — check your connection and try again.';
+      return;
+    }
+    exportBtn.disabled = true;
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'WellmadeWellness Jeotgal';
+      wb.created = new Date();
+      const usedNames = new Set();
+
+      SECTIONS.forEach(cfg => {
+        const asOf = sectionState[cfg.key].asOf || todayStr();
+        const summary = computeSummary(cfg, asOf);
+
+        const sSheet = wb.addWorksheet(sheetNameFor(cfg.key + ' Summary', usedNames));
+        const cols = [
+          { header: '품목명 Item', key: 'name', width: 26 },
+          { header: '전일재고 Prev', key: 'prev', width: 13 },
+          { header: cfg.inLabel.replace(' · ', ' '), key: 'in', width: 15 },
+          { header: cfg.usedLabel.replace(' · ', ' '), key: 'used', width: 18 },
+          { header: '현재고 Current', key: 'current', width: 13 }
+        ];
+        if (cfg.notes) cols.push({ header: '비고 Notes', key: 'notes', width: 24 });
+        sSheet.columns = cols;
+        styleHeaderRow(sSheet.getRow(1));
+        state[cfg.key].items.forEach(it => {
+          const r = summary[it.id] || { prevStock: 0, todayIn: 0, used: 0, currentStock: 0 };
+          const rowData = { name: it.name, prev: r.prevStock, in: r.todayIn, used: r.used, current: r.currentStock };
+          if (cfg.notes) rowData.notes = it.notes || '';
+          sSheet.addRow(rowData);
+        });
+
+        const lSheet = wb.addWorksheet(sheetNameFor(cfg.key + ' Log', usedNames));
+        lSheet.columns = [
+          { header: '일자 Date', key: 'date', width: 14 },
+          { header: '품목명 Item', key: 'item', width: 24 },
+          { header: '구분 Type', key: 'type', width: 20 },
+          { header: '수량 Qty', key: 'qty', width: 12 },
+          { header: '입력자 Entered by', key: 'handledBy', width: 18 },
+          { header: '검토자 Checked by', key: 'checkedBy', width: 18 }
+        ];
+        styleHeaderRow(lSheet.getRow(1));
+        const ledger = computeLedger(cfg).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        ledger.forEach(l => {
+          const typeLabel = l.type === 'in' ? cfg.inLabel.replace(' · ', ' ') : cfg.usedLabel.replace(' · ', ' ');
+          const row = lSheet.addRow({ date: l.date || '', item: itemNameOf(cfg, l.itemId), type: typeLabel, qty: Number(l.quantity) || 0, handledBy: l.handledBy || '', checkedBy: l.checkedBy || '' });
+          row.eachCell(cell => { cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }; });
+        });
+      });
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const dateStr = todayStr();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `jeotgal-${dateStr}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      statusEl.textContent = 'Could not export: ' + (err && err.message ? err.message : 'error');
+    } finally {
+      exportBtn.disabled = false;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

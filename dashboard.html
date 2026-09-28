@@ -199,6 +199,7 @@
       <a href="admin-inventory.html">Admin: Container</a>
       <a href="admin-brands.html">Admin: Labelling</a>
       <a href="admin-production.html">Admin: Production</a>
+      <a href="admin-jeotgal.html">Admin: Jeotgal</a>
       <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
     </div>
   </div>
@@ -207,7 +208,7 @@
 <header class="page-head">
   <div class="wrap">
     <h1>회사 현황판 <br>Company Dashboard</h1>
-    <p>One page, the whole company — container stock, label stock, 명란 production, and auxiliary materials, combined with every low-stock alert in one place.</p>
+    <p>One page, the whole company — container stock, label stock, 명란 production, auxiliary materials, and now the Jeotgal team's stock, combined with every low-stock alert in one place.</p>
   </div>
 </header>
 
@@ -351,11 +352,16 @@
   let inv = { products: [], products2: [], products3: [], transactions: [] };
   let brd = { brands: [], labels: [], transactions: [] };
   let prod = { stageLogs: [], frozenStock: [], fridgeStock: [], materials: [], materialLogs: [] };
-  const loaded = { inv: false, brd: false, prod: false };
+  let jtg = {
+    jeotgalRaw: { items: [], logs: [] },
+    jeotgalSemi: { items: [], logs: [] },
+    jeotgalMaterials: { items: [], logs: [] }
+  };
+  const loaded = { inv: false, brd: false, prod: false, jtg: false };
 
   function maybeRender() {
-    if (loaded.inv && loaded.brd && loaded.prod) {
-      statusEl.textContent = 'Connected — live data from Container, Labelling, and Production.';
+    if (loaded.inv && loaded.brd && loaded.prod && loaded.jtg) {
+      statusEl.textContent = 'Connected — live data from Container, Labelling, Production, and Jeotgal.';
       renderAll();
     }
   }
@@ -395,6 +401,21 @@
     loaded.prod = true;
     maybeRender();
   }, () => { loaded.prod = true; maybeRender(); });
+
+  firestoreDb.collection('wellmadewellness').doc('jeotgal').onSnapshot((doc) => {
+    if (doc.exists) {
+      const d = doc.data();
+      ['jeotgalRaw', 'jeotgalSemi', 'jeotgalMaterials'].forEach(key => {
+        const sec = (d && d[key]) || {};
+        jtg[key] = {
+          items: Array.isArray(sec.items) ? sec.items : [],
+          logs: Array.isArray(sec.logs) ? sec.logs : []
+        };
+      });
+    }
+    loaded.jtg = true;
+    maybeRender();
+  }, () => { loaded.jtg = true; maybeRender(); });
 
   // ---------- Materials constants (mirrors production.html) ----------
   const MATERIAL_ORDER = ['혼다시', '천일염', '한주소금', '솔비톨', 'L-글루탐산나트륨', '아질산나트륨',
@@ -487,6 +508,38 @@
     return rows;
   }
 
+  // ---------- Jeotgal current stock (raw + semi-finished + their own materials) ----------
+  function jtgCurrentByItem(sec, asOfDate) {
+    const rows = {};
+    sec.items.forEach(it => { rows[it.id] = 0; });
+    const byItem = {};
+    sec.logs.forEach(l => { (byItem[l.itemId] = byItem[l.itemId] || []).push(l); });
+    Object.keys(byItem).forEach(id => {
+      if (!(id in rows)) return;
+      let balance = 0;
+      byItem[id].forEach(l => {
+        const qty = Number(l.quantity) || 0;
+        if ((l.date || '') <= asOfDate) balance += l.type === 'in' ? qty : -qty;
+      });
+      rows[id] = balance;
+    });
+    return rows;
+  }
+  function jeotgalTotals() {
+    const asOf = todayStr();
+    let itemCount = 0, totalStock = 0;
+    ['jeotgalRaw', 'jeotgalSemi', 'jeotgalMaterials'].forEach(key => {
+      const sec = jtg[key] || { items: [], logs: [] };
+      itemCount += sec.items.length;
+      const rows = jtgCurrentByItem(sec, asOf);
+      totalStock += Object.values(rows).reduce((s, v) => s + v, 0);
+    });
+    return { itemCount, totalStock };
+  }
+  function fmtNum(n) {
+    return (Number(n) || 0).toLocaleString(undefined, { maximumFractionDigits: 1 });
+  }
+
   // ---------- KPI cards ----------
   function renderKpis() {
     const containerTotal = containerRows().reduce((s, r) => s + r.current, 0);
@@ -504,10 +557,13 @@
     const todayLogs = prod.stageLogs.filter(s => s.date === today);
     const todayTotal = todayLogs.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
+    const jtgTotals = jeotgalTotals();
+
     const cards = [
       { label: '컨테이너 재고 · Container stock', value: containerTotal.toLocaleString(), sub: containerRows().length + ' products tracked' },
       { label: '라벨 재고 · Label stock', value: labelTotal.toLocaleString(), sub: labelRows().length + ' labels tracked' },
       { label: '명란 재고 · Roe stock (frozen+fridge)', value: roeTotal.toLocaleString(), sub: prod.frozenStock.length + ' frozen · ' + prod.fridgeStock.length + ' fridge rows' },
+      { label: '젓갈 재고(kg) · Jeotgal stock', value: fmtNum(jtgTotals.totalStock), sub: jtgTotals.itemCount + ' items tracked (raw + semi + materials)' },
       { label: '오늘 생산량 · Today\'s production', value: todayTotal.toLocaleString(), sub: todayLogs.length + ' entries today (' + today + ')' },
       { label: '부재료 부족 품목 · Materials low', value: lowMaterials, sub: 'as of ' + asOf, alert: lowMaterials > 0 }
     ];

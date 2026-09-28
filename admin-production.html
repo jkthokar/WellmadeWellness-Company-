@@ -274,7 +274,7 @@
       <input type="date" id="thawDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
       <button type="button" class="secondary small" data-clear-date="thawDateSearch">Clear</button>
     </div>
-    <div class="tbl-scroll" style="margin-bottom:36px;">
+    <div class="tbl-scroll" style="max-height:420px;margin-bottom:36px;">
       <table>
         <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th><th></th></tr></thead>
         <tbody id="thawBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
@@ -287,7 +287,7 @@
       <input type="date" id="mixDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
       <button type="button" class="secondary small" data-clear-date="mixDateSearch">Clear</button>
     </div>
-    <div class="tbl-scroll" style="margin-bottom:36px;">
+    <div class="tbl-scroll" style="max-height:420px;margin-bottom:36px;">
       <table>
         <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th><th></th></tr></thead>
         <tbody id="mixBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
@@ -300,7 +300,7 @@
       <input type="date" id="cureDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
       <button type="button" class="secondary small" data-clear-date="cureDateSearch">Clear</button>
     </div>
-    <div class="tbl-scroll" style="margin-bottom:36px;">
+    <div class="tbl-scroll" style="max-height:420px;margin-bottom:36px;">
       <table>
         <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>교반일자 · Mix date</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th><th></th></tr></thead>
         <tbody id="cureBody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
@@ -372,10 +372,15 @@
             <div><button type="submit">Add / Update</button></div>
           </form>
         </div>
-        <div class="search-row">
+        <div class="search-row" style="flex-wrap:wrap;row-gap:8px;">
           <input type="text" id="fridgeSearch" placeholder="🔍 Search…" maxlength="60">
-          <input type="date" id="fridgeDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
-          <button type="button" class="secondary small" data-clear-date="fridgeDateSearch">Clear</button>
+          <label style="display:flex;align-items:center;gap:6px;margin:0;font-size:0.78rem;color:var(--ink-soft);white-space:nowrap;">교반일자 · Mix date
+            <input type="date" id="fridgeMixDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;margin:0;font-size:0.78rem;color:var(--ink-soft);white-space:nowrap;">작업일자 · Work date
+            <input type="date" id="fridgeWorkDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
+          </label>
+          <button type="button" class="secondary small" data-clear-date="fridgeMixDateSearch,fridgeWorkDateSearch">Clear dates</button>
         </div>
         <div class="tbl-scroll" style="max-height:360px;">
           <table>
@@ -644,10 +649,12 @@
 
   document.querySelectorAll('[data-clear-date]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const input = document.getElementById(btn.getAttribute('data-clear-date'));
-      if (!input) return;
-      input.value = '';
-      input.dispatchEvent(new Event('input'));
+      btn.getAttribute('data-clear-date').split(',').forEach(id => {
+        const input = document.getElementById(id.trim());
+        if (!input) return;
+        input.value = '';
+        input.dispatchEvent(new Event('input'));
+      });
     });
   });
 
@@ -931,7 +938,8 @@
   const fridgeQty = document.getElementById('fridgeQty');
   const fridgeBody = document.getElementById('fridgeBody');
   const fridgeSearch = document.getElementById('fridgeSearch');
-  const fridgeDateSearch = document.getElementById('fridgeDateSearch');
+  const fridgeMixDateSearch = document.getElementById('fridgeMixDateSearch');
+  const fridgeWorkDateSearch = document.getElementById('fridgeWorkDateSearch');
   let editingFridgeId = null;
 
   function renderFridge() {
@@ -940,13 +948,18 @@
       return;
     }
     const query = (fridgeSearch.value || '').trim().toLowerCase();
-    const dateFilter = fridgeDateSearch.value || '';
+    const mixFilter = fridgeMixDateSearch.value || '';
+    const workFilter = fridgeWorkDateSearch.value || '';
     let filtered = state.fridgeStock;
     if (query) filtered = filtered.filter(r => r.origin.toLowerCase().includes(query) || r.grade.toLowerCase().includes(query) || r.id === editingFridgeId);
-    if (dateFilter) filtered = filtered.filter(r => (r.workDate || '') === dateFilter || (r.mixDate || '') === dateFilter || r.id === editingFridgeId);
+    if (mixFilter) filtered = filtered.filter(r => (r.mixDate || '') === mixFilter || r.id === editingFridgeId);
+    if (workFilter) filtered = filtered.filter(r => (r.workDate || '') === workFilter || r.id === editingFridgeId);
     if (filtered.length === 0) {
-      const what = query && dateFilter ? `"${escapeHtml(fridgeSearch.value)}" on ${escapeHtml(dateFilter)}` : query ? `"${escapeHtml(fridgeSearch.value)}"` : escapeHtml(dateFilter);
-      fridgeBody.innerHTML = `<tr><td colspan="6" class="empty">No rows match ${what}.</td></tr>`;
+      const bits = [];
+      if (query) bits.push(`"${escapeHtml(fridgeSearch.value)}"`);
+      if (mixFilter) bits.push(`교반일자 ${escapeHtml(mixFilter)}`);
+      if (workFilter) bits.push(`작업일자 ${escapeHtml(workFilter)}`);
+      fridgeBody.innerHTML = `<tr><td colspan="6" class="empty">No rows match ${bits.join(' · ')}.</td></tr>`;
       return;
     }
     fridgeBody.innerHTML = filtered.map(r => {
@@ -993,8 +1006,10 @@
   });
 
   fridgeSearch.addEventListener('input', renderFridge);
-  fridgeDateSearch.addEventListener('input', renderFridge);
-  fridgeDateSearch.addEventListener('change', renderFridge);
+  fridgeMixDateSearch.addEventListener('input', renderFridge);
+  fridgeMixDateSearch.addEventListener('change', renderFridge);
+  fridgeWorkDateSearch.addEventListener('input', renderFridge);
+  fridgeWorkDateSearch.addEventListener('change', renderFridge);
 
   fridgeBody.addEventListener('click', (e) => {
     const editBtn = e.target.closest('[data-edit-fridge]');

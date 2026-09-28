@@ -93,7 +93,7 @@
   }
   .grid-table tbody td:first-child { background: var(--ivory); }
   .grid-table tfoot td, .grid-table tfoot th { font-weight: 700; background: var(--ivory-warm); position: sticky; bottom: 0; }
-  .grid-table .col-total { color: var(--ochre); }
+  .grid-table .col-total, .grid-table .col-total-kg { color: var(--ochre); }
   .jt-section { margin-bottom: 56px; border-top: 2px solid var(--rule); padding-top: 26px; }
   .jt-section:first-of-type { border-top: none; padding-top: 0; }
 </style>
@@ -142,6 +142,7 @@
         </div>
       </div>
       <div class="grid-summary" id="gridSummary"></div>
+      <div class="search-row"><input type="text" id="gridProductSearch" placeholder="🔍 품목 검색 · Search product…" maxlength="60"></div>
       <div class="tbl-scroll">
         <table class="grid-table" id="gridTable">
           <thead><tr><th>품목 · Product</th></tr></thead>
@@ -290,34 +291,49 @@
 
     gridTable.querySelector('thead').innerHTML = '<tr><th>품목 · Product</th>' +
       sizes.map(sz => `<th>${escapeHtml(sz.label || sizeLabelFor(sz.grams))}</th>`).join('') +
-      '<th class="col-total">합계 · Total</th></tr>';
+      '<th class="col-total">합계 · Total</th><th class="col-total">총 중량(kg) · Total kg</th></tr>';
 
     let grandUnits = 0, grandWeight = 0;
     const colTotals = sizes.map(() => 0);
 
     gridBody.innerHTML = items.map(it => {
-      let rowUnits = 0;
+      let rowUnits = 0, rowWeight = 0;
       const cells = sizes.map((sz, ci) => {
         const n = Number(cellValue(it.id, sz.id, date)) || 0;
         rowUnits += n;
         colTotals[ci] += n;
-        grandWeight += n * (Number(sz.grams) || 0);
+        const w = n * (Number(sz.grams) || 0);
+        rowWeight += w;
+        grandWeight += w;
         return `<td>${n ? fmtNum(n) : ''}</td>`;
       }).join('');
       grandUnits += rowUnits;
-      return `<tr><td>${escapeHtml(it.name)}</td>${cells}<td class="num col-total">${fmtNum(rowUnits)}</td></tr>`;
+      return `<tr><td>${escapeHtml(it.name)}</td>${cells}<td class="num col-total">${fmtNum(rowUnits)}</td><td class="num col-total-kg">${fmtNum(rowWeight / 1000)}</td></tr>`;
     }).join('');
 
     gridFoot.innerHTML = '<tr><th>합계 · Total</th>' +
       colTotals.map(t => `<td class="num">${fmtNum(t)}</td>`).join('') +
-      `<td class="num col-total">${fmtNum(grandUnits)}</td></tr>`;
+      `<td class="num col-total">${fmtNum(grandUnits)}</td><td class="num col-total-kg">${fmtNum(grandWeight / 1000)}</td></tr>`;
 
     gridSummary.innerHTML = `
       <div>총 개수 · Total units<br><strong>${fmtNum(grandUnits)}</strong></div>
       <div>총 중량 · Total weight<br><strong>${fmtNum(grandWeight / 1000)} kg</strong></div>
     `;
+    filterGridRows();
   }
   viewDate.addEventListener('change', renderGrid);
+
+  const gridProductSearch = document.getElementById('gridProductSearch');
+  function filterGridRows() {
+    const q = (gridProductSearch.value || '').trim().toLowerCase();
+    gridBody.querySelectorAll('tr').forEach(tr => {
+      const nameCell = tr.querySelector('td:first-child');
+      if (!nameCell) return;
+      const match = !q || nameCell.textContent.toLowerCase().includes(q);
+      tr.style.display = match ? '' : 'none';
+    });
+  }
+  gridProductSearch.addEventListener('input', filterGridRows);
 
   function daySummaries() {
     const byDate = {};

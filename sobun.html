@@ -271,7 +271,9 @@
       return a.name.localeCompare(b.name, 'ko');
     });
   }
-  function orderedSizes() { return state.sizes.slice(); }
+  function orderedSizes() {
+    return state.sizes.slice().sort((a, b) => (Number(a.grams) || 0) - (Number(b.grams) || 0));
+  }
   function itemNameOf(id) {
     const it = state.items.find(i => i.id === id);
     return it ? it.name : '(deleted item)';

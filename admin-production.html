@@ -106,6 +106,10 @@
   .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 480px; border: 1px solid var(--rule); border-radius: 4px; }
   .tbl-scroll table { margin: 0; }
   .tbl-scroll thead th { position: sticky; top: 0; background: var(--ivory-warm); z-index: 1; }
+  .tbl-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+  .tbl-scroll::-webkit-scrollbar-track { background: var(--ivory-warm); }
+  .tbl-scroll::-webkit-scrollbar-thumb { background: var(--ochre); border-radius: 6px; }
+  .tbl-scroll { scrollbar-width: thin; scrollbar-color: var(--ochre) var(--ivory-warm); }
   table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
   th, td { text-align: left; padding: 10px 9px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
   th { color: var(--ink-soft); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.02em; }
@@ -175,6 +179,7 @@
       <a href="admin-inventory.html">Admin: Container</a>
       <a href="admin-brands.html">Admin: Labelling</a>
       <a href="admin-production.html" class="active">Admin: Production</a>
+      <a href="admin-jeotgal.html">Admin: Jeotgal</a>
       <a href="production.html">View public site ↗</a>
       <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
     </div>
@@ -191,6 +196,43 @@
 <main>
   <div class="wrap">
     <div class="status" id="status">Connecting to shared storage…</div>
+
+    <!-- ============ AI file auto-entry ============ -->
+    <h2 class="section-title">📤 파일 업로드 자동 입력 · Upload a file for AI auto-entry</h2>
+    <div class="card">
+      <p style="font-size:0.85rem;color:var(--ink-soft);margin-bottom:16px;">
+        Upload a photo of the paper form, or a filled-in Excel file — AI will read it and sort the rows into 작업 기록 (thaw/mix/cure), 냉동/냉장 재고, and 부재료 입출고. Nothing is saved until you review and confirm below.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
+        <input type="file" id="aiFileInput" accept="image/*,.xlsx,.xls" style="flex:1 1 260px;border:1px dashed var(--rule);padding:10px;border-radius:4px;">
+        <button id="aiFileExtractBtn" type="button" disabled>✨ Extract entries</button>
+      </div>
+      <div id="aiFileStatus" style="font-size:0.82rem;color:var(--ink-soft);display:none;margin-bottom:6px;"></div>
+
+      <div id="aiPreviewArea" style="display:none;margin-top:20px;">
+        <h3 style="font-size:1rem;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <span>검토 후 추가 · Review before adding</span>
+          <span style="font-size:0.8rem;font-weight:normal;color:var(--ink-soft);">Uncheck any row you don't want, fix anything AI misread, then add.</span>
+        </h3>
+        <div class="tbl-scroll" style="max-height:420px;margin-bottom:14px;">
+          <table>
+            <thead>
+              <tr>
+                <th></th><th>구분 · Section</th><th>원산지/품목 · Origin/Item</th><th>등급/구분 · Grade/Type</th>
+                <th class="num">작업량/수량 · Amount/Qty</th><th>교반일자 · Mix date</th><th>작업일자 · Work/Date</th>
+                <th>작업자/입력자 · Worker/By</th><th>검토자 · Checked by</th>
+              </tr>
+            </thead>
+            <tbody id="aiPreviewBody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button id="aiAddSelectedBtn" type="button">Add selected entries</button>
+          <button id="aiDiscardBtn" class="secondary" type="button">Discard</button>
+        </div>
+        <div id="aiAddResult" style="font-size:0.82rem;color:var(--ink-soft);margin-top:10px;display:none;"></div>
+      </div>
+    </div>
 
     <!-- ============ Daily dashboard ============ -->
     <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
@@ -274,7 +316,7 @@
       <input type="date" id="thawDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
       <button type="button" class="secondary small" data-clear-date="thawDateSearch">Clear</button>
     </div>
-    <div class="tbl-scroll" style="max-height:420px;margin-bottom:36px;">
+    <div class="tbl-scroll" style="max-height:280px;margin-bottom:36px;">
       <table>
         <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th><th></th></tr></thead>
         <tbody id="thawBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
@@ -287,7 +329,7 @@
       <input type="date" id="mixDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
       <button type="button" class="secondary small" data-clear-date="mixDateSearch">Clear</button>
     </div>
-    <div class="tbl-scroll" style="max-height:420px;margin-bottom:36px;">
+    <div class="tbl-scroll" style="max-height:280px;margin-bottom:36px;">
       <table>
         <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th><th></th></tr></thead>
         <tbody id="mixBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
@@ -300,7 +342,7 @@
       <input type="date" id="cureDateSearch" min="2020-01-01" max="2035-12-31" style="width:auto;flex-shrink:0;">
       <button type="button" class="secondary small" data-clear-date="cureDateSearch">Clear</button>
     </div>
-    <div class="tbl-scroll" style="max-height:420px;margin-bottom:36px;">
+    <div class="tbl-scroll" style="max-height:280px;margin-bottom:36px;">
       <table>
         <thead><tr><th>일자 · Date</th><th>원산지 · Origin</th><th>등급 · Grade</th><th class="num">작업량 · Amount</th><th>교반일자 · Mix date</th><th>작업자 · Worker</th><th>검토자 · Checked by</th><th>작업시간 · Work time</th><th></th></tr></thead>
         <tbody id="cureBody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
@@ -507,9 +549,16 @@
 
   const authGate = document.getElementById('authGate');
   const logoutBtn = document.getElementById('logoutBtn');
+  const ADMIN_EMAIL = 'wellwell@admin.com';
   auth.onAuthStateChanged((user) => {
-    if (!user) window.location.href = 'login.html?next=admin-production.html';
-    else authGate.classList.add('hidden');
+    if (!user) {
+      window.location.href = 'login.html?next=admin-production.html';
+    } else if ((user.email || '').toLowerCase() !== ADMIN_EMAIL) {
+      authGate.textContent = 'This account is not authorized for admin access. Redirecting…';
+      setTimeout(() => { window.location.href = 'index.html'; }, 1200);
+    } else {
+      authGate.classList.add('hidden');
+    }
   });
   logoutBtn.addEventListener('click', () => {
     auth.signOut().then(() => { window.location.href = 'login.html'; });
@@ -1425,7 +1474,298 @@
       exportBtn.disabled = false;
     }
   });
+
+  // Bridge so the separate AI auto-entry module script (below) can read/write this
+  // page's live state without duplicating the Firestore connection. getState() closes
+  // over the `state` variable above, so it always returns the current value even after
+  // onSnapshot reassigns it.
+  window.__prod = { getState: () => state, saveState, renderAll, escapeHtml, isValidDate };
 })();
+</script>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
+  import { getAI, getGenerativeModel, GoogleAIBackend } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-ai.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdT2jqlbWGutlCDX8n2XVHKxLQnYiim-8",
+    authDomain: "wellmadewellness-589e8.firebaseapp.com",
+    projectId: "wellmadewellness-589e8",
+    storageBucket: "wellmadewellness-589e8.firebasestorage.app",
+    messagingSenderId: "571195991033",
+    appId: "1:571195991033:web:8427c140a9f6997b4f9328"
+  };
+
+  const aiApp = initializeApp(firebaseConfig, 'assist-app-batch');
+  const ai = getAI(aiApp, { backend: new GoogleAIBackend() });
+  const MODEL_NAME = 'gemini-2.5-flash';
+
+  const responseSchema = {
+    type: 'object',
+    properties: {
+      entries: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            section: { type: 'string', enum: ['thaw', 'mix', 'cure', 'frozen', 'fridge', 'material'] },
+            origin: { type: 'string' },
+            grade: { type: 'string' },
+            amount: { type: 'number' },
+            mixDate: { type: 'string' },
+            workDate: { type: 'string' },
+            worker: { type: 'string' },
+            date: { type: 'string' },
+            checkedBy: { type: 'string' },
+            qty: { type: 'number' },
+            materialName: { type: 'string' },
+            materialType: { type: 'string', enum: ['in', 'used'] },
+            quantity: { type: 'number' }
+          },
+          required: ['section']
+        }
+      }
+    },
+    required: ['entries']
+  };
+
+  const model = getGenerativeModel(ai, {
+    model: MODEL_NAME,
+    generationConfig: { responseMimeType: 'application/json', responseSchema }
+  });
+
+  const fileInput = document.getElementById('aiFileInput');
+  const extractBtn = document.getElementById('aiFileExtractBtn');
+  const statusBox = document.getElementById('aiFileStatus');
+  const previewArea = document.getElementById('aiPreviewArea');
+  const previewBody = document.getElementById('aiPreviewBody');
+  const addSelectedBtn = document.getElementById('aiAddSelectedBtn');
+  const discardBtn = document.getElementById('aiDiscardBtn');
+  const addResult = document.getElementById('aiAddResult');
+
+  fileInput.addEventListener('change', () => {
+    extractBtn.disabled = !fileInput.files || fileInput.files.length === 0;
+  });
+
+  function showStatus(msg, isErr) {
+    statusBox.textContent = msg;
+    statusBox.style.display = msg ? 'block' : 'none';
+    statusBox.style.color = isErr ? 'var(--red)' : 'var(--ink-soft)';
+  }
+
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function dumpExcelAsText(file) {
+    const buf = await file.arrayBuffer();
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf);
+    const lines = [];
+    wb.worksheets.forEach(ws => {
+      lines.push('--- Sheet: ' + ws.name + ' ---');
+      ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        const parts = [];
+        row.eachCell({ includeEmpty: false }, cell => {
+          const v = cell.text != null ? String(cell.text).trim() : '';
+          if (v) parts.push(cell.address + '=' + v);
+        });
+        if (parts.length) lines.push('Row ' + rowNumber + ': ' + parts.join(' | '));
+      });
+    });
+    return lines.join('\n');
+  }
+
+  let previewEntries = [];
+
+  const SECTION_LABELS = {
+    thaw: '해동 · Thaw', mix: '교반 · Mix', cure: '수절 · Cure',
+    frozen: '냉동 · Frozen', fridge: '냉장 · Fridge', material: '부재료 · Material'
+  };
+
+  function toColumns(e) {
+    // Normalizes whatever fields the AI returned into 7 generic display columns,
+    // shaped differently depending on which section the row was classified as.
+    if (e.section === 'frozen') {
+      return { a: e.origin || '', b: e.grade || '', c: e.qty != null ? e.qty : '', mix: '', date: e.workDate || '', worker: '', checked: '' };
+    }
+    if (e.section === 'fridge') {
+      return { a: e.origin || '', b: e.grade || '', c: e.qty != null ? e.qty : '', mix: e.mixDate || '', date: e.workDate || '', worker: '', checked: '' };
+    }
+    if (e.section === 'material') {
+      return { a: e.materialName || '', b: e.materialType || 'in', c: e.quantity != null ? e.quantity : '', mix: '', date: e.date || '', worker: '', checked: '' };
+    }
+    // thaw / mix / cure
+    return { a: e.origin || '', b: e.grade || '', c: e.amount != null ? e.amount : '', mix: e.mixDate || '', date: e.date || '', worker: e.worker || '', checked: e.checkedBy || '' };
+  }
+
+  function renderPreview() {
+    if (previewEntries.length === 0) {
+      previewArea.style.display = 'none';
+      return;
+    }
+    previewArea.style.display = '';
+    const esc = window.__prod.escapeHtml;
+    previewBody.innerHTML = previewEntries.map((e, i) => {
+      const c = toColumns(e);
+      const sectionOptions = Object.keys(SECTION_LABELS).map(k => `<option value="${k}" ${k === e.section ? 'selected' : ''}>${esc(SECTION_LABELS[k])}</option>`).join('');
+      return `
+      <tr data-preview-row="${i}">
+        <td><input type="checkbox" data-p="include" checked></td>
+        <td><select data-p="section" style="width:110px;">${sectionOptions}</select></td>
+        <td><input type="text" data-p="a" value="${esc(c.a)}" style="width:130px;"></td>
+        <td><input type="text" data-p="b" value="${esc(c.b)}" style="width:90px;"></td>
+        <td><input type="number" step="0.01" data-p="c" value="${esc(c.c)}" style="width:80px;"></td>
+        <td><input type="date" data-p="mix" value="${esc(c.mix)}" min="2020-01-01" max="2035-12-31" style="width:120px;"></td>
+        <td><input type="date" data-p="date" value="${esc(c.date)}" min="2020-01-01" max="2035-12-31" style="width:120px;"></td>
+        <td><input type="text" data-p="worker" value="${esc(c.worker)}" style="width:90px;"></td>
+        <td><input type="text" data-p="checked" value="${esc(c.checked)}" style="width:90px;"></td>
+      </tr>`;
+    }).join('');
+  }
+
+  extractBtn.addEventListener('click', async () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    extractBtn.disabled = true;
+    addResult.style.display = 'none';
+    showStatus('Reading file…');
+
+    const st = window.__prod.getState();
+    const materialNames = st.materials.map(m => m.name);
+    const today = new Date().toISOString().slice(0, 10);
+    const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+
+    const promptText = `You are extracting factory log entries from an uploaded file (a photo of a handwritten paper form, or an Excel export of one) for a seafood roe (명란) processing company. Today's date is ${today}.
+
+The file may contain rows belonging to any of these tables, possibly mixed together. For every row with real data (skip header rows and empty rows), output one entry object with a "section" and only the fields that apply to it:
+
+1) 작업 기록 (stage work log) — section "thaw" (해동), "mix" (교반), or "cure" (수절). Fields: origin (원산지), grade (등급), amount (작업량, a number), mixDate (교반일자 — only relevant for "cure", format YYYY-MM-DD), worker (작업자), date (날짜 of the entry, YYYY-MM-DD), checkedBy (검토자).
+2) 냉동창고 재고 (frozen stock) — section "frozen". Fields: origin (원산지), grade (등급), workDate (작업일자, YYYY-MM-DD), qty (수량, a number).
+3) 냉장창고 재고 (fridge stock) — section "fridge". Fields: origin (원산지), grade (등급), mixDate (교반일자, YYYY-MM-DD), workDate (작업일자, YYYY-MM-DD), qty (수량, a number).
+4) 부재료 입출고 (auxiliary materials log) — section "material". Fields: materialName (품목명 — match as closely as possible to one of these existing items: ${materialNames.join(', ') || '(none yet)'}), materialType ("in" for 당일입고/매입/구매, "used" for 사용량/사용), quantity (수량, a number), date (일자, YYYY-MM-DD).
+
+Rules:
+- If a date is missing, omit it (the page will fall back to today's date).
+- Normalize dates to YYYY-MM-DD; if only month/day is given, assume year 2026.
+- Numbers must be plain numbers, no units, commas, or text.
+- Only include fields you're reasonably confident about — omit uncertain ones rather than guessing.
+- Respond with JSON only, matching the schema.`;
+
+    try {
+      let parts;
+      if (isExcel) {
+        const dump = await dumpExcelAsText(file);
+        parts = [{ text: promptText + '\n\nSpreadsheet contents:\n' + dump }];
+      } else {
+        showStatus('Uploading image to AI…');
+        const base64 = await readFileAsBase64(file);
+        parts = [{ text: promptText }, { inlineData: { mimeType: file.type || 'image/jpeg', data: base64 } }];
+      }
+
+      showStatus('Reading entries…');
+      const result = await model.generateContent(parts);
+      const parsed = JSON.parse(result.response.text());
+      previewEntries = Array.isArray(parsed.entries) ? parsed.entries : [];
+
+      if (previewEntries.length === 0) {
+        showStatus("Couldn't find any rows to extract from that file — check the image is clear, or fill the forms manually.", true);
+        return;
+      }
+      showStatus(`Found ${previewEntries.length} row${previewEntries.length === 1 ? '' : 's'} — review below before adding.`);
+      renderPreview();
+    } catch (err) {
+      showStatus("Couldn't read that file. " + (err && err.message ? err.message : 'Please try again or fill the forms manually.'), true);
+    } finally {
+      extractBtn.disabled = false;
+    }
+  });
+
+  discardBtn.addEventListener('click', () => {
+    previewEntries = [];
+    previewArea.style.display = 'none';
+    fileInput.value = '';
+    extractBtn.disabled = true;
+    showStatus('');
+  });
+
+  function isValidDateStr(str) {
+    if (!str) return false;
+    return /^\d{4}-\d{2}-\d{2}$/.test(str) && Number(str.slice(0, 4)) >= 2000 && Number(str.slice(0, 4)) <= 2099;
+  }
+
+  addSelectedBtn.addEventListener('click', () => {
+    const st = window.__prod.getState();
+    const today = new Date().toISOString().slice(0, 10);
+    const rows = previewBody.querySelectorAll('[data-preview-row]');
+    let added = 0, skipped = 0;
+    const unmatchedMaterials = [];
+
+    rows.forEach(row => {
+      const include = row.querySelector('[data-p="include"]').checked;
+      if (!include) return;
+      const section = row.querySelector('[data-p="section"]').value;
+      const a = row.querySelector('[data-p="a"]').value.trim();
+      const b = row.querySelector('[data-p="b"]').value.trim();
+      const c = parseFloat(row.querySelector('[data-p="c"]').value);
+      const mix = row.querySelector('[data-p="mix"]').value;
+      const date = row.querySelector('[data-p="date"]').value || today;
+      const worker = row.querySelector('[data-p="worker"]').value.trim();
+      const checked = row.querySelector('[data-p="checked"]').value.trim();
+
+      if (section === 'thaw' || section === 'mix' || section === 'cure') {
+        if (!a || isNaN(c) || c <= 0 || !isValidDateStr(date)) { skipped++; return; }
+        st.stageLogs.push({
+          id: 'sl' + Date.now() + Math.floor(Math.random() * 1000),
+          stage: section, origin: a, grade: b, amount: c,
+          mixDate: section === 'cure' ? (mix || '') : '',
+          worker, workTime: '', date, checkedBy: checked, createdAt: Date.now()
+        });
+        added++;
+      } else if (section === 'frozen') {
+        if (!a || !b || isNaN(c)) { skipped++; return; }
+        const existing = st.frozenStock.find(r => r.origin === a && r.grade === b && (r.workDate || '') === date);
+        if (existing) existing.qty = c; else st.frozenStock.push({ id: 'fz' + Date.now() + Math.floor(Math.random() * 1000), origin: a, grade: b, workDate: date, qty: c });
+        added++;
+      } else if (section === 'fridge') {
+        if (!a || !b || isNaN(c)) { skipped++; return; }
+        const existing = st.fridgeStock.find(r => r.origin === a && r.grade === b && r.mixDate === (mix || '') && (r.workDate || '') === date);
+        if (existing) existing.qty = c; else st.fridgeStock.push({ id: 'fr' + Date.now() + Math.floor(Math.random() * 1000), origin: a, grade: b, mixDate: mix || '', workDate: date, qty: c });
+        added++;
+      } else if (section === 'material') {
+        if (!a || isNaN(c) || c <= 0 || !isValidDateStr(date)) { skipped++; return; }
+        const lower = a.toLowerCase();
+        const mat = st.materials.find(m => m.name.toLowerCase() === lower) || st.materials.find(m => m.name.toLowerCase().includes(lower) || lower.includes(m.name.toLowerCase()));
+        if (!mat) { unmatchedMaterials.push(a); skipped++; return; }
+        const type = b.toLowerCase() === 'used' ? 'used' : 'in';
+        st.materialLogs.push({
+          id: 'ml' + Date.now() + Math.floor(Math.random() * 1000),
+          materialId: mat.id, type, quantity: c, date,
+          handledBy: worker, checkedBy: checked, createdAt: Date.now()
+        });
+        added++;
+      }
+    });
+
+    window.__prod.saveState();
+    window.__prod.renderAll();
+
+    let msg = `Added ${added} entr${added === 1 ? 'y' : 'ies'}.`;
+    if (skipped > 0) msg += ` Skipped ${skipped} (missing/invalid fields).`;
+    if (unmatchedMaterials.length > 0) msg += ` Couldn't match material name${unmatchedMaterials.length === 1 ? '' : 's'}: ${unmatchedMaterials.join(', ')} — add ${unmatchedMaterials.length === 1 ? 'it' : 'them'} under 품목 관리 first, then log those rows manually.`;
+    addResult.textContent = msg;
+    addResult.style.display = 'block';
+
+    previewEntries = [];
+    previewArea.style.display = 'none';
+    fileInput.value = '';
+    extractBtn.disabled = true;
+  });
 </script>
 
 </body>

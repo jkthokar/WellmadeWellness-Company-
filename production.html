@@ -28,7 +28,7 @@
   .wordmark { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; }
   .wordmark span { color: var(--ochre); }
   .nav-links { display: flex; gap: 24px; font-size: 0.92rem; flex-wrap: wrap; align-items: center; }
-  .nav-links a { color: var(--ink-soft); transition: color 0.2s ease; }
+  .nav-links a { color: var(--ink-soft); transition: color 0.2s ease; white-space: nowrap; }
   .nav-links a:hover, .nav-links a.active { color: var(--pine); }
   header.page-head { background: var(--pine); color: var(--ivory); padding: 56px 0 40px; }
   header.page-head h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); }
@@ -82,6 +82,7 @@
   .logout-btn {
     background: transparent; border: 1px solid var(--rule); color: var(--ink-soft);
     padding: 6px 16px; border-radius: 100px; font-size: 0.82rem; cursor: pointer; font-family: inherit; font-weight: 600;
+    white-space: nowrap; flex-shrink: 0;
   }
   .logout-btn:hover { color: var(--pine); }
 </style>
@@ -100,6 +101,7 @@
       <a href="production.html" class="active">Production(생산)</a>
       <a href="jeotgal.html">Jeotgal(젓갈)</a>
       <a href="index.html#contact">Contact</a>
+      <a href="dashboard.html">Dashboard(관리)</a>
       <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
     </div>
   </div>

@@ -239,9 +239,13 @@
   const authGate = document.getElementById('authGate');
   const logoutBtn = document.getElementById('logoutBtn');
 
+  const ADMIN_EMAIL = 'wellwell@admin.com';
   auth.onAuthStateChanged((user) => {
     if (!user) {
       window.location.href = 'login.html?next=admin-jeotgal.html';
+    } else if ((user.email || '').toLowerCase() !== ADMIN_EMAIL) {
+      authGate.textContent = 'This account is not authorized for admin access. Redirecting…';
+      setTimeout(() => { window.location.href = 'index.html'; }, 1200);
     } else {
       authGate.classList.add('hidden');
     }
@@ -292,7 +296,7 @@
   let state = {};
   let sectionState = {}; // key -> { asOf, summarySearch, historySearch, editingLogId }
   SECTIONS.forEach(s => {
-    sectionState[s.key] = { asOf: todayStr(), summarySearch: '', historySearch: '', editingLogId: null };
+    sectionState[s.key] = { asOf: todayStr(), summarySearch: '', historySearch: '', editingLogId: null, editingItemId: null };
   });
 
   function defaultState() {
@@ -507,6 +511,24 @@
     if (filtered.length === 0) { body.innerHTML = `<tr><td colspan="${colspan}" class="empty">No items match "${escapeHtml(st.summarySearch)}".</td></tr>`; return; }
     body.innerHTML = filtered.map(it => {
       const r = summary[it.id] || { prevStock: 0, todayIn: 0, used: 0, currentStock: 0 };
+      if (it.id === st.editingItemId) {
+        const notesEditCell = cfg.notes
+          ? `<td><input type="text" maxlength="120" data-edit-item-field="${cfg.key}|${escapeHtml(it.id)}|notes" value="${escapeHtml(it.notes || '')}" placeholder="비고…" style="width:150px;border:1px solid var(--rule);border-radius:3px;padding:5px 7px;font-size:0.82rem;"></td>`
+          : '';
+        return `
+        <tr>
+          <td><input type="text" maxlength="80" data-edit-item-field="${cfg.key}|${escapeHtml(it.id)}|name" value="${escapeHtml(it.name)}" style="width:160px;"></td>
+          <td class="num">${fmtNum(r.prevStock)}</td>
+          <td class="num">${fmtNum(r.todayIn)}</td>
+          <td class="num">${fmtNum(r.used)}</td>
+          <td class="num">${fmtNum(r.currentStock)}</td>
+          ${notesEditCell}
+          <td style="white-space:nowrap;">
+            <button data-save-item="${cfg.key}|${escapeHtml(it.id)}" style="padding:6px 12px;font-size:0.78rem;">Save</button>
+            <button class="secondary" data-cancel-item="${cfg.key}|${escapeHtml(it.id)}" style="padding:5px 10px;font-size:0.72rem;">Cancel</button>
+          </td>
+        </tr>`;
+      }
       const notesCell = cfg.notes
         ? `<td><input type="text" maxlength="120" data-item-notes="${cfg.key}|${escapeHtml(it.id)}" value="${escapeHtml(it.notes || '')}" placeholder="비고…" style="width:150px;border:1px solid var(--rule);border-radius:3px;padding:5px 7px;font-size:0.82rem;"></td>`
         : '';
@@ -518,7 +540,10 @@
         <td class="num">${fmtNum(r.used)}</td>
         <td class="num">${fmtNum(r.currentStock)}</td>
         ${notesCell}
-        <td><button class="secondary small" data-del-item="${cfg.key}|${escapeHtml(it.id)}">Delete</button></td>
+        <td style="white-space:nowrap;">
+          <button class="secondary small" data-edit-item="${cfg.key}|${escapeHtml(it.id)}">Edit</button>
+          <button class="secondary small" data-del-item="${cfg.key}|${escapeHtml(it.id)}">Delete</button>
+        </td>
       </tr>`;
     }).join('');
   }
@@ -645,6 +670,39 @@
       saveBackup(`before deleting item "${it ? it.name : id}" from ${cfg.title}`);
       state[key].logs = state[key].logs.filter(l => l.itemId !== id);
       state[key].items = state[key].items.filter(i => i.id !== id);
+      saveState();
+      renderSection(cfg);
+      return;
+    }
+    const editItemBtn = e.target.closest('[data-edit-item]');
+    if (editItemBtn) {
+      const [key, id] = editItemBtn.getAttribute('data-edit-item').split('|');
+      sectionState[key].editingItemId = id;
+      renderSummary(findCfg(key));
+      return;
+    }
+    const cancelItemBtn = e.target.closest('[data-cancel-item]');
+    if (cancelItemBtn) {
+      const key = cancelItemBtn.getAttribute('data-cancel-item').split('|')[0];
+      sectionState[key].editingItemId = null;
+      renderSummary(findCfg(key));
+      return;
+    }
+    const saveItemBtn = e.target.closest('[data-save-item]');
+    if (saveItemBtn) {
+      const [key, id] = saveItemBtn.getAttribute('data-save-item').split('|');
+      const cfg = findCfg(key);
+      const row = saveItemBtn.closest('tr');
+      const it = state[key].items.find(i => i.id === id);
+      if (!it) return;
+      const newName = row.querySelector(`[data-edit-item-field="${key}|${id}|name"]`).value.trim();
+      if (!newName) { statusEl.textContent = 'Item name cannot be empty.'; return; }
+      it.name = newName;
+      if (cfg.notes) {
+        const notesField = row.querySelector(`[data-edit-item-field="${key}|${id}|notes"]`);
+        if (notesField) it.notes = notesField.value;
+      }
+      sectionState[key].editingItemId = null;
       saveState();
       renderSection(cfg);
       return;

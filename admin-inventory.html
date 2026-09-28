@@ -224,6 +224,7 @@
       <a href="admin-inventory.html" class="active">Admin: Container</a>
       <a href="admin-brands.html">Admin: Labelling</a>
       <a href="admin-production.html">Admin: Production</a>
+      <a href="admin-jeotgal.html">Admin: Jeotgal</a>
       <a href="inventory.html">View public site ↗</a>
       <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
     </div>
@@ -391,9 +392,13 @@
   const authGate = document.getElementById('authGate');
   const logoutBtn = document.getElementById('logoutBtn');
 
+  const ADMIN_EMAIL = 'wellwell@admin.com';
   auth.onAuthStateChanged((user) => {
     if (!user) {
       window.location.href = 'login.html?next=admin-inventory.html';
+    } else if ((user.email || '').toLowerCase() !== ADMIN_EMAIL) {
+      authGate.textContent = 'This account is not authorized for admin access. Redirecting…';
+      setTimeout(() => { window.location.href = 'index.html'; }, 1200);
     } else {
       authGate.classList.add('hidden');
     }

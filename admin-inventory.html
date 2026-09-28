@@ -96,6 +96,18 @@
   .stat-card.low-stock { border-color: var(--red); background: var(--red-soft); }
   .pill.warn { background: var(--red-soft); color: var(--red); }
   .low-stock-notice { display: inline-block; margin-top: 10px; font-size: 0.78rem; font-weight: 600; color: var(--red); }
+  .stat-line input[type="number"] { width: 100px; text-align: right; padding: 4px 6px; font-size: 0.85rem; border: 1px solid var(--rule); border-radius: 3px; font-family: inherit; }
+  .group-total {
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--rule);
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'Fraunces', serif; font-size: 1.05rem; font-weight: 600; color: var(--pine);
+  }
+  .grand-total-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    background: var(--ivory); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 18px; margin-bottom: 18px;
+  }
+  .grand-total-bar .amt { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; color: var(--pine); }
 
   /* add product */
   .add-product { display: flex; gap: 10px; margin-bottom: 16px; max-width: 720px; flex-wrap: wrap; }
@@ -246,7 +258,6 @@
           <select id="txType" required>
             <option value="buy">매입 · Bought (from supplier)</option>
             <option value="use">사용 · Used (internal)</option>
-            <option value="sell">판매 · Sold (to customer)</option>
           </select>
         </div>
         <div id="qtyWrap">
@@ -288,6 +299,16 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button id="restoreBackupBtn" class="secondary" type="button">↺ Restore last backup</button>
         <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+      </div>
+    </div>
+    <div class="grand-total-bar">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <label for="productsAsOf" style="margin-bottom:0;font-size:0.8rem;color:var(--ink-soft);">기준일 · As of</label>
+        <input type="date" id="productsAsOf" min="2020-01-01" max="2035-12-31" style="width:auto;border-bottom:1px solid var(--ink);padding:6px 4px;">
+      </div>
+      <div>
+        <span style="font-size:0.85rem;color:var(--ink-soft);margin-right:8px;">재고 총액 · Total inventory value</span>
+        <span class="amt" id="productsGrandTotal">₩0</span>
       </div>
     </div>
     <div id="productGroupsArea"></div>
@@ -440,6 +461,34 @@
     return /^\d{4}-\d{2}-\d{2}$/.test(str) && Number(str.slice(0, 4)) >= 2000 && Number(str.slice(0, 4)) <= 2099;
   }
 
+  const productsAsOfInput = document.getElementById('productsAsOf');
+  const productsGrandTotalEl = document.getElementById('productsGrandTotal');
+  productsAsOfInput.value = new Date().toISOString().slice(0, 10);
+  productsAsOfInput.addEventListener('change', () => renderProductGroups());
+
+  // Prev/In/Used/Current ledger, computed the same way the materials log does:
+  // balances before the as-of date roll into "Prev"; anything dated exactly on the
+  // as-of date splits into "In" (buy) / "Used" (use). Sold transactions are no longer
+  // counted here — this reflects usable stock, not net-of-sales.
+  function computeProductStock(productId, asOfDate) {
+    // A purchase dated on the as-of date folds straight into Prev (전일재고 Prev = 전일재고 Prev
+    // + bought), so the moment you log a buy it's already counted — "당일입고 In" still shows
+    // today's bought amount for reference, it just isn't held back in a separate bucket.
+    let prev = 0, todayIn = 0, todayUsed = 0;
+    state.transactions.forEach(t => {
+      if (t.productId !== productId || t.type === 'sell') return;
+      const q = Number(t.quantity) || 0;
+      const d = t.date || '';
+      if (!d) return;
+      if (d < asOfDate) { if (t.type === 'buy') prev += q; else if (t.type === 'use') prev -= q; }
+      else if (d === asOfDate) {
+        if (t.type === 'buy') { todayIn += q; prev += q; }
+        else if (t.type === 'use') { todayUsed += q; }
+      }
+    });
+    return { prev, in: todayIn, used: todayUsed, current: prev - todayUsed };
+  }
+
   function productName(id) {
     for (const g of GROUPS) {
       const p = state[g.key].find(p => p.id === id);
@@ -467,6 +516,27 @@
   }
 
   function renderProductGroups() {
+    const asOf = productsAsOfInput.value || new Date().toISOString().slice(0, 10);
+
+    // Pre-pass: compute every product's stock/amount up front (independent of search
+    // filtering) so group totals and the grand total always reflect the full inventory.
+    let grandTotal = 0;
+    const groupTotals = {};
+    const computed = {}; // productId -> { stock, unitPrice, amount }
+    GROUPS.forEach(g => {
+      let groupTotal = 0;
+      (state[g.key] || []).forEach(p => {
+        const stock = computeProductStock(p.id, asOf);
+        const unitPrice = Number(p.unitPrice) || 0;
+        const amount = unitPrice * stock.current;
+        computed[p.id] = { stock, unitPrice, amount };
+        groupTotal += amount;
+      });
+      groupTotals[g.key] = groupTotal;
+      grandTotal += groupTotal;
+    });
+    productsGrandTotalEl.textContent = '₩' + Math.round(grandTotal).toLocaleString();
+
     productGroupsArea.innerHTML = GROUPS.map(g => {
       const products = state[g.key] || [];
       const query = (productSearchQuery[g.key] || '').trim().toLowerCase();
@@ -479,27 +549,24 @@
         : filtered.length === 0
         ? `<div class="empty">No products match "${escapeHtml(productSearchQuery[g.key] || '')}".</div>`
         : `<div class="summary-grid">${filtered.map(p => {
-            let bought = 0, used = 0, sold = 0;
-            state.transactions.forEach(t => {
-              if (t.productId !== p.id) return;
-              const q = Number(t.quantity) || 0;
-              if (t.type === 'buy') bought += q;
-              else if (t.type === 'use') used += q;
-              else if (t.type === 'sell') sold += q;
-            });
-            const remaining = bought - used - sold;
+            const { stock, unitPrice, amount } = computed[p.id];
             const threshold = lowStockThreshold(p.name);
-            const isLow = remaining < threshold;
+            const isLow = stock.current < threshold;
             return `
               <div class="stat-card${isLow ? ' low-stock' : ''}">
                 <div class="pname" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
                   <span>${escapeHtml(p.name)}</span>
                   <button class="secondary" data-del-product="${escapeHtml(p.id)}" title="Delete this product" style="padding:3px 10px;font-size:0.72rem;">Delete</button>
                 </div>
-                <div class="stat-line"><span>매입 · Bought</span><b>${bought}</b></div>
-                <div class="stat-line"><span>사용 · Used</span><b>${used}</b></div>
-                <div class="stat-line"><span>판매 · Sold</span><b>${sold}</b></div>
-                <div class="stat-remaining"><span>재고량 · Remaining stock</span><span class="${remaining < 0 ? 'neg' : ''}">${remaining}</span></div>
+                <div class="stat-line"><span>전일재고 · Prev</span><b>${stock.prev}</b></div>
+                <div class="stat-line"><span>당일입고 · In</span><b>${stock.in}</b></div>
+                <div class="stat-line"><span>사용 · Used</span><b>${stock.used}</b></div>
+                <div class="stat-line" style="align-items:center;">
+                  <span>단가 · Unit price</span>
+                  <input type="number" min="0" step="1" data-unit-price="${escapeHtml(p.id)}" value="${unitPrice}">
+                </div>
+                <div class="stat-line"><span>금액 · Amount</span><b>₩${Math.round(amount).toLocaleString()}</b></div>
+                <div class="stat-remaining"><span>재고량 · Remaining stock</span><span class="${stock.current < 0 ? 'neg' : ''}">${stock.current}</span></div>
                 ${isLow ? `<div class="low-stock-notice">⚠ 재고 부족 · Low (below ${threshold}) — order from supplier</div>` : ''}
               </div>
             `;
@@ -514,6 +581,7 @@
             <input type="text" placeholder="🔍 Search ${escapeHtml(g.label.toLowerCase())}…" maxlength="60" style="border-color:var(--ochre);" data-product-search="${g.key}" value="${escapeHtml(productSearchQuery[g.key] || '')}">
           </div>
           ${grid}
+          <div class="group-total"><span>${escapeHtml(g.label)} 합계 · Group total</span><span>₩${Math.round(groupTotals[g.key]).toLocaleString()}</span></div>
         </div>
       `;
     }).join('');
@@ -630,6 +698,20 @@
       const btn = productGroupsArea.querySelector(`[data-add-product-btn="${key}"]`);
       if (btn) btn.click();
     }
+  });
+
+  productGroupsArea.addEventListener('change', (e) => {
+    const priceInput = e.target.closest('[data-unit-price]');
+    if (!priceInput) return;
+    const id = priceInput.getAttribute('data-unit-price');
+    const key = findProductGroupKey(id);
+    if (!key) return;
+    const p = state[key].find(p => p.id === id);
+    if (!p) return;
+    const val = parseFloat(priceInput.value);
+    p.unitPrice = isNaN(val) || val < 0 ? 0 : val;
+    saveState();
+    renderProductGroups();
   });
 
   productGroupsArea.addEventListener('input', (e) => {
@@ -831,30 +913,32 @@
       const usedNames = new Set();
 
       // ---- Summary sheet, with a Group column since there are multiple groups ----
+      const exportAsOf = productsAsOfInput.value || new Date().toISOString().slice(0, 10);
       const summarySheet = wb.addWorksheet(sheetNameFor('Summary', usedNames));
       summarySheet.columns = [
         { header: '구분 Group', key: 'group', width: 20 },
         { header: '품목 Product', key: 'product', width: 24 },
-        { header: '매입 Bought', key: 'bought', width: 12 },
+        { header: '전일재고 Prev', key: 'prev', width: 12 },
+        { header: '당일입고 In', key: 'in', width: 12 },
         { header: '사용 Used', key: 'used', width: 12 },
-        { header: '판매 Sold', key: 'sold', width: 12 },
+        { header: '단가 Unit price', key: 'unitPrice', width: 12 },
+        { header: '금액 Amount', key: 'amount', width: 14 },
         { header: '재고량 Remaining', key: 'remaining', width: 14 }
       ];
       styleHeaderRow(summarySheet.getRow(1));
+      let exportGrandTotal = 0;
       GROUPS.forEach(g => {
         const sortedProducts = state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name));
         sortedProducts.forEach(p => {
-          let bought = 0, used = 0, sold = 0;
-          state.transactions.forEach(t => {
-            if (t.productId !== p.id) return;
-            const q = Number(t.quantity) || 0;
-            if (t.type === 'buy') bought += q;
-            else if (t.type === 'use') used += q;
-            else if (t.type === 'sell') sold += q;
-          });
-          summarySheet.addRow({ group: g.label, product: p.name, bought, used, sold, remaining: bought - used - sold });
+          const stock = computeProductStock(p.id, exportAsOf);
+          const unitPrice = Number(p.unitPrice) || 0;
+          const amount = unitPrice * stock.current;
+          exportGrandTotal += amount;
+          summarySheet.addRow({ group: g.label, product: p.name, prev: stock.prev, in: stock.in, used: stock.used, unitPrice, amount: Math.round(amount), remaining: stock.current });
         });
       });
+      const totalRow = summarySheet.addRow({ group: '', product: '재고 총액 · Total inventory value', amount: Math.round(exportGrandTotal) });
+      totalRow.font = { bold: true };
 
       // ---- One sheet per product across all groups, date included, Bought rows highlighted ----
       GROUPS.forEach(g => {
@@ -871,14 +955,14 @@
         styleHeaderRow(sheet.getRow(1));
 
         const productTx = state.transactions
-          .filter(t => t.productId === p.id)
+          .filter(t => t.productId === p.id && t.type !== 'sell')
           .slice()
           .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
-        let bought = 0, used = 0, sold = 0;
+        let bought = 0, used = 0;
         productTx.forEach(t => {
           const q = Number(t.quantity) || 0;
-          const typeLabel = t.type === 'buy' ? '매입 Bought' : t.type === 'use' ? '사용 Used' : '판매 Sold';
+          const typeLabel = t.type === 'buy' ? '매입 Bought' : '사용 Used';
           const row = sheet.addRow({ date: t.date || '', type: typeLabel, qty: q, handledBy: t.handledBy || '', checkedBy: t.checkedBy || '' });
           row.eachCell(cell => {
             cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
@@ -888,16 +972,19 @@
             row.eachCell(cell => { cell.fill = BUY_FILL; cell.font = BUY_FONT; });
           } else if (t.type === 'use') {
             used += q;
-          } else if (t.type === 'sell') {
-            sold += q;
           }
         });
+
+        const pStock = computeProductStock(p.id, exportAsOf);
+        const pUnitPrice = Number(p.unitPrice) || 0;
+        const pAmount = pUnitPrice * pStock.current;
 
         sheet.addRow([]);
         sheet.addRow(['', 'Total bought', bought, '']).font = { bold: true };
         sheet.addRow(['', 'Total used', used, '']).font = { bold: true };
-        sheet.addRow(['', 'Total sold', sold, '']).font = { bold: true };
-        sheet.addRow(['', 'Remaining', bought - used - sold, '']).font = { bold: true };
+        sheet.addRow(['', 'Remaining (as of ' + exportAsOf + ')', pStock.current, '']).font = { bold: true };
+        sheet.addRow(['', 'Unit price', pUnitPrice, '']).font = { bold: true };
+        sheet.addRow(['', 'Amount', Math.round(pAmount), '']).font = { bold: true };
         });
       });
 
@@ -943,7 +1030,7 @@
     type: 'object',
     properties: {
       productId: { type: 'string' },
-      type: { type: 'string', enum: ['buy', 'use', 'sell'] },
+      type: { type: 'string', enum: ['buy', 'use'] },
       boxes: { type: 'number' },
       qtyPerBox: { type: 'number' },
       quantity: { type: 'number' },
@@ -1006,9 +1093,9 @@ ${products.map(p => `${p.id}: ${p.name}`).join('\n')}
 Description: "${text}"
 
 Rules:
-- "type" must be "buy" (bought/purchased), "use" (used internally/damaged), or "sell" (sold).
+- "type" must be "buy" (bought/purchased) or "use" (used internally/damaged). This system no longer tracks sales — if the description mentions selling, use "use" instead.
 - If type is "buy" and the description mentions boxes/cartons (e.g. "10 boxes of 24"), fill "boxes" and "qtyPerBox" instead of "quantity".
-- If type is "use" or "sell", or no box breakdown is mentioned, fill "quantity" as a single number.
+- If type is "use", or no box breakdown is mentioned, fill "quantity" as a single number.
 - If no date is mentioned, omit "date" (today's date will be used).
 - "handledBy" is who performed/entered the transaction; "checkedBy" is who checked/verified it. Omit either if not mentioned.
 - Respond with JSON only, matching the schema.`;

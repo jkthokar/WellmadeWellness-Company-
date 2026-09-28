@@ -108,6 +108,18 @@
   .stat-remaining span.neg { color: var(--red); }
   .label-card.low-stock { border-color: var(--red); background: var(--red-soft); }
   .low-stock-notice { display: inline-block; margin-top: 10px; font-size: 0.78rem; font-weight: 600; color: var(--red); }
+  .stat-line input[type="number"] { width: 90px; text-align: right; padding: 4px 6px; font-size: 0.82rem; border: 1px solid var(--rule); border-radius: 3px; font-family: inherit; }
+  .group-total {
+    margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--rule);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.95rem; font-weight: 600; color: var(--pine);
+  }
+  .grand-total-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    background: var(--ivory); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 18px; margin-bottom: 18px;
+  }
+  .grand-total-bar .amt { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; color: var(--pine); }
 
   .add-brand { display: flex; gap: 10px; margin-bottom: 40px; max-width: 480px; }
   .add-brand input { flex: 1; }
@@ -252,7 +264,6 @@
           <select id="txType" required>
             <option value="buy">매입 · Bought (from supplier)</option>
             <option value="use">사용 · Used (internal)</option>
-            <option value="sell">판매 · Sold (to customer)</option>
           </select>
         </div>
         <div>
@@ -292,6 +303,16 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button id="restoreBackupBtn" class="secondary" type="button">↺ Restore last backup</button>
         <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+      </div>
+    </div>
+    <div class="grand-total-bar">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <label for="labelsAsOf" style="margin-bottom:0;font-size:0.8rem;color:var(--ink-soft);">기준일 · As of</label>
+        <input type="date" id="labelsAsOf" min="2020-01-01" max="2035-12-31" style="width:auto;border-bottom:1px solid var(--ink);padding:6px 4px;">
+      </div>
+      <div>
+        <span style="font-size:0.85rem;color:var(--ink-soft);margin-right:8px;">재고 총액 · Total inventory value</span>
+        <span class="amt" id="labelsGrandTotal">₩0</span>
       </div>
     </div>
     <div id="brandsArea"></div>
@@ -446,16 +467,28 @@
   // Low-stock warning: every label of every brand, same threshold.
   const LOW_STOCK_THRESHOLD = 1000;
 
-  function labelTotals(labelId) {
-    let bought = 0, used = 0, sold = 0;
+  const labelsAsOfInput = document.getElementById('labelsAsOf');
+  const labelsGrandTotalEl = document.getElementById('labelsGrandTotal');
+  labelsAsOfInput.value = new Date().toISOString().slice(0, 10);
+  labelsAsOfInput.addEventListener('change', () => renderBrands());
+
+  // Prev/In/Used/Current ledger, same convention as inventory.html: a purchase dated
+  // on the as-of date folds straight into Prev (전일재고 Prev = 전일재고 Prev + bought), so
+  // it's already counted the moment it's logged. Sold is no longer tracked here.
+  function computeLabelStock(labelId, asOfDate) {
+    let prev = 0, todayIn = 0, todayUsed = 0;
     state.transactions.forEach(t => {
-      if (t.labelId !== labelId) return;
+      if (t.labelId !== labelId || t.type === 'sell') return;
       const q = Number(t.quantity) || 0;
-      if (t.type === 'buy') bought += q;
-      else if (t.type === 'use') used += q;
-      else if (t.type === 'sell') sold += q;
+      const d = t.date || '';
+      if (!d) return;
+      if (d < asOfDate) { if (t.type === 'buy') prev += q; else if (t.type === 'use') prev -= q; }
+      else if (d === asOfDate) {
+        if (t.type === 'buy') { todayIn += q; prev += q; }
+        else if (t.type === 'use') { todayUsed += q; }
+      }
     });
-    return { bought, used, sold, remaining: bought - used - sold };
+    return { prev, in: todayIn, used: todayUsed, current: prev - todayUsed };
   }
 
   // ---------- Brand/label transaction form selects ----------
@@ -489,6 +522,27 @@
 
   // ---------- Brands & labels display ----------
   function renderBrands() {
+    const asOf = labelsAsOfInput.value || new Date().toISOString().slice(0, 10);
+
+    // Pre-pass: compute every label's stock/amount up front (independent of search
+    // filtering) so brand totals and the grand total always reflect all labels.
+    let grandTotal = 0;
+    const brandTotals = {};
+    const computed = {}; // labelId -> { stock, unitPrice, amount }
+    state.brands.forEach(b => {
+      let brandTotal = 0;
+      state.labels.filter(l => l.brandId === b.id).forEach(l => {
+        const stock = computeLabelStock(l.id, asOf);
+        const unitPrice = Number(l.unitPrice) || 0;
+        const amount = unitPrice * stock.current;
+        computed[l.id] = { stock, unitPrice, amount };
+        brandTotal += amount;
+      });
+      brandTotals[b.id] = brandTotal;
+      grandTotal += brandTotal;
+    });
+    labelsGrandTotalEl.textContent = '₩' + Math.round(grandTotal).toLocaleString();
+
     if (state.brands.length === 0) {
       brandsArea.innerHTML = '<div class="empty">No brands yet — add one above.</div>';
       return;
@@ -509,8 +563,8 @@
         : labelsForBrand.length === 0
         ? `<div class="empty">No labels match "${escapeHtml(brandSearchQuery.get(b.id) || '')}".</div>`
         : `<div class="label-grid">${labelsForBrand.map(l => {
-            const t = labelTotals(l.id);
-            const isLow = t.remaining < LOW_STOCK_THRESHOLD;
+            const { stock, unitPrice, amount } = computed[l.id];
+            const isLow = stock.current < LOW_STOCK_THRESHOLD;
             return `
               <div class="label-card${isLow ? ' low-stock' : ''}">
                 <div class="lname">
@@ -520,10 +574,15 @@
                     <button class="secondary small" data-del-label="${escapeHtml(l.id)}" title="Delete this label">Delete</button>
                   </span>
                 </div>
-                <div class="stat-line"><span>매입 · Bought</span><b>${t.bought}</b></div>
-                <div class="stat-line"><span>사용 · Used</span><b>${t.used}</b></div>
-                <div class="stat-line"><span>판매 · Sold</span><b>${t.sold}</b></div>
-                <div class="stat-remaining"><span>재고량 · Remaining</span><span class="${t.remaining < 0 ? 'neg' : ''}">${t.remaining}</span></div>
+                <div class="stat-line"><span>전일재고 · Prev</span><b>${stock.prev}</b></div>
+                <div class="stat-line"><span>당일입고 · In</span><b>${stock.in}</b></div>
+                <div class="stat-line"><span>사용 · Used</span><b>${stock.used}</b></div>
+                <div class="stat-line" style="align-items:center;">
+                  <span>단가 · Unit price</span>
+                  <input type="number" min="0" step="1" data-unit-price="${escapeHtml(l.id)}" value="${unitPrice}">
+                </div>
+                <div class="stat-line"><span>금액 · Amount</span><b>₩${Math.round(amount).toLocaleString()}</b></div>
+                <div class="stat-remaining"><span>재고량 · Remaining</span><span class="${stock.current < 0 ? 'neg' : ''}">${stock.current}</span></div>
                 ${isLow ? `<div class="low-stock-notice">⚠ 재고 부족 · Low (below ${LOW_STOCK_THRESHOLD}) — order from supplier</div>` : ''}
               </div>
             `;
@@ -537,6 +596,7 @@
             <input type="text" class="search-input" placeholder="🔍 Search labels…" maxlength="60" data-search-label="${escapeHtml(b.id)}" value="${escapeHtml(brandSearchQuery.get(b.id) || '')}">
           </div>
           ${labelCards}
+          ${allLabelsForBrand.length > 0 ? `<div class="group-total"><span>${escapeHtml(b.name)} 합계 · Brand total</span><span>₩${Math.round(brandTotals[b.id]).toLocaleString()}</span></div>` : ''}
         `
         : '';
 
@@ -768,6 +828,18 @@
     }
   });
 
+  brandsArea.addEventListener('change', (e) => {
+    const priceInput = e.target.closest('[data-unit-price]');
+    if (!priceInput) return;
+    const id = priceInput.getAttribute('data-unit-price');
+    const l = state.labels.find(l => l.id === id);
+    if (!l) return;
+    const val = parseFloat(priceInput.value);
+    l.unitPrice = isNaN(val) || val < 0 ? 0 : val;
+    saveState();
+    renderBrands();
+  });
+
   brandsArea.addEventListener('input', (e) => {
     const searchInput = e.target.closest('[data-search-label]');
     if (!searchInput) return;
@@ -961,25 +1033,34 @@
       const sortedBrands = state.brands.slice().sort((a, b) => a.name.localeCompare(b.name));
 
       // ---- Summary sheet: every label across every brand ----
+      const exportAsOf = labelsAsOfInput.value || new Date().toISOString().slice(0, 10);
       const summarySheet = wb.addWorksheet(sheetNameFor('Summary', usedNames));
       summarySheet.columns = [
         { header: '브랜드 Brand', key: 'brand', width: 20 },
         { header: '라벨 Label', key: 'label', width: 22 },
-        { header: '매입 Bought', key: 'bought', width: 12 },
+        { header: '전일재고 Prev', key: 'prev', width: 12 },
+        { header: '당일입고 In', key: 'in', width: 12 },
         { header: '사용 Used', key: 'used', width: 12 },
-        { header: '판매 Sold', key: 'sold', width: 12 },
+        { header: '단가 Unit price', key: 'unitPrice', width: 12 },
+        { header: '금액 Amount', key: 'amount', width: 14 },
         { header: '재고량 Remaining', key: 'remaining', width: 14 }
       ];
       styleHeaderRow(summarySheet.getRow(1));
+      let exportGrandTotal = 0;
       sortedBrands.forEach(b => {
         const labelsForBrand = state.labels
           .filter(l => l.brandId === b.id)
           .slice().sort((a, b2) => a.name.localeCompare(b2.name));
         labelsForBrand.forEach(l => {
-          const t = labelTotals(l.id);
-          summarySheet.addRow({ brand: b.name, label: l.name, bought: t.bought, used: t.used, sold: t.sold, remaining: t.remaining });
+          const stock = computeLabelStock(l.id, exportAsOf);
+          const unitPrice = Number(l.unitPrice) || 0;
+          const amount = unitPrice * stock.current;
+          exportGrandTotal += amount;
+          summarySheet.addRow({ brand: b.name, label: l.name, prev: stock.prev, in: stock.in, used: stock.used, unitPrice, amount: Math.round(amount), remaining: stock.current });
         });
       });
+      const totalRow = summarySheet.addRow({ brand: '', label: '재고 총액 · Total inventory value', amount: Math.round(exportGrandTotal) });
+      totalRow.font = { bold: true };
 
       // ---- One sheet per label, grouped brand-by-brand, dates included, Bought rows highlighted ----
       sortedBrands.forEach(b => {
@@ -1000,14 +1081,14 @@
           styleHeaderRow(sheet.getRow(1));
 
           const labelTx = state.transactions
-            .filter(t => t.labelId === l.id)
+            .filter(t => t.labelId === l.id && t.type !== 'sell')
             .slice()
             .sort((a, b3) => (a.date || '').localeCompare(b3.date || ''));
 
-          let bought = 0, used = 0, sold = 0;
+          let bought = 0, used = 0;
           labelTx.forEach(t => {
             const q = Number(t.quantity) || 0;
-            const typeLabel = t.type === 'buy' ? '매입 Bought' : t.type === 'use' ? '사용 Used' : '판매 Sold';
+            const typeLabel = t.type === 'buy' ? '매입 Bought' : '사용 Used';
             const row = sheet.addRow({ date: t.date || '', type: typeLabel, qty: q, note: t.note || '', handledBy: t.handledBy || '', checkedBy: t.checkedBy || '' });
             row.eachCell(cell => {
               cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
@@ -1017,16 +1098,19 @@
               row.eachCell(cell => { cell.fill = BUY_FILL; cell.font = BUY_FONT; });
             } else if (t.type === 'use') {
               used += q;
-            } else if (t.type === 'sell') {
-              sold += q;
             }
           });
+
+          const lStock = computeLabelStock(l.id, exportAsOf);
+          const lUnitPrice = Number(l.unitPrice) || 0;
+          const lAmount = lUnitPrice * lStock.current;
 
           sheet.addRow([]);
           sheet.addRow(['', '매입 Total bought', bought, '']).font = { bold: true };
           sheet.addRow(['', '사용 Total used', used, '']).font = { bold: true };
-          sheet.addRow(['', '판매 Total sold', sold, '']).font = { bold: true };
-          sheet.addRow(['', '재고량 Remaining', bought - used - sold, '']).font = { bold: true };
+          sheet.addRow(['', '재고량 Remaining (as of ' + exportAsOf + ')', lStock.current, '']).font = { bold: true };
+          sheet.addRow(['', '단가 Unit price', lUnitPrice, '']).font = { bold: true };
+          sheet.addRow(['', '금액 Amount', Math.round(lAmount), '']).font = { bold: true };
         });
       });
 
@@ -1082,7 +1166,7 @@
     properties: {
       brandId: { type: 'string' },
       labelId: { type: 'string' },
-      type: { type: 'string', enum: ['buy', 'use', 'sell'] },
+      type: { type: 'string', enum: ['buy', 'use'] },
       quantity: { type: 'number' },
       date: { type: 'string' },
       note: { type: 'string' },
@@ -1141,7 +1225,7 @@ ${catalog}
 Description: "${text}"
 
 Rules:
-- "type" must be "buy" (bought/purchased), "use" (used internally/damaged), or "sell" (sold).
+- "type" must be "buy" (bought/purchased) or "use" (used internally/damaged). This system no longer tracks sales — if the description mentions selling, use "use" instead.
 - "quantity" is a single number.
 - If no date is mentioned, omit "date" (today's date will be used).
 - "handledBy" is who performed/entered the transaction; "checkedBy" is who checked/verified it; "note" is any other detail (supplier, customer, reason). Omit any that aren't mentioned.

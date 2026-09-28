@@ -50,6 +50,17 @@
   .low-stock-notice { display: inline-block; margin-top: 10px; font-size: 0.78rem; font-weight: 600; color: var(--red); }
   .product-group-card { border: 1px solid var(--rule); border-radius: 4px; background: var(--ivory); padding: 22px 24px; margin-bottom: 28px; }
   .product-group-card h3 { font-family: 'Fraunces', serif; font-size: 1.15rem; margin-bottom: 14px; }
+  .group-total {
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--rule);
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'Fraunces', serif; font-size: 1.05rem; font-weight: 600; color: var(--pine);
+  }
+  .grand-total-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    background: var(--ivory); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 18px; margin-bottom: 18px;
+  }
+  .grand-total-bar .amt { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; color: var(--pine); }
   .search-row { display: flex; gap: 10px; margin-bottom: 16px; max-width: 340px; }
   .search-row input { border-color: var(--ochre); }
   .card { border: 1px solid var(--rule); border-radius: 4px; padding: 30px 32px; margin-bottom: 60px; background: var(--ivory); }
@@ -113,6 +124,16 @@
     <div class="status" id="status">Connecting to shared storage…</div>
 
     <h2 class="section-title">제품 · Products</h2>
+    <div class="grand-total-bar">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <label for="productsAsOf" style="margin-bottom:0;font-size:0.8rem;color:var(--ink-soft);">기준일 · As of</label>
+        <input type="date" id="productsAsOf" min="2020-01-01" max="2035-12-31" style="width:auto;border-bottom:1px solid var(--ink);padding:6px 4px;">
+      </div>
+      <div>
+        <span style="font-size:0.85rem;color:var(--ink-soft);margin-right:8px;">재고 총액 · Total inventory value</span>
+        <span class="amt" id="productsGrandTotal">₩0</span>
+      </div>
+    </div>
     <div class="search-row">
       <input id="productSearch" type="text" placeholder="🔍 Search products…" maxlength="60">
     </div>
@@ -210,7 +231,52 @@
     return '(deleted product)';
   }
 
+  const productsAsOfInput = document.getElementById('productsAsOf');
+  const productsGrandTotalEl = document.getElementById('productsGrandTotal');
+  productsAsOfInput.value = new Date().toISOString().slice(0, 10);
+  productsAsOfInput.addEventListener('change', () => renderProductGroups());
+
+  // Same Prev/In/Used/Current ledger as the admin page: sold transactions are no
+  // longer counted here — this reflects usable stock, not net-of-sales.
+  function computeProductStock(productId, asOfDate) {
+    // A purchase dated on the as-of date folds straight into Prev (전일재고 Prev = 전일재고 Prev
+    // + bought), so the moment a buy is logged it's already counted — "당일입고 In" still shows
+    // today's bought amount for reference, it just isn't held back in a separate bucket.
+    let prev = 0, todayIn = 0, todayUsed = 0;
+    state.transactions.forEach(t => {
+      if (t.productId !== productId || t.type === 'sell') return;
+      const q = Number(t.quantity) || 0;
+      const d = t.date || '';
+      if (!d) return;
+      if (d < asOfDate) { if (t.type === 'buy') prev += q; else if (t.type === 'use') prev -= q; }
+      else if (d === asOfDate) {
+        if (t.type === 'buy') { todayIn += q; prev += q; }
+        else if (t.type === 'use') { todayUsed += q; }
+      }
+    });
+    return { prev, in: todayIn, used: todayUsed, current: prev - todayUsed };
+  }
+
   function renderProductGroups() {
+    const asOf = productsAsOfInput.value || new Date().toISOString().slice(0, 10);
+
+    let grandTotal = 0;
+    const groupTotals = {};
+    const computed = {};
+    GROUPS.forEach(g => {
+      let groupTotal = 0;
+      (state[g.key] || []).forEach(p => {
+        const stock = computeProductStock(p.id, asOf);
+        const unitPrice = Number(p.unitPrice) || 0;
+        const amount = unitPrice * stock.current;
+        computed[p.id] = { stock, unitPrice, amount };
+        groupTotal += amount;
+      });
+      groupTotals[g.key] = groupTotal;
+      grandTotal += groupTotal;
+    });
+    productsGrandTotalEl.textContent = '₩' + Math.round(grandTotal).toLocaleString();
+
     productGroupsArea.innerHTML = GROUPS.map(g => {
       const products = state[g.key] || [];
       const query = (productSearchQuery[g.key] || '').trim().toLowerCase();
@@ -223,30 +289,24 @@
         : filtered.length === 0
         ? `<div class="empty">No products match "${escapeHtml(productSearchQuery[g.key] || '')}".</div>`
         : `<div class="summary-grid">${filtered.map(p => {
-            let bought = 0, used = 0, sold = 0;
-            state.transactions.forEach(t => {
-              if (t.productId !== p.id) return;
-              const q = Number(t.quantity) || 0;
-              if (t.type === 'buy') bought += q;
-              else if (t.type === 'use') used += q;
-              else if (t.type === 'sell') sold += q;
-            });
-            const remaining = bought - used - sold;
+            const { stock, unitPrice, amount } = computed[p.id];
             const threshold = lowStockThreshold(p.name);
-            const isLow = remaining < threshold;
+            const isLow = stock.current < threshold;
             return `
               <div class="stat-card${isLow ? ' low-stock' : ''}">
                 <div class="pname">${escapeHtml(p.name)}</div>
-                <div class="stat-line"><span>매입 · Bought</span><b>${bought}</b></div>
-                <div class="stat-line"><span>사용 · Used</span><b>${used}</b></div>
-                <div class="stat-line"><span>판매 · Sold</span><b>${sold}</b></div>
-                <div class="stat-remaining"><span>재고량 · Remaining stock</span><span class="${remaining < 0 ? 'neg' : ''}">${remaining}</span></div>
+                <div class="stat-line"><span>전일재고 · Prev</span><b>${stock.prev}</b></div>
+                <div class="stat-line"><span>당일입고 · In</span><b>${stock.in}</b></div>
+                <div class="stat-line"><span>사용 · Used</span><b>${stock.used}</b></div>
+                <div class="stat-line"><span>단가 · Unit price</span><b>₩${unitPrice.toLocaleString()}</b></div>
+                <div class="stat-line"><span>금액 · Amount</span><b>₩${Math.round(amount).toLocaleString()}</b></div>
+                <div class="stat-remaining"><span>재고량 · Remaining stock</span><span class="${stock.current < 0 ? 'neg' : ''}">${stock.current}</span></div>
                 ${isLow ? `<div class="low-stock-notice">⚠ 재고 부족 · Low (below ${threshold}) — order from supplier</div>` : ''}
               </div>
             `;
           }).join('')}</div>`;
 
-      return `<div class="product-group-card"><h3>${escapeHtml(g.label)}</h3>${grid}</div>`;
+      return `<div class="product-group-card"><h3>${escapeHtml(g.label)}</h3>${grid}<div class="group-total"><span>${escapeHtml(g.label)} 합계 · Group total</span><span>₩${Math.round(groupTotals[g.key]).toLocaleString()}</span></div></div>`;
     }).join('');
   }
 
@@ -325,24 +385,27 @@
       wb.created = new Date();
       const usedNames = new Set();
 
+      const exportAsOf = productsAsOfInput.value || new Date().toISOString().slice(0, 10);
       const summarySheet = wb.addWorksheet(sheetNameFor('Summary', usedNames));
       summarySheet.columns = [
         { header: '구분 Group', key: 'group', width: 20 }, { header: '품목 Product', key: 'product', width: 24 },
-        { header: '매입 Bought', key: 'bought', width: 12 }, { header: '사용 Used', key: 'used', width: 12 },
-        { header: '판매 Sold', key: 'sold', width: 12 }, { header: '재고량 Remaining', key: 'remaining', width: 14 }
+        { header: '전일재고 Prev', key: 'prev', width: 12 }, { header: '당일입고 In', key: 'in', width: 12 },
+        { header: '사용 Used', key: 'used', width: 12 }, { header: '단가 Unit price', key: 'unitPrice', width: 12 },
+        { header: '금액 Amount', key: 'amount', width: 14 }, { header: '재고량 Remaining', key: 'remaining', width: 14 }
       ];
       styleHeaderRow(summarySheet.getRow(1));
+      let exportGrandTotal = 0;
       GROUPS.forEach(g => {
         state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
-          let bought = 0, used = 0, sold = 0;
-          state.transactions.forEach(t => {
-            if (t.productId !== p.id) return;
-            const q = Number(t.quantity) || 0;
-            if (t.type === 'buy') bought += q; else if (t.type === 'use') used += q; else if (t.type === 'sell') sold += q;
-          });
-          summarySheet.addRow({ group: g.label, product: p.name, bought, used, sold, remaining: bought - used - sold });
+          const stock = computeProductStock(p.id, exportAsOf);
+          const unitPrice = Number(p.unitPrice) || 0;
+          const amount = unitPrice * stock.current;
+          exportGrandTotal += amount;
+          summarySheet.addRow({ group: g.label, product: p.name, prev: stock.prev, in: stock.in, used: stock.used, unitPrice, amount: Math.round(amount), remaining: stock.current });
         });
       });
+      const totalRow = summarySheet.addRow({ group: '', product: '재고 총액 · Total inventory value', amount: Math.round(exportGrandTotal) });
+      totalRow.font = { bold: true };
 
       GROUPS.forEach(g => {
         state[g.key].slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
@@ -353,22 +416,25 @@
             { header: '검토자 Checked by', key: 'checkedBy', width: 18 }
           ];
           styleHeaderRow(sheet.getRow(1));
-          const productTx = state.transactions.filter(t => t.productId === p.id).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-          let bought = 0, used = 0, sold = 0;
+          const productTx = state.transactions.filter(t => t.productId === p.id && t.type !== 'sell').slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+          let bought = 0, used = 0;
           productTx.forEach(t => {
             const q = Number(t.quantity) || 0;
-            const typeLabel = t.type === 'buy' ? '매입 Bought' : t.type === 'use' ? '사용 Used' : '판매 Sold';
+            const typeLabel = t.type === 'buy' ? '매입 Bought' : '사용 Used';
             const row = sheet.addRow({ date: t.date || '', type: typeLabel, qty: q, handledBy: t.handledBy || '', checkedBy: t.checkedBy || '' });
             row.eachCell(cell => { cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }; });
             if (t.type === 'buy') { bought += q; row.eachCell(cell => { cell.fill = BUY_FILL; cell.font = BUY_FONT; }); }
             else if (t.type === 'use') used += q;
-            else if (t.type === 'sell') sold += q;
           });
+          const pStock = computeProductStock(p.id, exportAsOf);
+          const pUnitPrice = Number(p.unitPrice) || 0;
+          const pAmount = pUnitPrice * pStock.current;
           sheet.addRow([]);
           sheet.addRow(['', 'Total bought', bought, '']).font = { bold: true };
           sheet.addRow(['', 'Total used', used, '']).font = { bold: true };
-          sheet.addRow(['', 'Total sold', sold, '']).font = { bold: true };
-          sheet.addRow(['', 'Remaining', bought - used - sold, '']).font = { bold: true };
+          sheet.addRow(['', 'Remaining (as of ' + exportAsOf + ')', pStock.current, '']).font = { bold: true };
+          sheet.addRow(['', 'Unit price', pUnitPrice, '']).font = { bold: true };
+          sheet.addRow(['', 'Amount', Math.round(pAmount), '']).font = { bold: true };
         });
       });
 

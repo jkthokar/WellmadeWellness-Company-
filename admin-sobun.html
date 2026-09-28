@@ -240,13 +240,13 @@
       <h2>품목 관리 · Products</h2>
       <form id="itemForm" class="inline">
         <div>
-          <label for="itemNameInput">품목명 추가 · Add product</label>
-          <input id="itemNameInput" type="text" maxlength="60" placeholder="e.g. 오징어채">
-        </div>
-        <div>
           <label for="itemBrandInput">브랜드 (선택) · Brand (optional)</label>
           <input id="itemBrandInput" type="text" maxlength="40" list="brandOptions" placeholder="e.g. 고성태젓갈">
           <datalist id="brandOptions"></datalist>
+        </div>
+        <div>
+          <label for="itemNameInput">품목명 추가 · Add product</label>
+          <input id="itemNameInput" type="text" maxlength="60" placeholder="e.g. 오징어채">
         </div>
         <div><button type="submit">Add product</button></div>
       </form>
@@ -541,7 +541,15 @@
   const itemsList = document.getElementById('itemsList');
 
   function orderedItems() {
-    return state.items.slice().sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+    return state.items.slice().sort((a, b) => {
+      const ab = a.brand || '', bb = b.brand || '';
+      if (ab !== bb) {
+        if (!ab) return 1;
+        if (!bb) return -1;
+        return ab.localeCompare(bb, 'ko');
+      }
+      return a.name.localeCompare(b.name, 'ko');
+    });
   }
   function itemName(id) {
     const it = state.items.find(i => i.id === id);
@@ -555,7 +563,7 @@
     renderBrandOptions();
     if (state.items.length === 0) { itemsList.innerHTML = '<span class="empty">No products yet — add one above.</span>'; return; }
     itemsList.innerHTML = orderedItems().map(it => `
-      <span class="chip">${escapeHtml(it.name)}${it.brand ? ` <span style="color:var(--ink-soft);font-weight:400;">· ${escapeHtml(it.brand)}</span>` : ''}
+      <span class="chip">${it.brand ? `<span style="color:var(--ink-soft);font-weight:400;">${escapeHtml(it.brand)} · </span>` : ''}${escapeHtml(it.name)}
         <button class="secondary small" type="button" data-rename-item="${it.id}">Rename</button>
         <button class="secondary small" type="button" data-brand-item="${it.id}">Brand</button>
         <button class="secondary small" type="button" data-del-item="${it.id}">Delete</button>
@@ -725,8 +733,10 @@
         return `<td><input type="number" min="0" step="1" value="${v}" data-cell-item="${it.id}" data-cell-size="${sz.id}"></td>`;
       }).join('');
       grandUnits += rowUnits; grandWeight += rowWeight;
-      const brandTag = it.brand ? `<br><span style="font-size:0.72rem;color:var(--ink-soft);font-weight:400;">${escapeHtml(it.brand)}</span>` : '';
-      return `<tr><td>${escapeHtml(it.name)}${brandTag}</td>${cells}<td class="num col-total">${fmtNum(rowUnits)}</td><td class="num col-total-kg">${fmtNum(rowWeight / 1000)}</td></tr>`;
+      const cellLabel = it.brand
+        ? `<span style="font-size:0.72rem;color:var(--ink-soft);font-weight:400;">${escapeHtml(it.brand)}</span><br>${escapeHtml(it.name)}`
+        : escapeHtml(it.name);
+      return `<tr><td>${cellLabel}</td>${cells}<td class="num col-total">${fmtNum(rowUnits)}</td><td class="num col-total-kg">${fmtNum(rowWeight / 1000)}</td></tr>`;
     }).join('');
 
     gridFoot.innerHTML = '<tr><th>합계 · Total</th>' +
@@ -930,8 +940,8 @@
 
       const sheet = wb.addWorksheet(date);
       sheet.columns = [
-        { header: '품목 Product', key: 'item', width: 22 },
         { header: '브랜드 Brand', key: 'brand', width: 16 },
+        { header: '품목 Product', key: 'item', width: 22 },
         { header: '규격 Size', key: 'size', width: 12 },
         { header: '개수 Quantity', key: 'qty', width: 12 },
         { header: '담당 By', key: 'by', width: 16 },
@@ -1001,8 +1011,8 @@
       const logSheet = wb.addWorksheet('Full log');
       logSheet.columns = [
         { header: '일자 Date', key: 'date', width: 14 },
-        { header: '품목 Product', key: 'item', width: 22 },
         { header: '브랜드 Brand', key: 'brand', width: 16 },
+        { header: '품목 Product', key: 'item', width: 22 },
         { header: '규격 Size', key: 'size', width: 12 },
         { header: '개수 Quantity', key: 'qty', width: 12 },
         { header: '담당 By', key: 'by', width: 16 },

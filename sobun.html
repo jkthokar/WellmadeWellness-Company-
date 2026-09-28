@@ -260,7 +260,17 @@
     statusEl.textContent = 'Could not connect to shared storage: ' + (e && e.message ? e.message : 'error');
   });
 
-  function orderedItems() { return state.items.slice(); }
+  function orderedItems() {
+    return state.items.slice().sort((a, b) => {
+      const ab = a.brand || '', bb = b.brand || '';
+      if (ab !== bb) {
+        if (!ab) return 1;
+        if (!bb) return -1;
+        return ab.localeCompare(bb, 'ko');
+      }
+      return a.name.localeCompare(b.name, 'ko');
+    });
+  }
   function orderedSizes() { return state.sizes.slice(); }
   function itemNameOf(id) {
     const it = state.items.find(i => i.id === id);
@@ -312,8 +322,10 @@
         return `<td>${n ? fmtNum(n) : ''}</td>`;
       }).join('');
       grandUnits += rowUnits;
-      const brandTag = it.brand ? `<br><span style="font-size:0.72rem;color:var(--ink-soft);font-weight:400;">${escapeHtml(it.brand)}</span>` : '';
-      return `<tr><td>${escapeHtml(it.name)}${brandTag}</td>${cells}<td class="num col-total">${fmtNum(rowUnits)}</td><td class="num col-total-kg">${fmtNum(rowWeight / 1000)}</td></tr>`;
+      const cellLabel = it.brand
+        ? `<span style="font-size:0.72rem;color:var(--ink-soft);font-weight:400;">${escapeHtml(it.brand)}</span><br>${escapeHtml(it.name)}`
+        : escapeHtml(it.name);
+      return `<tr><td>${cellLabel}</td>${cells}<td class="num col-total">${fmtNum(rowUnits)}</td><td class="num col-total-kg">${fmtNum(rowWeight / 1000)}</td></tr>`;
     }).join('');
 
     gridFoot.innerHTML = '<tr><th>합계 · Total</th>' +
@@ -419,8 +431,8 @@
       const lSheet = wb.addWorksheet('Full log');
       lSheet.columns = [
         { header: '일자 Date', key: 'date', width: 14 },
-        { header: '품목 Product', key: 'item', width: 22 },
         { header: '브랜드 Brand', key: 'brand', width: 16 },
+        { header: '품목 Product', key: 'item', width: 22 },
         { header: '규격 Size', key: 'size', width: 12 },
         { header: '수량 Qty', key: 'qty', width: 12 },
         { header: '담당자 Handled by', key: 'handledBy', width: 16 },

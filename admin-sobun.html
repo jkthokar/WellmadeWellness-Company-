@@ -344,6 +344,7 @@
   const PAGE_LABEL = '소분(포장) · Sobun';
   const VERSIONS_COL = firestoreDb.collection('sobun_versions');
   const ACTIVITY_COL = firestoreDb.collection('wellmadewellness_activity');
+  const ARCHIVE_COL = firestoreDb.collection('sobun_archive');
   const MAX_VERSIONS = 10;
 
   const authGate = document.getElementById('authGate');
@@ -804,6 +805,7 @@
         <td>${escapeHtml(d.checkedBy || '')}</td>
         <td style="white-space:nowrap;">
           <button class="secondary small" type="button" data-load-day="${escapeHtml(d.date)}">Load to grid</button>
+          <button class="secondary small" type="button" data-export-day="${escapeHtml(d.date)}">⬇ Export &amp; archive</button>
           <button class="secondary small" type="button" data-del-day="${escapeHtml(d.date)}">Delete day</button>
         </td>
       </tr>
@@ -832,7 +834,69 @@
       logActivity('delete', `Deleted all ${count} portioning entries for ${date}`);
       return;
     }
+    const expDayBtn = e.target.closest('[data-export-day]');
+    if (expDayBtn) {
+      exportAndClearDay(expDayBtn.getAttribute('data-export-day'));
+      return;
+    }
   });
+
+  // ---------- Export a single day to Excel, then move it to the archive (never deleted) ----------
+  async function exportAndClearDay(date) {
+    if (typeof ExcelJS === 'undefined') { statusEl.textContent = 'Excel library failed to load — check your connection and try again.'; return; }
+    const dayLogs = state.logs.filter(l => l.date === date);
+    if (dayLogs.length === 0) { window.alert('No entries for this date.'); return; }
+    const day = daySummaries().find(d => d.date === date) || { units: 0, weight: 0 };
+    if (!window.confirm(`Export ${date} (${fmtNum(day.units)} units) to Excel, then move those entries out of the live grid into the archive?\n\nThey'll disappear from the daily grid and the public page, but nothing is deleted — they stay recoverable in the archive, in addition to the downloaded Excel file.`)) return;
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'WellmadeWellness Sobun';
+      wb.created = new Date();
+
+      const sheet = wb.addWorksheet(date);
+      sheet.columns = [
+        { header: '품목 Product', key: 'item', width: 22 },
+        { header: '규격 Size', key: 'size', width: 12 },
+        { header: '개수 Quantity', key: 'qty', width: 12 },
+        { header: '담당 By', key: 'by', width: 16 },
+        { header: '검수 Checked', key: 'checked', width: 16 }
+      ];
+      dayLogs.slice().sort((a, b) => itemName(a.itemId).localeCompare(itemName(b.itemId))).forEach(l => {
+        sheet.addRow({ item: itemName(l.itemId), size: sizeLabel(l.sizeId), qty: l.quantity, by: l.handledBy || '', checked: l.checkedBy || '' });
+      });
+      sheet.addRow({});
+      const totalRow = sheet.addRow({ item: '합계 · Total', qty: day.units });
+      totalRow.font = { bold: true };
+      sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3327' } };
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: 'application/octet-stream' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `WellmadeWellness_Sobun_${date}.xlsx`;
+      document.body.appendChild(a); a.click(); a.remove();
+
+      saveBackup(`before export & archive for ${date}`);
+      // Write the day's entries into the permanent archive collection first.
+      await ARCHIVE_COL.doc(date).set({
+        date,
+        logs: dayLogs,
+        totalUnits: day.units,
+        totalWeightG: day.weight,
+        exportedAt: Date.now(),
+        exportedBy: currentEmail()
+      });
+      // Only remove from the live doc after the archive write has succeeded.
+      state.logs = state.logs.filter(l => l.date !== date);
+      saveState();
+      renderAll();
+      logActivity('archive', `Exported to Excel and archived ${dayLogs.length} portioning entries (${fmtNum(day.units)} units) for ${date} — recoverable in sobun_archive`);
+      statusEl.textContent = `Exported ${date} — moved to the archive, no longer shown in the live grid.`;
+    } catch (e) {
+      statusEl.textContent = 'Export/archive failed, nothing was changed: ' + (e && e.message ? e.message : 'error');
+    }
+  }
 
   // ---------- Excel export ----------
   const exportBtn = document.getElementById('exportBtn');

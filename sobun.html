@@ -22,12 +22,12 @@
   body { font-family: 'Inter', sans-serif; color: var(--ink); background: var(--ivory-warm); line-height: 1.6; }
   h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; }
   a { color: inherit; text-decoration: none; }
-  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
   nav { position: sticky; top: 0; z-index: 50; background: var(--ivory-warm); border-bottom: 1px solid var(--rule); }
-  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; flex-wrap: wrap; gap: 12px 20px; min-height: 76px; padding-top: 12px; padding-bottom: 12px; }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; min-height: 76px; padding-top: 12px; padding-bottom: 12px; gap: 12px 20px; }
   .wordmark { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; white-space: nowrap; }
   .wordmark span { color: var(--ochre); }
-  .nav-links { display: flex; gap: 24px; font-size: 0.92rem; flex-wrap: wrap; align-items: center; }
+  .nav-links { display: flex; gap: 10px 24px; font-size: 0.92rem; flex-wrap: wrap; align-items: center; }
   .nav-links a { color: var(--ink-soft); transition: color 0.2s ease; white-space: nowrap; }
   .nav-links a:hover, .nav-links a.active { color: var(--pine); }
   header.page-head { background: var(--pine); color: var(--ivory); padding: 56px 0 40px; }
@@ -36,17 +36,15 @@
   main { padding: 40px 0 100px; }
   .section-title { font-size: 1.25rem; margin-bottom: 16px; }
   .status { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 16px; }
-  .jt-section { margin-bottom: 56px; border-top: 2px solid var(--rule); padding-top: 26px; }
-  .jt-section:first-of-type { border-top: none; padding-top: 0; }
   table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
-  th, td { text-align: left; padding: 10px 9px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
-  th { color: var(--ink-soft); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th { color: var(--ink-soft); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.02em; }
   tbody tr:hover { background: var(--ivory); }
   .num { text-align: right; font-variant-numeric: tabular-nums; }
   .empty { color: var(--ink-soft); font-size: 0.88rem; padding: 14px 0; }
-  .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 420px; border: 1px solid var(--rule); border-radius: 4px; }
+  .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 520px; border: 1px solid var(--rule); border-radius: 4px; }
   .tbl-scroll table { margin: 0; }
-  .tbl-scroll thead th { position: sticky; top: 0; background: var(--ivory-warm); z-index: 1; }
+  .tbl-scroll thead th { position: sticky; top: 0; background: var(--ivory-warm); z-index: 2; }
   .tbl-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
   .tbl-scroll::-webkit-scrollbar-track { background: var(--ivory-warm); }
   .tbl-scroll::-webkit-scrollbar-thumb { background: var(--ochre); border-radius: 6px; }
@@ -54,6 +52,10 @@
   .search-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; max-width: 480px; flex-wrap: wrap; }
   .search-row input { flex: 1 1 220px; min-width: 160px; border-color: var(--ochre); border: none; border-bottom: 1px solid var(--ink); background: transparent; padding: 8px 2px; font-family: inherit; font-size: 0.9rem; color: var(--ink); }
   .search-row input:focus { outline: none; border-bottom: 2px solid var(--ochre); }
+  input, label { font-family: inherit; }
+  label { display: block; font-size: 0.78rem; color: var(--ink-soft); margin-bottom: 6px; }
+  input[type="date"] { border: none; border-bottom: 1px solid var(--ink); background: transparent; padding: 8px 2px; font-size: 0.92rem; color: var(--ink); }
+  input[type="date"]:focus { outline: none; border-bottom: 2px solid var(--ochre); }
   button {
     border: none; cursor: pointer; font-family: inherit; font-weight: 600;
     background: var(--ochre); color: var(--pine-deep); padding: 11px 22px; border-radius: 100px; font-size: 0.88rem;
@@ -78,6 +80,22 @@
     white-space: nowrap; flex-shrink: 0;
   }
   .logout-btn:hover { color: var(--pine); }
+
+  /* ---------- Grid (matches admin layout, read-only) ---------- */
+  .grid-toolbar { display: flex; gap: 16px; flex-wrap: wrap; align-items: end; margin-bottom: 18px; }
+  .grid-toolbar > div { min-width: 160px; }
+  .grid-summary { display: flex; gap: 24px; flex-wrap: wrap; margin: 14px 0 18px; font-size: 0.85rem; color: var(--ink-soft); }
+  .grid-summary strong { color: var(--ink); font-size: 1rem; }
+  .grid-table th, .grid-table td { text-align: center; }
+  .grid-table th:first-child, .grid-table td:first-child {
+    text-align: left; position: sticky; left: 0; background: var(--ivory-warm); z-index: 3;
+    min-width: 150px; max-width: 220px; white-space: normal;
+  }
+  .grid-table tbody td:first-child { background: var(--ivory); }
+  .grid-table tfoot td, .grid-table tfoot th { font-weight: 700; background: var(--ivory-warm); position: sticky; bottom: 0; }
+  .grid-table .col-total { color: var(--ochre); }
+  .jt-section { margin-bottom: 56px; border-top: 2px solid var(--rule); padding-top: 26px; }
+  .jt-section:first-of-type { border-top: none; padding-top: 0; }
 </style>
 </head>
 <body>
@@ -104,7 +122,7 @@
 <header class="page-head">
   <div class="wrap">
     <h1>소분(포장) 현황 <br>Sobun (Portioning) Daily Log</h1>
-    <p>Live view of daily portioning/packing quantities by product and package size. View only; staff sign in to the dashboard to make changes.</p>
+    <p>Live view of daily portioning/packing quantities by product and package size — same grid as the admin page. View only; staff sign in to the dashboard to make changes. Once a day is exported from the admin page, it's removed from here too.</p>
   </div>
 </header>
 
@@ -115,41 +133,40 @@
       <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
     </div>
 
-    <div class="jt-section" id="sec-daily">
-      <h2 class="section-title">일별 요약 · Daily summary</h2>
+    <div class="jt-section" id="sec-grid">
+      <h2 class="section-title">일일 소분 기록 · Daily portioning grid</h2>
+      <div class="grid-toolbar">
+        <div>
+          <label for="viewDate">일자 · Date</label>
+          <input type="date" id="viewDate" min="2020-01-01" max="2035-12-31">
+        </div>
+      </div>
+      <div class="grid-summary" id="gridSummary"></div>
+      <div class="tbl-scroll">
+        <table class="grid-table" id="gridTable">
+          <thead><tr><th>품목 · Product</th></tr></thead>
+          <tbody id="gridBody"><tr><td class="empty">Loading…</td></tr></tbody>
+          <tfoot id="gridFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div class="jt-section" id="sec-days">
+      <h2 class="section-title">일자 검색 · Search by date</h2>
       <div class="search-row"><input type="text" id="daySearch" placeholder="🔍 Search date (YYYY-MM-DD)…" maxlength="20"></div>
       <div class="tbl-scroll">
         <table>
           <thead>
             <tr>
               <th>일자 · Date</th>
-              <th class="num">총 수량 · Total units</th>
+              <th class="num">총 개수 · Total units</th>
               <th class="num">총 중량(kg) · Total weight</th>
-              <th>담당자 · Handled by</th>
-              <th>검수자 · Checked by</th>
+              <th>담당 · By</th>
+              <th>검수 · Checked</th>
+              <th></th>
             </tr>
           </thead>
-          <tbody id="dayBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="jt-section" id="sec-detail">
-      <h2 class="section-title">품목별 상세 · Item &amp; size detail</h2>
-      <div class="search-row"><input type="text" id="detailSearch" placeholder="🔍 Search date or product…" maxlength="80"></div>
-      <div class="tbl-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>일자 · Date</th>
-              <th>품목 · Product</th>
-              <th>규격 · Size</th>
-              <th class="num">수량 · Qty</th>
-              <th>담당자 · Handled by</th>
-              <th>검수자 · Checked by</th>
-            </tr>
-          </thead>
-          <tbody id="detailBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+          <tbody id="dayBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -167,10 +184,13 @@
 (function () {
   const statusEl = document.getElementById('status');
   const exportBtn = document.getElementById('exportBtn');
-  const dayBody = document.getElementById('dayBody');
-  const detailBody = document.getElementById('detailBody');
+  const viewDate = document.getElementById('viewDate');
+  const gridTable = document.getElementById('gridTable');
+  const gridBody = document.getElementById('gridBody');
+  const gridFoot = document.getElementById('gridFoot');
+  const gridSummary = document.getElementById('gridSummary');
   const daySearch = document.getElementById('daySearch');
-  const detailSearch = document.getElementById('detailSearch');
+  const dayBody = document.getElementById('dayBody');
 
   const firebaseConfig = {
     apiKey: "AIzaSyDdT2jqlbWGutlCDX8n2XVHKxLQnYiim-8",
@@ -224,6 +244,8 @@
     if (!Array.isArray(state.logs)) state.logs = [];
   }
 
+  viewDate.value = todayStr();
+
   STATE_DOC.onSnapshot((doc) => {
     if (doc.exists) {
       state = doc.data();
@@ -237,17 +259,65 @@
     statusEl.textContent = 'Could not connect to shared storage: ' + (e && e.message ? e.message : 'error');
   });
 
+  function orderedItems() { return state.items.slice(); }
+  function orderedSizes() { return state.sizes.slice(); }
   function itemNameOf(id) {
     const it = state.items.find(i => i.id === id);
     return it ? it.name : '(deleted item)';
   }
-  function sizeOf(id) {
-    return state.sizes.find(s => s.id === id) || null;
-  }
+  function sizeOf(id) { return state.sizes.find(s => s.id === id) || null; }
   function sizeLabelOf(id) {
     const sz = sizeOf(id);
     return sz ? (sz.label || sizeLabelFor(sz.grams)) : '(deleted size)';
   }
+  function cellValue(itemId, sizeId, date) {
+    const entry = state.logs.find(l => l.itemId === itemId && l.sizeId === sizeId && l.date === date);
+    return entry ? entry.quantity : 0;
+  }
+
+  function renderGrid() {
+    const date = viewDate.value || todayStr();
+    const items = orderedItems();
+    const sizes = orderedSizes();
+
+    if (items.length === 0 || sizes.length === 0) {
+      gridTable.querySelector('thead').innerHTML = '<tr><th>품목 · Product</th></tr>';
+      gridBody.innerHTML = '<tr><td class="empty">No products or sizes set up yet.</td></tr>';
+      gridFoot.innerHTML = '';
+      gridSummary.innerHTML = '';
+      return;
+    }
+
+    gridTable.querySelector('thead').innerHTML = '<tr><th>품목 · Product</th>' +
+      sizes.map(sz => `<th>${escapeHtml(sz.label || sizeLabelFor(sz.grams))}</th>`).join('') +
+      '<th class="col-total">합계 · Total</th></tr>';
+
+    let grandUnits = 0, grandWeight = 0;
+    const colTotals = sizes.map(() => 0);
+
+    gridBody.innerHTML = items.map(it => {
+      let rowUnits = 0;
+      const cells = sizes.map((sz, ci) => {
+        const n = Number(cellValue(it.id, sz.id, date)) || 0;
+        rowUnits += n;
+        colTotals[ci] += n;
+        grandWeight += n * (Number(sz.grams) || 0);
+        return `<td>${n ? fmtNum(n) : ''}</td>`;
+      }).join('');
+      grandUnits += rowUnits;
+      return `<tr><td>${escapeHtml(it.name)}</td>${cells}<td class="num col-total">${fmtNum(rowUnits)}</td></tr>`;
+    }).join('');
+
+    gridFoot.innerHTML = '<tr><th>합계 · Total</th>' +
+      colTotals.map(t => `<td class="num">${fmtNum(t)}</td>`).join('') +
+      `<td class="num col-total">${fmtNum(grandUnits)}</td></tr>`;
+
+    gridSummary.innerHTML = `
+      <div>총 개수 · Total units<br><strong>${fmtNum(grandUnits)}</strong></div>
+      <div>총 중량 · Total weight<br><strong>${fmtNum(grandWeight / 1000)} kg</strong></div>
+    `;
+  }
+  viewDate.addEventListener('change', renderGrid);
 
   function daySummaries() {
     const byDate = {};
@@ -263,11 +333,11 @@
     return Object.values(byDate).sort((a, b) => (a.date < b.date ? 1 : -1));
   }
 
-  function renderDaily() {
+  function renderDays() {
     const days = daySummaries();
     const query = (daySearch.value || '').trim();
     const filtered = query ? days.filter(d => d.date.includes(query)) : days;
-    if (filtered.length === 0) { dayBody.innerHTML = '<tr><td colspan="5" class="empty">No entries yet.</td></tr>'; return; }
+    if (filtered.length === 0) { dayBody.innerHTML = '<tr><td colspan="6" class="empty">No entries yet.</td></tr>'; return; }
     dayBody.innerHTML = filtered.map(d => `
       <tr>
         <td>${escapeHtml(d.date)}</td>
@@ -275,34 +345,19 @@
         <td class="num">${fmtNum(d.weight / 1000)}</td>
         <td>${escapeHtml(d.handledBy || '')}</td>
         <td>${escapeHtml(d.checkedBy || '')}</td>
+        <td><button class="secondary small" type="button" data-view-day="${escapeHtml(d.date)}">보기 · View</button></td>
       </tr>`).join('');
   }
+  daySearch.addEventListener('input', renderDays);
+  dayBody.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-view-day]');
+    if (!btn) return;
+    viewDate.value = btn.getAttribute('data-view-day');
+    renderGrid();
+    window.scrollTo({ top: document.getElementById('gridTable').getBoundingClientRect().top + window.scrollY - 100, behavior: 'smooth' });
+  });
 
-  function renderDetail() {
-    const query = (detailSearch.value || '').trim().toLowerCase();
-    const sorted = state.logs.slice().sort((a, b) => {
-      if (a.date !== b.date) return (a.date || '') < (b.date || '') ? 1 : -1;
-      return (b.createdAt || 0) - (a.createdAt || 0);
-    });
-    const filtered = query
-      ? sorted.filter(l => (l.date || '').toLowerCase().includes(query) || itemNameOf(l.itemId).toLowerCase().includes(query))
-      : sorted;
-    if (filtered.length === 0) { detailBody.innerHTML = '<tr><td colspan="6" class="empty">No entries match.</td></tr>'; return; }
-    detailBody.innerHTML = filtered.slice(0, 500).map(l => `
-      <tr>
-        <td>${escapeHtml(l.date || '')}</td>
-        <td>${escapeHtml(itemNameOf(l.itemId))}</td>
-        <td>${escapeHtml(sizeLabelOf(l.sizeId))}</td>
-        <td class="num">${fmtNum(l.quantity)}</td>
-        <td>${escapeHtml(l.handledBy || '')}</td>
-        <td>${escapeHtml(l.checkedBy || '')}</td>
-      </tr>`).join('');
-  }
-
-  function renderAll() { renderDaily(); renderDetail(); }
-
-  daySearch.addEventListener('input', renderDaily);
-  detailSearch.addEventListener('input', renderDetail);
+  function renderAll() { renderGrid(); renderDays(); }
 
   const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3327' } };
   const HEADER_FONT = { color: { argb: 'FFFFFFFF' }, bold: true };

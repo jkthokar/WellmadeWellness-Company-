@@ -111,6 +111,19 @@
     border: 1px solid var(--rule); padding: 6px 14px; border-radius: 100px; font-size: 0.78rem;
   }
   button.small { padding: 4px 12px; font-size: 0.72rem; }
+
+  .versions-panel {
+    border: 1px solid var(--rule); border-radius: 4px; background: var(--ivory-warm);
+    margin-bottom: 22px; padding: 4px 0;
+  }
+  .versions-panel .v-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 16px; border-bottom: 1px solid var(--rule); flex-wrap: wrap;
+  }
+  .versions-panel .v-row:last-child { border-bottom: none; }
+  .versions-panel .v-meta { font-size: 0.82rem; color: var(--ink-soft); }
+  .versions-panel .v-meta strong { color: var(--ink); }
+  .versions-panel .v-empty { padding: 14px 16px; font-size: 0.85rem; color: var(--ink-soft); }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 420px; border: 1px solid var(--rule); border-radius: 4px; }
@@ -191,10 +204,11 @@
 <main>
   <div class="wrap">
     <div class="status" id="status">Connecting to shared storage…</div>
-    <div style="display:flex;gap:10px;margin-bottom:22px;">
-      <button id="restoreBackupBtn" class="secondary" type="button">↺ Restore last backup</button>
+    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+      <button id="versionsBtn" class="secondary" type="button">↺ Version history</button>
       <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
     </div>
+    <div id="versionsPanel" class="versions-panel" style="display:none;"></div>
     <div class="quicknav">
       <a href="#sec-jeotgalRaw">원물 · Raw material</a>
       <a href="#sec-jeotgalSemi">반제품 · Semi-finished</a>
@@ -217,7 +231,8 @@
   const statusEl = document.getElementById('status');
   const sectionsRoot = document.getElementById('sectionsRoot');
   const exportBtn = document.getElementById('exportBtn');
-  const restoreBackupBtn = document.getElementById('restoreBackupBtn');
+  const versionsBtn = document.getElementById('versionsBtn');
+  const versionsPanel = document.getElementById('versionsPanel');
 
   // ===== FIREBASE CONFIG =====
   const firebaseConfig = {
@@ -234,7 +249,11 @@
   const firestoreDb = firebase.firestore();
   const auth = firebase.auth();
   const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('jeotgal');
-  const BACKUP_DOC = firestoreDb.collection('wellmadewellness').doc('jeotgal_backup');
+  const PAGE_KEY = 'jeotgal';
+  const PAGE_LABEL = '젓갈 · Jeotgal';
+  const VERSIONS_COL = firestoreDb.collection('jeotgal_versions');
+  const ACTIVITY_COL = firestoreDb.collection('wellmadewellness_activity');
+  const MAX_VERSIONS = 10;
 
   const authGate = document.getElementById('authGate');
   const logoutBtn = document.getElementById('logoutBtn');
@@ -318,10 +337,89 @@
     });
   }
 
-  function saveBackup(reason) {
-    BACKUP_DOC.set({ state: JSON.parse(JSON.stringify(state)), savedAt: Date.now(), reason: reason || '' })
-      .catch(() => {});
+  function currentEmail() {
+    return (auth.currentUser && auth.currentUser.email) ? auth.currentUser.email : 'unknown';
   }
+
+  // Keeps a rolling history of the last MAX_VERSIONS snapshots of this page's data,
+  // so a bad edit or delete can be rolled back even if it wasn't the very last change.
+  function saveBackup(reason) {
+    VERSIONS_COL.add({
+      state: JSON.parse(JSON.stringify(state)),
+      savedAt: Date.now(),
+      reason: reason || '',
+      by: currentEmail()
+    }).then(() => {
+      VERSIONS_COL.orderBy('savedAt', 'desc').get().then((snap) => {
+        snap.docs.slice(MAX_VERSIONS).forEach((d) => d.ref.delete().catch(() => {}));
+      }).catch(() => {});
+    }).catch(() => {});
+  }
+
+  // Records one line in the shared activity log (visible on dashboard.html) so anyone
+  // can see exactly who did what and when, even without restoring a version.
+  function logActivity(action, summary) {
+    ACTIVITY_COL.add({
+      page: PAGE_KEY,
+      pageLabel: PAGE_LABEL,
+      action, // 'add' | 'edit' | 'delete' | 'restore'
+      summary: summary || '',
+      at: Date.now(),
+      by: currentEmail()
+    }).catch(() => {});
+  }
+
+  function renderVersionsPanel(versions) {
+    if (!versions.length) {
+      versionsPanel.innerHTML = '<div class="v-empty">No saved versions yet — one is saved automatically before every delete or restore.</div>';
+      return;
+    }
+    versionsPanel.innerHTML = versions.map((v) => {
+      const when = v.savedAt ? new Date(v.savedAt).toLocaleString() : 'unknown time';
+      const reason = v.reason ? escapeHtml(v.reason) : 'saved point';
+      return `
+        <div class="v-row">
+          <div class="v-meta"><strong>${when}</strong> — ${reason}<br>by ${escapeHtml(v.by || 'unknown')}</div>
+          <button class="secondary" type="button" data-restore-version="${v.id}">Restore this version</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  versionsBtn.addEventListener('click', () => {
+    const opening = versionsPanel.style.display === 'none';
+    if (!opening) { versionsPanel.style.display = 'none'; return; }
+    versionsPanel.style.display = 'block';
+    versionsPanel.innerHTML = '<div class="v-empty">Loading…</div>';
+    VERSIONS_COL.orderBy('savedAt', 'desc').limit(MAX_VERSIONS).get().then((snap) => {
+      renderVersionsPanel(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }).catch((e) => {
+      versionsPanel.innerHTML = '<div class="v-empty">Could not load version history: ' + (e && e.message ? e.message : 'error') + '</div>';
+    });
+  });
+
+  versionsPanel.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-restore-version]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-restore-version');
+    VERSIONS_COL.doc(id).get().then((doc) => {
+      if (!doc.exists) { window.alert('That version is no longer available.'); return; }
+      const v = doc.data();
+      const when = v.savedAt ? new Date(v.savedAt).toLocaleString() : 'an earlier point';
+      const msg = `Restore data from ${when}${v.reason ? ' (' + v.reason + ')' : ''}?\n\nThis will overwrite everything currently on this page with that version. Your current data will itself be saved first, so you can restore forward again if needed.`;
+      if (!window.confirm(msg)) return;
+      saveBackup('before restoring a version from ' + when);
+      state = v.state || state;
+      ensureState();
+      saveState();
+      renderAllSections();
+      logActivity('restore', `Restored data from ${when}`);
+      versionsPanel.style.display = 'none';
+    }).catch((e) => {
+      window.alert('Could not load that version: ' + (e && e.message ? e.message : 'error'));
+    });
+  });
+
   function saveState() {
     STATE_DOC.set(state)
       .then(() => { statusEl.textContent = 'Saved — synced live for everyone viewing this page.'; })
@@ -617,6 +715,7 @@
       input.value = '';
       saveState();
       renderSection(cfg);
+      logActivity('add', `Added item "${name}" to ${cfg.title}`);
       return;
     }
     const logForm = e.target.closest('[data-log-form]');
@@ -635,14 +734,16 @@
       if (!itemId) { statusEl.textContent = 'Add an item first, then log a transaction against it.'; return; }
       if (!quantity || quantity <= 0) { statusEl.textContent = 'Enter a valid quantity.'; return; }
       if (!isValidDate(dateInput.value)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
+      const logType = typeSel.value;
       state[key].logs.push({
         id: 'log' + Date.now() + Math.floor(Math.random() * 1000),
-        itemId, type: typeSel.value, quantity, date: dateInput.value,
+        itemId, type: logType, quantity, date: dateInput.value,
         handledBy: byInput.value.trim(), checkedBy: checkedInput.value.trim(), createdAt: Date.now()
       });
       qtyInput.value = ''; byInput.value = ''; checkedInput.value = '';
       saveState();
       renderSection(cfg);
+      logActivity('add', `Logged ${logType} of ${quantity} × "${itemNameOf(cfg, itemId)}" in ${cfg.title}`);
       return;
     }
   });
@@ -664,14 +765,15 @@
       const it = state[key].items.find(i => i.id === id);
       const relatedCount = state[key].logs.filter(l => l.itemId === id).length;
       const msg = relatedCount > 0
-        ? `Delete "${it ? it.name : 'this item'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? You can undo this with "Restore last backup" right after.`
-        : `Delete "${it ? it.name : 'this item'}"? You can undo this with "Restore last backup" right after.`;
+        ? `Delete "${it ? it.name : 'this item'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? You can undo this with "Version history" right after.`
+        : `Delete "${it ? it.name : 'this item'}"? You can undo this with "Version history" right after.`;
       if (!window.confirm(msg)) return;
       saveBackup(`before deleting item "${it ? it.name : id}" from ${cfg.title}`);
       state[key].logs = state[key].logs.filter(l => l.itemId !== id);
       state[key].items = state[key].items.filter(i => i.id !== id);
       saveState();
       renderSection(cfg);
+      logActivity('delete', `Deleted item "${it ? it.name : id}" from ${cfg.title}${relatedCount ? ` and ${relatedCount} transaction(s)` : ''}`);
       return;
     }
     const editItemBtn = e.target.closest('[data-edit-item]');
@@ -695,6 +797,7 @@
       const row = saveItemBtn.closest('tr');
       const it = state[key].items.find(i => i.id === id);
       if (!it) return;
+      const oldName = it.name;
       const newName = row.querySelector(`[data-edit-item-field="${key}|${id}|name"]`).value.trim();
       if (!newName) { statusEl.textContent = 'Item name cannot be empty.'; return; }
       it.name = newName;
@@ -705,6 +808,7 @@
       sectionState[key].editingItemId = null;
       saveState();
       renderSection(cfg);
+      logActivity('edit', `Renamed item "${oldName}" to "${newName}" in ${cfg.title}`);
       return;
     }
     const editBtn = e.target.closest('[data-edit-log]');
@@ -740,16 +844,20 @@
       sectionState[key].editingLogId = null;
       saveState();
       renderSection(findCfg(key));
+      logActivity('edit', `Edited a ${l.type} transaction for "${itemNameOf(findCfg(key), l.itemId)}" in ${findCfg(key).title}`);
       return;
     }
     const delBtn = e.target.closest('[data-del-log]');
     if (delBtn) {
       const [key, id] = delBtn.getAttribute('data-del-log').split('|');
-      if (!window.confirm('Delete this transaction? You can undo this with "Restore last backup" right after.')) return;
-      saveBackup('before deleting a transaction from ' + findCfg(key).title);
+      const cfg = findCfg(key);
+      const l0 = state[key].logs.find(l => l.id === id);
+      if (!window.confirm('Delete this transaction? You can undo this with "Version history" right after.')) return;
+      saveBackup('before deleting a transaction from ' + cfg.title);
       state[key].logs = state[key].logs.filter(l => l.id !== id);
       saveState();
-      renderSection(findCfg(key));
+      renderSection(cfg);
+      logActivity('delete', l0 ? `Deleted a ${l0.type} transaction of ${l0.quantity} × "${itemNameOf(cfg, l0.itemId)}" from ${cfg.title}` : 'Deleted a transaction');
       return;
     }
   });
@@ -789,30 +897,6 @@
       if (it) { it.notes = notesInput.value; saveState(); }
       return;
     }
-  });
-
-  restoreBackupBtn.addEventListener('click', () => {
-    restoreBackupBtn.disabled = true;
-    BACKUP_DOC.get().then((doc) => {
-      restoreBackupBtn.disabled = false;
-      if (!doc.exists) {
-        window.alert('No backup found yet — a backup is saved automatically right before you delete something.');
-        return;
-      }
-      const backup = doc.data();
-      const when = backup.savedAt ? new Date(backup.savedAt).toLocaleString() : 'an earlier point';
-      const reason = backup.reason ? ` (${backup.reason})` : '';
-      const msg = `Restore data from ${when}${reason}?\n\nThis will overwrite everything on this page with that backup. Your current data will itself be backed up first, so you can restore forward again if needed.`;
-      if (!window.confirm(msg)) return;
-      saveBackup('before restoring a backup (undo the restore)');
-      state = backup.state || state;
-      ensureState();
-      saveState();
-      renderAllSections();
-    }).catch((e) => {
-      restoreBackupBtn.disabled = false;
-      window.alert('Could not load backup: ' + (e && e.message ? e.message : 'error'));
-    });
   });
 
   // ---------- Excel export: one Summary + one Log sheet per section ----------

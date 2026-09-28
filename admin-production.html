@@ -101,6 +101,19 @@
     border: 1px solid var(--rule); padding: 6px 14px; border-radius: 100px; font-size: 0.78rem;
   }
   button.small { padding: 4px 12px; font-size: 0.72rem; }
+
+  .versions-panel {
+    border: 1px solid var(--rule); border-radius: 4px; background: var(--ivory-warm);
+    margin-bottom: 24px; padding: 4px 0;
+  }
+  .versions-panel .v-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 16px; border-bottom: 1px solid var(--rule); flex-wrap: wrap;
+  }
+  .versions-panel .v-row:last-child { border-bottom: none; }
+  .versions-panel .v-meta { font-size: 0.82rem; color: var(--ink-soft); }
+  .versions-panel .v-meta strong { color: var(--ink); }
+  .versions-panel .v-empty { padding: 14px 16px; font-size: 0.85rem; color: var(--ink-soft); }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 480px; border: 1px solid var(--rule); border-radius: 4px; }
@@ -304,11 +317,12 @@
     <h2 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
       <span>작업 이력 · Work history</span>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button id="restoreBackupBtn" class="secondary" type="button">↺ Restore last backup</button>
+        <button id="versionsBtn" class="secondary" type="button">↺ Version history</button>
         <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
         <button id="deleteAllBtn" class="secondary" type="button">Delete all history</button>
       </div>
     </h2>
+    <div id="versionsPanel" class="versions-panel" style="display:none;"></div>
 
     <h3 style="font-size:1.05rem;margin-bottom:10px;">해동 이력 · Thawing history</h3>
     <div class="search-row" style="max-width:480px;">
@@ -545,7 +559,11 @@
   const firestoreDb = firebase.firestore();
   const auth = firebase.auth();
   const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('production');
-  const BACKUP_DOC = firestoreDb.collection('wellmadewellness').doc('production_backup');
+  const PAGE_KEY = 'production';
+  const PAGE_LABEL = '생산 · Production';
+  const VERSIONS_COL = firestoreDb.collection('production_versions');
+  const ACTIVITY_COL = firestoreDb.collection('wellmadewellness_activity');
+  const MAX_VERSIONS = 10;
 
   const authGate = document.getElementById('authGate');
   const logoutBtn = document.getElementById('logoutBtn');
@@ -570,10 +588,38 @@
 
   let state = { stageLogs: [], frozenStock: [], fridgeStock: [], materials: [], materialLogs: [] };
 
-  function saveBackup(reason) {
-    BACKUP_DOC.set({ state: JSON.parse(JSON.stringify(state)), savedAt: Date.now(), reason: reason || '' })
-      .catch(() => {});
+  function currentEmail() {
+    return (auth.currentUser && auth.currentUser.email) ? auth.currentUser.email : 'unknown';
   }
+
+  // Keeps a rolling history of the last MAX_VERSIONS snapshots of this page's data,
+  // so a bad edit or delete can be rolled back even if it wasn't the very last change.
+  function saveBackup(reason) {
+    VERSIONS_COL.add({
+      state: JSON.parse(JSON.stringify(state)),
+      savedAt: Date.now(),
+      reason: reason || '',
+      by: currentEmail()
+    }).then(() => {
+      VERSIONS_COL.orderBy('savedAt', 'desc').get().then((snap) => {
+        snap.docs.slice(MAX_VERSIONS).forEach((d) => d.ref.delete().catch(() => {}));
+      }).catch(() => {});
+    }).catch(() => {});
+  }
+
+  // Records one line in the shared activity log (visible on dashboard.html) so anyone
+  // can see exactly who did what and when, even without restoring a version.
+  function logActivity(action, summary) {
+    ACTIVITY_COL.add({
+      page: PAGE_KEY,
+      pageLabel: PAGE_LABEL,
+      action, // 'add' | 'edit' | 'delete' | 'restore'
+      summary: summary || '',
+      at: Date.now(),
+      by: currentEmail()
+    }).catch(() => {});
+  }
+
   function saveState() {
     STATE_DOC.set(state)
       .then(() => { statusEl.textContent = 'Saved — synced live for everyone viewing this page.'; })
@@ -631,8 +677,64 @@
   const stageDate = document.getElementById('stageDate');
   const stageCheckedBy = document.getElementById('stageCheckedBy');
   const deleteAllBtn = document.getElementById('deleteAllBtn');
-  const restoreBackupBtn = document.getElementById('restoreBackupBtn');
+  const versionsBtn = document.getElementById('versionsBtn');
+  const versionsPanel = document.getElementById('versionsPanel');
   const exportBtn = document.getElementById('exportBtn');
+
+  function renderVersionsPanel(versions) {
+    if (!versions.length) {
+      versionsPanel.innerHTML = '<div class="v-empty">No saved versions yet — one is saved automatically before every delete or restore.</div>';
+      return;
+    }
+    versionsPanel.innerHTML = versions.map((v) => {
+      const when = v.savedAt ? new Date(v.savedAt).toLocaleString() : 'unknown time';
+      const reason = v.reason ? escapeHtml(v.reason) : 'saved point';
+      return `
+        <div class="v-row">
+          <div class="v-meta"><strong>${when}</strong> — ${reason}<br>by ${escapeHtml(v.by || 'unknown')}</div>
+          <button class="secondary" type="button" data-restore-version="${v.id}">Restore this version</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  versionsBtn.addEventListener('click', () => {
+    const opening = versionsPanel.style.display === 'none';
+    if (!opening) { versionsPanel.style.display = 'none'; return; }
+    versionsPanel.style.display = 'block';
+    versionsPanel.innerHTML = '<div class="v-empty">Loading…</div>';
+    VERSIONS_COL.orderBy('savedAt', 'desc').limit(MAX_VERSIONS).get().then((snap) => {
+      renderVersionsPanel(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }).catch((e) => {
+      versionsPanel.innerHTML = '<div class="v-empty">Could not load version history: ' + (e && e.message ? e.message : 'error') + '</div>';
+    });
+  });
+
+  versionsPanel.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-restore-version]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-restore-version');
+    VERSIONS_COL.doc(id).get().then((doc) => {
+      if (!doc.exists) { window.alert('That version is no longer available.'); return; }
+      const v = doc.data();
+      const when = v.savedAt ? new Date(v.savedAt).toLocaleString() : 'an earlier point';
+      const msg = `Restore data from ${when}${v.reason ? ' (' + v.reason + ')' : ''}?\n\nThis will overwrite everything currently on this page with that version. Your current data will itself be saved first, so you can restore forward again if needed.`;
+      if (!window.confirm(msg)) return;
+      saveBackup('before restoring a version from ' + when);
+      state = v.state || state;
+      if (!Array.isArray(state.stageLogs)) state.stageLogs = [];
+      if (!Array.isArray(state.frozenStock)) state.frozenStock = [];
+      if (!Array.isArray(state.fridgeStock)) state.fridgeStock = [];
+      if (!Array.isArray(state.materials)) state.materials = [];
+      if (!Array.isArray(state.materialLogs)) state.materialLogs = [];
+      saveState();
+      renderAll();
+      logActivity('restore', `Restored data from ${when}`);
+      versionsPanel.style.display = 'none';
+    }).catch((e) => {
+      window.alert('Could not load that version: ' + (e && e.message ? e.message : 'error'));
+    });
+  });
 
   const STAGE_TABLES = {
     thaw: { body: document.getElementById('thawBody'), search: document.getElementById('thawSearch'), dateSearch: document.getElementById('thawDateSearch'), cols: 8 },
@@ -782,13 +884,16 @@
     const amount = parseFloat(stageAmount.value);
     if (!amount || amount <= 0) { statusEl.textContent = 'Enter a valid amount.'; return; }
     if (!isValidDate(stageDate.value) || !isValidDate(stageMixDate.value)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
+    const stageVal = stageSelect.value;
+    const originVal = stageOrigin.value.trim();
+    const gradeVal = stageGrade.value.trim();
     state.stageLogs.push({
       id: 'sl' + Date.now(),
-      stage: stageSelect.value,
-      origin: stageOrigin.value.trim(),
-      grade: stageGrade.value.trim(),
+      stage: stageVal,
+      origin: originVal,
+      grade: gradeVal,
       amount,
-      mixDate: stageSelect.value === 'cure' ? stageMixDate.value : '',
+      mixDate: stageVal === 'cure' ? stageMixDate.value : '',
       worker: stageWorker.value.trim(),
       workTime: stageWorkTime.value.trim(),
       date: stageDate.value,
@@ -799,6 +904,7 @@
     stageWorker.value = ''; stageWorkTime.value = ''; stageMixDate.value = ''; stageCheckedBy.value = '';
     saveState();
     renderAll();
+    logActivity('add', `Logged ${STAGE_LABEL[stageVal] || stageVal} entry for ${originVal} ${gradeVal} (${amount})`);
   });
 
   Object.keys(STAGE_TABLES).forEach(stage => {
@@ -815,10 +921,12 @@
       const delBtn = e.target.closest('[data-del]');
       if (delBtn) {
         const id = delBtn.getAttribute('data-del');
-        if (!window.confirm('Delete this entry? You can undo this with "Restore last backup" right after.')) return;
+        const s0 = state.stageLogs.find(s => s.id === id);
+        if (!window.confirm('Delete this entry? You can undo this with "Version history" right after.')) return;
         saveBackup('before deleting one work entry');
         state.stageLogs = state.stageLogs.filter(s => s.id !== id);
         saveState(); renderAll();
+        logActivity('delete', s0 ? `Deleted a ${STAGE_LABEL[s0.stage] || s0.stage} entry for ${s0.origin} ${s0.grade}` : 'Deleted a work entry');
         return;
       }
       const saveBtn = e.target.closest('[data-save]');
@@ -841,6 +949,7 @@
         s.workTime = row.querySelector('[data-ef="workTime"]').value.trim();
         editingStageId = null;
         saveState(); renderAll();
+        logActivity('edit', `Edited a ${STAGE_LABEL[s.stage] || s.stage} entry for ${s.origin} ${s.grade}`);
         return;
       }
     });
@@ -848,33 +957,12 @@
 
   deleteAllBtn.addEventListener('click', () => {
     if (state.stageLogs.length === 0) return;
-    if (!window.confirm(`Delete all ${state.stageLogs.length} work entries? Stock tables will stay. You can undo this with "Restore last backup" right after.`)) return;
-    saveBackup(`before deleting all ${state.stageLogs.length} work entries`);
+    const count = state.stageLogs.length;
+    if (!window.confirm(`Delete all ${count} work entries? Stock tables will stay. You can undo this with "Version history" right after.`)) return;
+    saveBackup(`before deleting all ${count} work entries`);
     state.stageLogs = [];
     saveState(); renderAll();
-  });
-
-  restoreBackupBtn.addEventListener('click', () => {
-    restoreBackupBtn.disabled = true;
-    BACKUP_DOC.get().then((doc) => {
-      restoreBackupBtn.disabled = false;
-      if (!doc.exists) { window.alert('No backup found yet — a backup is saved automatically right before you delete something.'); return; }
-      const backup = doc.data();
-      const when = backup.savedAt ? new Date(backup.savedAt).toLocaleString() : 'an earlier point';
-      const reason = backup.reason ? ` (${backup.reason})` : '';
-      if (!window.confirm(`Restore data from ${when}${reason}?\n\nThis will overwrite everything on this page. Your current data will itself be backed up first.`)) return;
-      saveBackup('before restoring a backup (undo the restore)');
-      state = backup.state || state;
-      if (!Array.isArray(state.stageLogs)) state.stageLogs = [];
-      if (!Array.isArray(state.frozenStock)) state.frozenStock = [];
-      if (!Array.isArray(state.fridgeStock)) state.fridgeStock = [];
-      if (!Array.isArray(state.materials)) state.materials = [];
-      if (!Array.isArray(state.materialLogs)) state.materialLogs = [];
-      saveState(); renderAll();
-    }).catch((e) => {
-      restoreBackupBtn.disabled = false;
-      window.alert('Could not load backup: ' + (e && e.message ? e.message : 'error'));
-    });
+    logActivity('delete', `Deleted all ${count} work entries`);
   });
 
   // ---------- Frozen stock ----------
@@ -942,6 +1030,7 @@
     else state.frozenStock.push({ id: 'fz' + Date.now(), origin, grade, workDate, qty });
     frozenOrigin.value = ''; frozenGrade.value = ''; frozenWorkDate.value = ''; frozenQty.value = '';
     saveState(); renderAll();
+    logActivity(existing ? 'edit' : 'add', `Set frozen stock of ${origin} ${grade} (${workDate}) to ${qty}`);
   });
 
   frozenSearch.addEventListener('input', renderFrozen);
@@ -967,15 +1056,18 @@
       r.qty = parseFloat(row.querySelector('[data-ff="qty"]').value) || 0;
       editingFrozenId = null;
       saveState(); renderAll();
+      logActivity('edit', `Edited frozen stock row for ${r.origin} ${r.grade}`);
       return;
     }
     const btn = e.target.closest('[data-del-frozen]');
     if (!btn) return;
     const id = btn.getAttribute('data-del-frozen');
+    const r0 = state.frozenStock.find(r => r.id === id);
     if (!window.confirm('Delete this row?')) return;
     saveBackup('before deleting a frozen-warehouse row');
     state.frozenStock = state.frozenStock.filter(r => r.id !== id);
     saveState(); renderAll();
+    logActivity('delete', r0 ? `Deleted frozen stock row for ${r0.origin} ${r0.grade}` : 'Deleted a frozen stock row');
   });
 
   // ---------- Fridge stock ----------
@@ -1052,6 +1144,7 @@
     else state.fridgeStock.push({ id: 'fr' + Date.now(), origin, grade, mixDate, workDate, qty });
     fridgeOrigin.value = ''; fridgeGrade.value = ''; fridgeMixDate.value = ''; fridgeWorkDate.value = ''; fridgeQty.value = '';
     saveState(); renderAll();
+    logActivity(existing ? 'edit' : 'add', `Set fridge stock of ${origin} ${grade} (mix ${mixDate}) to ${qty}`);
   });
 
   fridgeSearch.addEventListener('input', renderFridge);
@@ -1081,15 +1174,18 @@
       r.qty = parseFloat(row.querySelector('[data-fr="qty"]').value) || 0;
       editingFridgeId = null;
       saveState(); renderAll();
+      logActivity('edit', `Edited fridge stock row for ${r.origin} ${r.grade}`);
       return;
     }
     const btn = e.target.closest('[data-del-fridge]');
     if (!btn) return;
     const id = btn.getAttribute('data-del-fridge');
+    const r0 = state.fridgeStock.find(r => r.id === id);
     if (!window.confirm('Delete this row?')) return;
     saveBackup('before deleting a fridge-warehouse row');
     state.fridgeStock = state.fridgeStock.filter(r => r.id !== id);
     saveState(); renderAll();
+    logActivity('delete', r0 ? `Deleted fridge stock row for ${r0.origin} ${r0.grade}` : 'Deleted a fridge stock row');
   });
 
   // ---------- Auxiliary materials ----------
@@ -1299,6 +1395,7 @@
     state.materials.push({ id: 'mat' + Date.now(), name });
     materialName.value = '';
     saveState(); renderAll();
+    logActivity('add', `Added material "${name}"`);
   });
 
   materialLogForm.addEventListener('submit', (e) => {
@@ -1308,10 +1405,11 @@
     if (!materialId) { statusEl.textContent = 'Add an item first, then log a transaction against it.'; return; }
     if (!quantity || quantity <= 0) { statusEl.textContent = 'Enter a valid quantity.'; return; }
     if (!isValidDate(materialLogDate.value)) { statusEl.textContent = 'That date looks wrong — please re-pick it (year should be 4 digits).'; return; }
+    const logType = materialLogType.value;
     state.materialLogs.push({
       id: 'ml' + Date.now(),
       materialId,
-      type: materialLogType.value,
+      type: logType,
       quantity,
       date: materialLogDate.value,
       handledBy: materialLogBy.value.trim(),
@@ -1320,6 +1418,7 @@
     });
     materialLogQty.value = ''; materialLogBy.value = ''; materialLogCheckedBy.value = '';
     saveState(); renderAll();
+    logActivity('add', `Logged ${logType} of ${quantity} × "${materialName_(materialId)}"`);
   });
 
   materialSearch.addEventListener('input', renderMaterials);
@@ -1353,15 +1452,18 @@
       l.checkedBy = row.querySelector('[data-ml="checkedBy"]').value.trim();
       editingMaterialLogId = null;
       saveState(); renderAll();
+      logActivity('edit', `Edited a ${l.type} transaction for "${materialName_(l.materialId)}"`);
       return;
     }
     const btn = e.target.closest('[data-del-mat]');
     if (!btn) return;
     const id = btn.getAttribute('data-del-mat');
-    if (!window.confirm('Delete this transaction? You can undo this with "Restore last backup" right after.')) return;
+    const l0 = state.materialLogs.find(l => l.id === id);
+    if (!window.confirm('Delete this transaction? You can undo this with "Version history" right after.')) return;
     saveBackup('before deleting a material transaction');
     state.materialLogs = state.materialLogs.filter(l => l.id !== id);
     saveState(); renderAll();
+    logActivity('delete', l0 ? `Deleted a ${l0.type} transaction of ${l0.quantity} × "${materialName_(l0.materialId)}"` : 'Deleted a material transaction');
   });
 
   function renderAll() {
@@ -1479,7 +1581,7 @@
   // page's live state without duplicating the Firestore connection. getState() closes
   // over the `state` variable above, so it always returns the current value even after
   // onSnapshot reassigns it.
-  window.__prod = { getState: () => state, saveState, renderAll, escapeHtml, isValidDate };
+  window.__prod = { getState: () => state, saveState, saveBackup, logActivity, renderAll, escapeHtml, isValidDate };
 })();
 </script>
 
@@ -1754,6 +1856,7 @@ Rules:
 
     window.__prod.saveState();
     window.__prod.renderAll();
+    if (added > 0) window.__prod.logActivity('add', `AI auto-entry: added ${added} entr${added === 1 ? 'y' : 'ies'} from uploaded file`);
 
     let msg = `Added ${added} entr${added === 1 ? 'y' : 'ies'}.`;
     if (skipped > 0) msg += ` Skipped ${skipped} (missing/invalid fields).`;

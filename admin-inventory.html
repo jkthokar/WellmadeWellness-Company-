@@ -165,6 +165,19 @@
   }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
 
+  .versions-panel {
+    border: 1px solid var(--rule); border-radius: 4px; background: var(--ivory-warm);
+    margin-bottom: 24px; padding: 4px 0;
+  }
+  .versions-panel .v-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 16px; border-bottom: 1px solid var(--rule); flex-wrap: wrap;
+  }
+  .versions-panel .v-row:last-child { border-bottom: none; }
+  .versions-panel .v-meta { font-size: 0.82rem; color: var(--ink-soft); }
+  .versions-panel .v-meta strong { color: var(--ink); }
+  .versions-panel .v-empty { padding: 14px 16px; font-size: 0.85rem; color: var(--ink-soft); }
+
   /* table */
   .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 560px; border: 1px solid var(--rule); border-radius: 4px; }
   .tbl-scroll table { margin: 0; }
@@ -298,10 +311,11 @@
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
       <h2 class="section-title" style="margin-bottom:0;">제품 · Products</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button id="restoreBackupBtn" class="secondary" type="button">↺ Restore last backup</button>
+        <button id="versionsBtn" class="secondary" type="button">↺ Version history</button>
         <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
       </div>
     </div>
+    <div id="versionsPanel" class="versions-panel" style="display:none;"></div>
     <div class="grand-total-bar">
       <div style="display:flex;align-items:center;gap:10px;">
         <label for="productsAsOf" style="margin-bottom:0;font-size:0.8rem;color:var(--ink-soft);">기준일 · As of</label>
@@ -363,7 +377,8 @@
   const txCheckedByInput = document.getElementById('txCheckedBy');
   const productGroupsArea = document.getElementById('productGroupsArea');
   const exportBtn = document.getElementById('exportBtn');
-  const restoreBackupBtn = document.getElementById('restoreBackupBtn');
+  const versionsBtn = document.getElementById('versionsBtn');
+  const versionsPanel = document.getElementById('versionsPanel');
   const deleteAllBtn = document.getElementById('deleteAllBtn');
   const historySearch = document.getElementById('historySearch');
 
@@ -387,7 +402,11 @@
   const firestoreDb = firebase.firestore();
   const auth = firebase.auth();
   const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('inventory');
-  const BACKUP_DOC = firestoreDb.collection('wellmadewellness').doc('inventory_backup');
+  const PAGE_KEY = 'inventory';
+  const PAGE_LABEL = '재고 · Inventory';
+  const VERSIONS_COL = firestoreDb.collection('inventory_versions');
+  const ACTIVITY_COL = firestoreDb.collection('wellmadewellness_activity');
+  const MAX_VERSIONS = 10;
 
   const authGate = document.getElementById('authGate');
   const logoutBtn = document.getElementById('logoutBtn');
@@ -424,11 +443,97 @@
     return LOW_STOCK_EXCEPTIONS[productName] !== undefined ? LOW_STOCK_EXCEPTIONS[productName] : LOW_STOCK_DEFAULT;
   }
 
-  function saveBackup(reason) {
-    // Snapshot the state as it is RIGHT NOW, before a destructive change is applied.
-    BACKUP_DOC.set({ state: JSON.parse(JSON.stringify(state)), savedAt: Date.now(), reason: reason || '' })
-      .catch(() => { /* best-effort — never block the actual action on this */ });
+  function currentEmail() {
+    return (auth.currentUser && auth.currentUser.email) ? auth.currentUser.email : 'unknown';
   }
+
+  // Keeps a rolling history of the last MAX_VERSIONS snapshots of this page's data,
+  // so a bad edit or delete can be rolled back even if it wasn't the very last change.
+  function saveBackup(reason) {
+    VERSIONS_COL.add({
+      state: JSON.parse(JSON.stringify(state)),
+      savedAt: Date.now(),
+      reason: reason || '',
+      by: currentEmail()
+    }).then(() => {
+      VERSIONS_COL.orderBy('savedAt', 'desc').get().then((snap) => {
+        snap.docs.slice(MAX_VERSIONS).forEach((d) => d.ref.delete().catch(() => {}));
+      }).catch(() => {});
+    }).catch(() => { /* best-effort — never block the actual action on this */ });
+  }
+
+  // Records one line in the shared activity log (visible on dashboard.html) so anyone
+  // can see exactly who did what and when, even without restoring a version.
+  function logActivity(action, summary) {
+    ACTIVITY_COL.add({
+      page: PAGE_KEY,
+      pageLabel: PAGE_LABEL,
+      action, // 'add' | 'edit' | 'delete' | 'restore'
+      summary: summary || '',
+      at: Date.now(),
+      by: currentEmail()
+    }).catch(() => { /* best-effort */ });
+  }
+
+  function renderVersionsPanel(versions) {
+    if (!versions.length) {
+      versionsPanel.innerHTML = '<div class="v-empty">No saved versions yet — one is saved automatically before every delete or restore.</div>';
+      return;
+    }
+    versionsPanel.innerHTML = versions.map((v) => {
+      const when = v.savedAt ? new Date(v.savedAt).toLocaleString() : 'unknown time';
+      const reason = v.reason ? escapeHtmlLocal(v.reason) : 'saved point';
+      return `
+        <div class="v-row">
+          <div class="v-meta"><strong>${when}</strong> — ${reason}<br>by ${escapeHtmlLocal(v.by || 'unknown')}</div>
+          <button class="secondary" type="button" data-restore-version="${v.id}">Restore this version</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function escapeHtmlLocal(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+  }
+
+  versionsBtn.addEventListener('click', () => {
+    const opening = versionsPanel.style.display === 'none';
+    if (!opening) { versionsPanel.style.display = 'none'; return; }
+    versionsPanel.style.display = 'block';
+    versionsPanel.innerHTML = '<div class="v-empty">Loading…</div>';
+    VERSIONS_COL.orderBy('savedAt', 'desc').limit(MAX_VERSIONS).get().then((snap) => {
+      renderVersionsPanel(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }).catch((e) => {
+      versionsPanel.innerHTML = '<div class="v-empty">Could not load version history: ' + (e && e.message ? e.message : 'error') + '</div>';
+    });
+  });
+
+  versionsPanel.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-restore-version]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-restore-version');
+    VERSIONS_COL.doc(id).get().then((doc) => {
+      if (!doc.exists) { window.alert('That version is no longer available.'); return; }
+      const v = doc.data();
+      const when = v.savedAt ? new Date(v.savedAt).toLocaleString() : 'an earlier point';
+      const msg = `Restore data from ${when}${v.reason ? ' (' + v.reason + ')' : ''}?\n\nThis will overwrite everything currently on this page with that version. Your current data will itself be saved first, so you can restore forward again if needed.`;
+      if (!window.confirm(msg)) return;
+      saveBackup('before restoring a version from ' + when);
+      state = v.state || state;
+      if (!Array.isArray(state.products)) state.products = [];
+      if (!Array.isArray(state.products2)) state.products2 = [];
+      if (!Array.isArray(state.products3)) state.products3 = [];
+      if (!Array.isArray(state.transactions)) state.transactions = [];
+      saveState();
+      renderAll();
+      logActivity('restore', `Restored data from ${when}`);
+      versionsPanel.style.display = 'none';
+    }).catch((e) => {
+      window.alert('Could not load that version: ' + (e && e.message ? e.message : 'error'));
+    });
+  });
 
   function saveState() {
     STATE_DOC.set(state)
@@ -673,6 +778,7 @@
       state[key].push({ id: 'p' + Date.now() + Math.floor(Math.random() * 1000), name });
       saveState();
       renderAll();
+      logActivity('add', `Added product "${name}"`);
       return;
     }
     const delBtn = e.target.closest('[data-del-product]');
@@ -683,14 +789,15 @@
       const p = state[key].find(p => p.id === id);
       const relatedCount = state.transactions.filter(t => t.productId === id).length;
       const msg = relatedCount > 0
-        ? `Delete "${p ? p.name : 'this product'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? You can undo this with "Restore last backup" right after.`
-        : `Delete "${p ? p.name : 'this product'}"? You can undo this with "Restore last backup" right after.`;
+        ? `Delete "${p ? p.name : 'this product'}" and its ${relatedCount} transaction${relatedCount === 1 ? '' : 's'}? You can undo this with "Version history" right after.`
+        : `Delete "${p ? p.name : 'this product'}"? You can undo this with "Version history" right after.`;
       if (!window.confirm(msg)) return;
       saveBackup(`before deleting product "${p ? p.name : id}"`);
       state.transactions = state.transactions.filter(t => t.productId !== id);
       state[key] = state[key].filter(p => p.id !== id);
       saveState();
       renderAll();
+      logActivity('delete', `Deleted product "${p ? p.name : id}"${relatedCount ? ` and ${relatedCount} transaction(s)` : ''}`);
       return;
     }
   });
@@ -717,6 +824,7 @@
     p.unitPrice = isNaN(val) || val < 0 ? 0 : val;
     saveState();
     renderProductGroups();
+    logActivity('edit', `Set unit price of "${p.name}" to ${p.unitPrice}`);
   });
 
   productGroupsArea.addEventListener('input', (e) => {
@@ -768,6 +876,7 @@
     txCheckedByInput.value = '';
     saveState();
     renderAll();
+    logActivity('add', `Logged ${type} of ${quantity} × "${productName(productId)}" on ${date}`);
   });
 
   function updateTxTypeFields() {
@@ -793,10 +902,12 @@
     const delBtn = e.target.closest('[data-del-tx]');
     if (delBtn) {
       const id = delBtn.getAttribute('data-del-tx');
+      const t0 = state.transactions.find(t => t.id === id);
       saveBackup('before deleting one transaction');
       state.transactions = state.transactions.filter(t => t.id !== id);
       saveState();
       renderAll();
+      logActivity('delete', t0 ? `Deleted a ${t0.type} transaction of ${t0.quantity} × "${productName(t0.productId)}"` : 'Deleted a transaction');
       return;
     }
     const editBtn = e.target.closest('[data-edit-tx]');
@@ -833,45 +944,22 @@
       editingId = null;
       saveState();
       renderAll();
+      logActivity('edit', `Edited a ${t.type} transaction for "${productName(t.productId)}"`);
       return;
     }
   });
 
-  restoreBackupBtn.addEventListener('click', () => {
-    restoreBackupBtn.disabled = true;
-    BACKUP_DOC.get().then((doc) => {
-      restoreBackupBtn.disabled = false;
-      if (!doc.exists) {
-        window.alert('No backup found yet — a backup is saved automatically right before you delete something.');
-        return;
-      }
-      const backup = doc.data();
-      const when = backup.savedAt ? new Date(backup.savedAt).toLocaleString() : 'an earlier point';
-      const reason = backup.reason ? ` (${backup.reason})` : '';
-      const msg = `Restore data from ${when}${reason}?\n\nThis will overwrite everything currently on this page with that backup. Your current data will itself be backed up first, so you can restore forward again if needed.`;
-      if (!window.confirm(msg)) return;
-      saveBackup('before restoring a backup (undo the restore)');
-      state = backup.state || state;
-      if (!Array.isArray(state.products)) state.products = [];
-      if (!Array.isArray(state.products2)) state.products2 = [];
-      if (!Array.isArray(state.products3)) state.products3 = [];
-      if (!Array.isArray(state.transactions)) state.transactions = [];
-      saveState();
-      renderAll();
-    }).catch((e) => {
-      restoreBackupBtn.disabled = false;
-      window.alert('Could not load backup: ' + (e && e.message ? e.message : 'error'));
-    });
-  });
 
   deleteAllBtn.addEventListener('click', () => {
     if (state.transactions.length === 0) return;
-    const msg = `Delete all ${state.transactions.length} transaction${state.transactions.length === 1 ? '' : 's'}? Products themselves will stay. You can undo this with "Restore last backup" right after.`;
+    const count = state.transactions.length;
+    const msg = `Delete all ${count} transaction${count === 1 ? '' : 's'}? Products themselves will stay. You can undo this with "Version history" right after.`;
     if (!window.confirm(msg)) return;
-    saveBackup(`before deleting all ${state.transactions.length} transactions`);
+    saveBackup(`before deleting all ${count} transactions`);
     state.transactions = [];
     saveState();
     renderAll();
+    logActivity('delete', `Deleted all ${count} transactions`);
   });
 
   historySearch.addEventListener('input', () => {

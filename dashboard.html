@@ -226,6 +226,22 @@
       <div class="empty">Loading…</div>
     </div>
 
+    <!-- ============ Admin activity log (audit trail of add/edit/delete) ============ -->
+    <h2 class="section-title collapsible-head">
+      <span>📝 관리 활동 기록 · Admin activity log</span>
+      <button type="button" class="secondary small" data-toggle="auditPanel">보기 · Show</button>
+    </h2>
+    <div id="auditPanel" style="display:none;margin-bottom:44px;">
+      <p class="status" style="margin-bottom:12px;">Every add, edit, and delete across every admin page — who did it and when. Use each page's "Version history" button to undo something you find here.</p>
+      <div class="search-row"><input type="text" id="auditSearch" placeholder="🔍 Filter by page, action, or text…" maxlength="80"></div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>시각 · When</th><th>페이지 · Page</th><th>작업 · Action</th><th>내용 · Details</th><th>계정 · By</th></tr></thead>
+          <tbody id="auditBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- ============ 7-day trend ============ -->
     <h2 class="section-title">최근 7일 생산량 · Production, last 7 days</h2>
     <div class="trend-chart" id="trendChart"></div>
@@ -423,6 +439,13 @@
     loaded.jtg = true;
     maybeRender();
   }, () => { loaded.jtg = true; maybeRender(); });
+
+  // ---------- Admin activity log (audit trail written by every admin-*.html page) ----------
+  let auditEntries = [];
+  firestoreDb.collection('wellmadewellness_activity').orderBy('at', 'desc').limit(200).onSnapshot((snap) => {
+    auditEntries = snap.docs.map((d) => d.data());
+    renderAudit();
+  }, () => { /* best-effort — the rest of the dashboard still works without this */ });
 
   // ---------- Materials constants (mirrors production.html) ----------
   const MATERIAL_ORDER = ['혼다시', '천일염', '한주소금', '솔비톨', 'L-글루탐산나트륨', '아질산나트륨',
@@ -779,6 +802,32 @@
       </tr>`).join('');
   }
   activitySearch.addEventListener('input', renderActivity);
+
+  // ---------- Admin activity log (who added/edited/deleted what, and when) ----------
+  const auditSearch = document.getElementById('auditSearch');
+  const ACTION_LABEL = { add: '추가 · Add', edit: '수정 · Edit', delete: '삭제 · Delete', restore: '복원 · Restore' };
+  const ACTION_PILL = { add: 'in', edit: 'mix', delete: 'warn', restore: 'buy' };
+  function renderAudit() {
+    const query = (auditSearch.value || '').trim().toLowerCase();
+    const filtered = query
+      ? auditEntries.filter(a =>
+          (a.pageLabel || '').toLowerCase().includes(query) ||
+          (a.action || '').toLowerCase().includes(query) ||
+          (a.summary || '').toLowerCase().includes(query) ||
+          (a.by || '').toLowerCase().includes(query))
+      : auditEntries;
+    const body = document.getElementById('auditBody');
+    if (filtered.length === 0) { body.innerHTML = '<tr><td colspan="5" class="empty">No activity recorded yet.</td></tr>'; return; }
+    body.innerHTML = filtered.map(a => `
+      <tr>
+        <td>${a.at ? escapeHtml(new Date(a.at).toLocaleString()) : ''}</td>
+        <td>${escapeHtml(a.pageLabel || a.page || '')}</td>
+        <td><span class="pill ${ACTION_PILL[a.action] || ''}">${escapeHtml(ACTION_LABEL[a.action] || a.action || '')}</span></td>
+        <td>${escapeHtml(a.summary || '')}</td>
+        <td>${escapeHtml(a.by || '')}</td>
+      </tr>`).join('');
+  }
+  auditSearch.addEventListener('input', renderAudit);
 
   // ---------- Collapsible panels ----------
   document.querySelectorAll('[data-toggle]').forEach(btn => {

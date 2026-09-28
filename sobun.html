@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sobun (Portioning) — WellmadeWellness</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pine: #1E3327; --pine-deep: #16261D; --ivory: #EEF0E5; --ivory-warm: #F5F6EF;
+    --ink: #23241F; --ink-soft: #55574C; --ochre: #C08A2E; --rule: #D5D8C9;
+    --green: #3E7A4C; --green-soft: #E6EFE4; --red: #B0453A; --red-soft: #F6E7E4;
+    --blue: #3E6A8A; --blue-soft: #E6EDF2;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; color: var(--ink); background: var(--ivory-warm); line-height: 1.6; }
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.01em; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+  nav { position: sticky; top: 0; z-index: 50; background: var(--ivory-warm); border-bottom: 1px solid var(--rule); }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; flex-wrap: wrap; gap: 12px 20px; min-height: 76px; padding-top: 12px; padding-bottom: 12px; }
+  .wordmark { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; white-space: nowrap; }
+  .wordmark span { color: var(--ochre); }
+  .nav-links { display: flex; gap: 24px; font-size: 0.92rem; flex-wrap: wrap; align-items: center; }
+  .nav-links a { color: var(--ink-soft); transition: color 0.2s ease; white-space: nowrap; }
+  .nav-links a:hover, .nav-links a.active { color: var(--pine); }
+  header.page-head { background: var(--pine); color: var(--ivory); padding: 56px 0 40px; }
+  header.page-head h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); }
+  header.page-head p { color: #C9D2C4; margin-top: 10px; max-width: 66ch; }
+  main { padding: 40px 0 100px; }
+  .section-title { font-size: 1.25rem; margin-bottom: 16px; }
+  .status { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 16px; }
+  .jt-section { margin-bottom: 56px; border-top: 2px solid var(--rule); padding-top: 26px; }
+  .jt-section:first-of-type { border-top: none; padding-top: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  th, td { text-align: left; padding: 10px 9px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th { color: var(--ink-soft); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  tbody tr:hover { background: var(--ivory); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--ink-soft); font-size: 0.88rem; padding: 14px 0; }
+  .tbl-scroll { overflow-x: auto; overflow-y: auto; max-height: 420px; border: 1px solid var(--rule); border-radius: 4px; }
+  .tbl-scroll table { margin: 0; }
+  .tbl-scroll thead th { position: sticky; top: 0; background: var(--ivory-warm); z-index: 1; }
+  .tbl-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+  .tbl-scroll::-webkit-scrollbar-track { background: var(--ivory-warm); }
+  .tbl-scroll::-webkit-scrollbar-thumb { background: var(--ochre); border-radius: 6px; }
+  .tbl-scroll { scrollbar-width: thin; scrollbar-color: var(--ochre) var(--ivory-warm); }
+  .search-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; max-width: 480px; flex-wrap: wrap; }
+  .search-row input { flex: 1 1 220px; min-width: 160px; border-color: var(--ochre); border: none; border-bottom: 1px solid var(--ink); background: transparent; padding: 8px 2px; font-family: inherit; font-size: 0.9rem; color: var(--ink); }
+  .search-row input:focus { outline: none; border-bottom: 2px solid var(--ochre); }
+  button {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 600;
+    background: var(--ochre); color: var(--pine-deep); padding: 11px 22px; border-radius: 100px; font-size: 0.88rem;
+  }
+  button.secondary { background: transparent; color: var(--ink-soft); border: 1px solid var(--rule); padding: 6px 14px; border-radius: 100px; font-size: 0.78rem; }
+  button.small { padding: 4px 12px; font-size: 0.72rem; }
+  button:hover { filter: brightness(1.05); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  footer { background: var(--pine); color: #9FB09A; padding: 32px 0; font-size: 0.85rem; }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 720px) { .nav-links { display: none; } }
+  #authGate {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--pine); color: var(--ivory);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Inter', sans-serif; font-size: 0.95rem;
+  }
+  #authGate.hidden { display: none; }
+  .logout-btn {
+    background: transparent; border: 1px solid var(--rule); color: var(--ink-soft);
+    padding: 6px 16px; border-radius: 100px; font-size: 0.82rem; cursor: pointer; font-family: inherit; font-weight: 600;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .logout-btn:hover { color: var(--pine); }
+</style>
+</head>
+<body>
+
+<div id="authGate">Checking access…</div>
+
+<nav>
+  <div class="wrap">
+    <a href="index.html" class="wordmark">Wellmade<span>Wellness</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="inventory.html">Container(용기)</a>
+      <a href="brands.html">labelling(라벨)</a>
+      <a href="production.html">Production(생산)</a>
+      <a href="jeotgal.html">Jeotgal(젓갈)</a>
+      <a href="sobun.html" class="active">Sobun(소분)</a>
+      <a href="index.html#contact">Contact</a>
+      <a href="login.html?next=dashboard.html">Dashboard(관리)</a>
+      <button class="logout-btn" id="logoutBtn" type="button">Log out</button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="wrap">
+    <h1>소분(포장) 현황 <br>Sobun (Portioning) Daily Log</h1>
+    <p>Live view of daily portioning/packing quantities by product and package size. View only; staff sign in to the dashboard to make changes.</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="status" id="status">Connecting to shared storage…</div>
+    <div style="margin-bottom:22px;">
+      <button id="exportBtn" class="secondary" type="button">⬇ Export to Excel</button>
+    </div>
+
+    <div class="jt-section" id="sec-daily">
+      <h2 class="section-title">일별 요약 · Daily summary</h2>
+      <div class="search-row"><input type="text" id="daySearch" placeholder="🔍 Search date (YYYY-MM-DD)…" maxlength="20"></div>
+      <div class="tbl-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>일자 · Date</th>
+              <th class="num">총 수량 · Total units</th>
+              <th class="num">총 중량(kg) · Total weight</th>
+              <th>담당자 · Handled by</th>
+              <th>검수자 · Checked by</th>
+            </tr>
+          </thead>
+          <tbody id="dayBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="jt-section" id="sec-detail">
+      <h2 class="section-title">품목별 상세 · Item &amp; size detail</h2>
+      <div class="search-row"><input type="text" id="detailSearch" placeholder="🔍 Search date or product…" maxlength="80"></div>
+      <div class="tbl-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>일자 · Date</th>
+              <th>품목 · Product</th>
+              <th>규격 · Size</th>
+              <th class="num">수량 · Qty</th>
+              <th>담당자 · Handled by</th>
+              <th>검수자 · Checked by</th>
+            </tr>
+          </thead>
+          <tbody id="detailBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 WellmadeWellness</span>
+    <span>Sokcho, South Korea</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const statusEl = document.getElementById('status');
+  const exportBtn = document.getElementById('exportBtn');
+  const dayBody = document.getElementById('dayBody');
+  const detailBody = document.getElementById('detailBody');
+  const daySearch = document.getElementById('daySearch');
+  const detailSearch = document.getElementById('detailSearch');
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdT2jqlbWGutlCDX8n2XVHKxLQnYiim-8",
+    authDomain: "wellmadewellness-589e8.firebaseapp.com",
+    projectId: "wellmadewellness-589e8",
+    storageBucket: "wellmadewellness-589e8.firebasestorage.app",
+    messagingSenderId: "571195991033",
+    appId: "1:571195991033:web:8427c140a9f6997b4f9328"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const authGate = document.getElementById('authGate');
+  const logoutBtn = document.getElementById('logoutBtn');
+  auth.onAuthStateChanged((user) => {
+    if (!user) {
+      window.location.href = 'login.html?next=sobun.html';
+    } else {
+      authGate.classList.add('hidden');
+    }
+  });
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      auth.signOut().then(() => { window.location.href = 'login.html'; });
+    });
+  }
+  const firestoreDb = firebase.firestore();
+  const STATE_DOC = firestoreDb.collection('wellmadewellness').doc('sobun');
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+  }
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+  function fmtNum(n) {
+    const v = Number(n) || 0;
+    return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+  function sizeLabelFor(grams) {
+    const g = Number(grams) || 0;
+    if (g >= 1000 && g % 1000 === 0) return (g / 1000) + 'kg';
+    if (g >= 1000) return (g / 1000).toFixed(1).replace(/\.0$/, '') + 'kg';
+    return g + 'g';
+  }
+
+  let state = { items: [], sizes: [], logs: [] };
+  function ensureState() {
+    if (!Array.isArray(state.items)) state.items = [];
+    if (!Array.isArray(state.sizes)) state.sizes = [];
+    if (!Array.isArray(state.logs)) state.logs = [];
+  }
+
+  STATE_DOC.onSnapshot((doc) => {
+    if (doc.exists) {
+      state = doc.data();
+      ensureState();
+    } else {
+      state = { items: [], sizes: [], logs: [] };
+    }
+    renderAll();
+    statusEl.textContent = 'Connected — live data.';
+  }, (e) => {
+    statusEl.textContent = 'Could not connect to shared storage: ' + (e && e.message ? e.message : 'error');
+  });
+
+  function itemNameOf(id) {
+    const it = state.items.find(i => i.id === id);
+    return it ? it.name : '(deleted item)';
+  }
+  function sizeOf(id) {
+    return state.sizes.find(s => s.id === id) || null;
+  }
+  function sizeLabelOf(id) {
+    const sz = sizeOf(id);
+    return sz ? (sz.label || sizeLabelFor(sz.grams)) : '(deleted size)';
+  }
+
+  function daySummaries() {
+    const byDate = {};
+    state.logs.forEach(l => {
+      if (!byDate[l.date]) byDate[l.date] = { date: l.date, units: 0, weight: 0, handledBy: l.handledBy, checkedBy: l.checkedBy };
+      const sz = sizeOf(l.sizeId);
+      const qty = Number(l.quantity) || 0;
+      byDate[l.date].units += qty;
+      byDate[l.date].weight += qty * (sz ? (Number(sz.grams) || 0) : 0);
+      if (l.handledBy) byDate[l.date].handledBy = l.handledBy;
+      if (l.checkedBy) byDate[l.date].checkedBy = l.checkedBy;
+    });
+    return Object.values(byDate).sort((a, b) => (a.date < b.date ? 1 : -1));
+  }
+
+  function renderDaily() {
+    const days = daySummaries();
+    const query = (daySearch.value || '').trim();
+    const filtered = query ? days.filter(d => d.date.includes(query)) : days;
+    if (filtered.length === 0) { dayBody.innerHTML = '<tr><td colspan="5" class="empty">No entries yet.</td></tr>'; return; }
+    dayBody.innerHTML = filtered.map(d => `
+      <tr>
+        <td>${escapeHtml(d.date)}</td>
+        <td class="num">${fmtNum(d.units)}</td>
+        <td class="num">${fmtNum(d.weight / 1000)}</td>
+        <td>${escapeHtml(d.handledBy || '')}</td>
+        <td>${escapeHtml(d.checkedBy || '')}</td>
+      </tr>`).join('');
+  }
+
+  function renderDetail() {
+    const query = (detailSearch.value || '').trim().toLowerCase();
+    const sorted = state.logs.slice().sort((a, b) => {
+      if (a.date !== b.date) return (a.date || '') < (b.date || '') ? 1 : -1;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+    const filtered = query
+      ? sorted.filter(l => (l.date || '').toLowerCase().includes(query) || itemNameOf(l.itemId).toLowerCase().includes(query))
+      : sorted;
+    if (filtered.length === 0) { detailBody.innerHTML = '<tr><td colspan="6" class="empty">No entries match.</td></tr>'; return; }
+    detailBody.innerHTML = filtered.slice(0, 500).map(l => `
+      <tr>
+        <td>${escapeHtml(l.date || '')}</td>
+        <td>${escapeHtml(itemNameOf(l.itemId))}</td>
+        <td>${escapeHtml(sizeLabelOf(l.sizeId))}</td>
+        <td class="num">${fmtNum(l.quantity)}</td>
+        <td>${escapeHtml(l.handledBy || '')}</td>
+        <td>${escapeHtml(l.checkedBy || '')}</td>
+      </tr>`).join('');
+  }
+
+  function renderAll() { renderDaily(); renderDetail(); }
+
+  daySearch.addEventListener('input', renderDaily);
+  detailSearch.addEventListener('input', renderDetail);
+
+  const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3327' } };
+  const HEADER_FONT = { color: { argb: 'FFFFFFFF' }, bold: true };
+  const THIN_BORDER = { style: 'thin', color: { argb: 'FFD5D8C9' } };
+  function styleHeaderRow(row) {
+    row.eachCell(cell => {
+      cell.fill = HEADER_FILL;
+      cell.font = HEADER_FONT;
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+    });
+  }
+
+  exportBtn.addEventListener('click', async () => {
+    if (typeof ExcelJS === 'undefined') {
+      statusEl.textContent = 'Excel library failed to load — check your connection and try again.';
+      return;
+    }
+    exportBtn.disabled = true;
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'WellmadeWellness Sobun';
+      wb.created = new Date();
+
+      const sSheet = wb.addWorksheet('Daily summary');
+      sSheet.columns = [
+        { header: '일자 Date', key: 'date', width: 14 },
+        { header: '총수량 Total units', key: 'units', width: 16 },
+        { header: '총중량(kg) Total weight', key: 'weight', width: 18 },
+        { header: '담당자 Handled by', key: 'handledBy', width: 16 },
+        { header: '검수자 Checked by', key: 'checkedBy', width: 16 }
+      ];
+      styleHeaderRow(sSheet.getRow(1));
+      daySummaries().slice().sort((a, b) => a.date.localeCompare(b.date)).forEach(d => {
+        sSheet.addRow({ date: d.date, units: d.units, weight: d.weight / 1000, handledBy: d.handledBy || '', checkedBy: d.checkedBy || '' });
+      });
+
+      const lSheet = wb.addWorksheet('Full log');
+      lSheet.columns = [
+        { header: '일자 Date', key: 'date', width: 14 },
+        { header: '품목 Product', key: 'item', width: 22 },
+        { header: '규격 Size', key: 'size', width: 12 },
+        { header: '수량 Qty', key: 'qty', width: 12 },
+        { header: '담당자 Handled by', key: 'handledBy', width: 16 },
+        { header: '검수자 Checked by', key: 'checkedBy', width: 16 }
+      ];
+      styleHeaderRow(lSheet.getRow(1));
+      state.logs.slice().sort((a, b) => (a.date || '').localeCompare(b.date || '')).forEach(l => {
+        const row = lSheet.addRow({ date: l.date || '', item: itemNameOf(l.itemId), size: sizeLabelOf(l.sizeId), qty: Number(l.quantity) || 0, handledBy: l.handledBy || '', checkedBy: l.checkedBy || '' });
+        row.eachCell(cell => { cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER }; });
+      });
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sobun-${todayStr()}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      statusEl.textContent = 'Could not export: ' + (err && err.message ? err.message : 'error');
+    } finally {
+      exportBtn.disabled = false;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
